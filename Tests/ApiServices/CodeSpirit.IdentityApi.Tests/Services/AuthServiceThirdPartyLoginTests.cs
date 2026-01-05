@@ -35,6 +35,7 @@ public class AuthServiceThirdPartyLoginTests : ServiceTestBase
     private readonly Mock<IJwtTokenHandler> _mockJwtHandler;
     private readonly Mock<ILoginLogRepository> _mockLoginLogRepository;
     private readonly Mock<IRepository<RefreshToken>> _mockRefreshTokenRepository;
+    private readonly Mock<ISmsCodeService> _mockSmsCodeService;
     private readonly AuthService _authService;
     private readonly Mock<ICurrentUser> _mockCurrentUserForService;
 
@@ -51,6 +52,7 @@ public class AuthServiceThirdPartyLoginTests : ServiceTestBase
         _mockJwtHandler = new Mock<IJwtTokenHandler>();
         _mockLoginLogRepository = new Mock<ILoginLogRepository>();
         _mockRefreshTokenRepository = new Mock<IRepository<RefreshToken>>();
+        _mockSmsCodeService = new Mock<ISmsCodeService>();
         _mockCurrentUserForService = new Mock<ICurrentUser>();
 
         // 配置DataProtectionProvider
@@ -130,7 +132,8 @@ public class AuthServiceThirdPartyLoginTests : ServiceTestBase
             _mockSettingsService.Object,
             _mockCurrentUserForService.Object,
             _mockIdGenerator.Object,
-            _mockDataProtectionProvider.Object);
+            _mockDataProtectionProvider.Object,
+            _mockSmsCodeService.Object);
     }
 
     [Fact]

@@ -87,5 +87,22 @@ namespace CodeSpirit.IdentityApi.Services
         /// <param name="userAgent">客户端信息</param>
         /// <returns>登录结果</returns>
         Task<AuthResultDto> WeChatLoginAsync(WeChatLoginModel model, string ipAddress, string userAgent);
+
+        /// <summary>
+        /// 获取微信手机号
+        /// </summary>
+        /// <param name="code">手机号授权码</param>
+        /// <param name="tenantId">租户ID</param>
+        /// <returns>手机号信息</returns>
+        Task<WeChatPhoneResult> GetWeChatPhoneAsync(string code, string tenantId);
+
+        /// <summary>
+        /// 短信验证码登录方法
+        /// </summary>
+        /// <param name="request">短信登录请求</param>
+        /// <param name="ipAddress">客户端IP地址</param>
+        /// <param name="userAgent">客户端信息</param>
+        /// <returns>登录结果</returns>
+        Task<AuthResultDto> SmsLoginAsync(SmsLoginRequest request, string ipAddress, string userAgent);
     }
 }

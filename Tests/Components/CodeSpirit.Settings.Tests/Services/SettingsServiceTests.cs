@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using Xunit;
 using CodeSpirit.Settings.Data;
+using CodeSpirit.Settings.Attributes;
 
 namespace CodeSpirit.Settings.Tests.Services
 {
@@ -373,6 +374,106 @@ namespace CodeSpirit.Settings.Tests.Services
             // 测试完成
             Assert.True(true, "设置更新测试通过");
         }
+        
+        [Fact]
+        public async Task GetTenantSettingAsync_WithDtoAttribute_ReturnsSettings()
+        {
+            // 安排
+            var tenantId = "test-tenant-1";
+            var testDto = new TestSettingsDtoWithAttribute
+            {
+                Name = "TestName",
+                Value = 100
+            };
+            
+            // 先保存设置
+            await _settingsService.SetTenantSettingAsync(testDto, tenantId);
+            
+            // 清除上下文以模拟从数据库读取
+            ClearDbContext();
+            
+            // 执行：使用简化版 API（从特性获取 module/key）
+            var result = await _settingsService.GetTenantSettingAsync<TestSettingsDtoWithAttribute>(tenantId);
+            
+            // 断言
+            Assert.NotNull(result);
+            Assert.Equal("TestName", result.Name);
+            Assert.Equal(100, result.Value);
+        }
+        
+        [Fact]
+        public async Task SetTenantSettingAsync_WithDtoAttribute_SavesSettings()
+        {
+            // 安排
+            var tenantId = "test-tenant-2";
+            var testDto = new TestSettingsDtoWithAttribute
+            {
+                Name = "SavedName",
+                Value = 200
+            };
+            
+            // 执行：使用简化版 API
+            var success = await _settingsService.SetTenantSettingAsync(testDto, tenantId);
+            
+            // 断言
+            Assert.True(success);
+            
+            // 清除上下文以模拟从数据库读取
+            ClearDbContext();
+            
+            // 验证：使用简化版 API 读取
+            var result = await _settingsService.GetTenantSettingAsync<TestSettingsDtoWithAttribute>(tenantId);
+            Assert.NotNull(result);
+            Assert.Equal("SavedName", result.Name);
+            Assert.Equal(200, result.Value);
+        }
+        
+        [Fact]
+        public async Task GetGlobalSettingAsync_WithDtoAttribute_ReturnsSettings()
+        {
+            // 安排
+            var testDto = new TestGlobalSettingsDto
+            {
+                ConfigValue = "GlobalConfig"
+            };
+            
+            // 先保存设置
+            await _settingsService.SetGlobalSettingAsync(testDto);
+            
+            // 清除上下文以模拟从数据库读取
+            ClearDbContext();
+            
+            // 执行：使用简化版 API
+            var result = await _settingsService.GetGlobalSettingAsync<TestGlobalSettingsDto>();
+            
+            // 断言
+            Assert.NotNull(result);
+            Assert.Equal("GlobalConfig", result.ConfigValue);
+        }
+        
+        [Fact]
+        public async Task SetGlobalSettingAsync_WithDtoAttribute_SavesSettings()
+        {
+            // 安排
+            var testDto = new TestGlobalSettingsDto
+            {
+                ConfigValue = "NewGlobalConfig"
+            };
+            
+            // 执行：使用简化版 API
+            var success = await _settingsService.SetGlobalSettingAsync(testDto);
+            
+            // 断言
+            Assert.True(success);
+            
+            // 清除上下文以模拟从数据库读取
+            ClearDbContext();
+            
+            // 验证：使用简化版 API 读取
+            var result = await _settingsService.GetGlobalSettingAsync<TestGlobalSettingsDto>();
+            Assert.NotNull(result);
+            Assert.Equal("NewGlobalConfig", result.ConfigValue);
+        }
     }
     
     /// <summary>
@@ -382,5 +483,24 @@ namespace CodeSpirit.Settings.Tests.Services
     {
         public string Name { get; set; } = string.Empty;
         public int Value { get; set; }
+    }
+    
+    /// <summary>
+    /// 带特性的测试 DTO（租户设置）
+    /// </summary>
+    [SettingsDto("TestModule", "TestTenantKey")]
+    public class TestSettingsDtoWithAttribute
+    {
+        public string Name { get; set; } = string.Empty;
+        public int Value { get; set; }
+    }
+    
+    /// <summary>
+    /// 带特性的测试 DTO（全局设置）
+    /// </summary>
+    [SettingsDto("TestModule", "TestGlobalKey")]
+    public class TestGlobalSettingsDto
+    {
+        public string ConfigValue { get; set; } = string.Empty;
     }
 } 

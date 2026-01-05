@@ -1,4 +1,5 @@
 using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.Settings.Attributes;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
@@ -7,6 +8,7 @@ namespace CodeSpirit.IdentityApi.Dtos.Settings;
 /// <summary>
 /// 支付宝登录设置DTO
 /// </summary>
+[SettingsDto("ThirdPartyLogin", "Alipay")]
 public class AlipayLoginSettingsDto
 {
     /// <summary>

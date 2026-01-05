@@ -61,8 +61,50 @@ public class UserService : BaseCRUDService<User, long, CreateUserDto, UpdateUser
 - **ITransientDependency**: Transient 生命周期（推荐无状态工具类）
 - **ISingletonDependency**: Singleton 生命周期（推荐配置和缓存服务）
 
+## 设置服务最佳实践
+
+使用 `ISettingsService` 时，推荐使用 `[SettingsDto]` 特性简化 API 调用：
+
+```csharp
+// 1. 定义设置 DTO 并添加特性
+using CodeSpirit.Settings.Attributes;
+
+[SettingsDto("ThirdPartyLogin", "WeChat")]
+public class WeChatLoginSettingsDto
+{
+    public string AppId { get; set; } = string.Empty;
+    public string AppSecret { get; set; } = string.Empty;
+}
+
+// 2. 在服务中使用简化 API（无需手动传入 module/key）
+public class AuthService : IScopedDependency
+{
+    private readonly ISettingsService _settingsService;
+    
+    public async Task<WeChatLoginSettingsDto> GetWeChatConfigAsync(string tenantId)
+    {
+        // 简化版 API：自动从 DTO 特性获取 module/key
+        return await _settingsService.GetTenantSettingAsync<WeChatLoginSettingsDto>(tenantId) 
+            ?? new WeChatLoginSettingsDto();
+    }
+    
+    public async Task SaveWeChatConfigAsync(WeChatLoginSettingsDto dto, string tenantId)
+    {
+        // 简化版 API：自动从 DTO 特性获取 module/key
+        await _settingsService.SetTenantSettingAsync(dto, tenantId, "更新微信配置");
+    }
+}
+```
+
+**优势：**
+- 类型安全，编译时检查
+- 避免模块名/配置键字符串不一致
+- 配置键集中管理，修改只需改一处
+- 反射结果自动缓存，性能优化
+
 ## 参考文件
 
 - 服务基类: [BaseCRUDService.cs](mdc:Src/CodeSpirit.Shared/Services/BaseCRUDService.cs)
 - 服务接口: [IBaseCRUDService.cs](mdc:Src/CodeSpirit.Shared/Services/IBaseCRUDService.cs)
 - 依赖注入规范: [dependency-injection.mdc](mdc:.cursor/rules/dependency-injection.mdc)
+- 设置组件文档: [codespirit-settings-guide-zh-CN.md](mdc:Docs/03-Core-Components/codespirit-settings-guide-zh-CN.md)

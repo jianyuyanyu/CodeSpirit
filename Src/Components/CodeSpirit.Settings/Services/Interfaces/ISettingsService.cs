@@ -23,6 +23,13 @@ public interface ISettingsService
     Task<T?> GetGlobalSettingAsync<T>(string module, string key) where T : class, new();
     
     /// <summary>
+    /// 获取全局设置并反序列化为指定类型（从 DTO 特性自动获取模块和键）
+    /// </summary>
+    /// <typeparam name="T">返回类型，必须标记 [SettingsDto] 特性</typeparam>
+    /// <returns>反序列化后的对象</returns>
+    Task<T?> GetGlobalSettingAsync<T>() where T : class, new();
+    
+    /// <summary>
     /// 获取模块所有全局设置
     /// </summary>
     /// <param name="module">模块名称</param>
@@ -47,6 +54,14 @@ public interface ISettingsService
     /// <param name="userId">用户ID</param>
     /// <returns>反序列化后的对象</returns>
     Task<T?> GetUserSettingAsync<T>(string module, string key, string userId) where T : class, new();
+    
+    /// <summary>
+    /// 获取用户设置并反序列化为指定类型（从 DTO 特性自动获取模块和键）
+    /// </summary>
+    /// <typeparam name="T">返回类型，必须标记 [SettingsDto] 特性</typeparam>
+    /// <param name="userId">用户ID</param>
+    /// <returns>反序列化后的对象</returns>
+    Task<T?> GetUserSettingAsync<T>(string userId) where T : class, new();
     
     /// <summary>
     /// 获取用户所有设置
@@ -78,6 +93,15 @@ public interface ISettingsService
     Task<bool> SetGlobalSettingAsync<T>(string module, string key, T value, string? reason = null) where T : class;
     
     /// <summary>
+    /// 设置全局设置对象（从 DTO 特性自动获取模块和键）
+    /// </summary>
+    /// <typeparam name="T">对象类型，必须标记 [SettingsDto] 特性</typeparam>
+    /// <param name="value">设置对象</param>
+    /// <param name="reason">变更原因</param>
+    /// <returns>操作结果</returns>
+    Task<bool> SetGlobalSettingAsync<T>(T value, string? reason = null) where T : class;
+    
+    /// <summary>
     /// 设置用户设置
     /// </summary>
     /// <param name="module">模块名称</param>
@@ -99,6 +123,16 @@ public interface ISettingsService
     /// <param name="reason">变更原因</param>
     /// <returns>操作结果</returns>
     Task<bool> SetUserSettingAsync<T>(string module, string key, T value, string userId, string? reason = null) where T : class;
+    
+    /// <summary>
+    /// 设置用户设置对象（从 DTO 特性自动获取模块和键）
+    /// </summary>
+    /// <typeparam name="T">对象类型，必须标记 [SettingsDto] 特性</typeparam>
+    /// <param name="value">设置对象</param>
+    /// <param name="userId">用户ID</param>
+    /// <param name="reason">变更原因</param>
+    /// <returns>操作结果</returns>
+    Task<bool> SetUserSettingAsync<T>(T value, string userId, string? reason = null) where T : class;
     
     /// <summary>
     /// 批量设置全局设置
@@ -148,6 +182,14 @@ public interface ISettingsService
     Task<T?> GetTenantSettingAsync<T>(string module, string key, string tenantId) where T : class, new();
     
     /// <summary>
+    /// 获取租户设置并反序列化为指定类型（从 DTO 特性自动获取模块和键）
+    /// </summary>
+    /// <typeparam name="T">返回类型，必须标记 [SettingsDto] 特性</typeparam>
+    /// <param name="tenantId">租户ID</param>
+    /// <returns>反序列化后的对象</returns>
+    Task<T?> GetTenantSettingAsync<T>(string tenantId) where T : class, new();
+    
+    /// <summary>
     /// 获取租户所有设置
     /// </summary>
     /// <param name="module">模块名称</param>
@@ -177,6 +219,16 @@ public interface ISettingsService
     /// <param name="reason">变更原因</param>
     /// <returns>操作结果</returns>
     Task<bool> SetTenantSettingAsync<T>(string module, string key, T value, string tenantId, string? reason = null) where T : class;
+    
+    /// <summary>
+    /// 设置租户设置对象（从 DTO 特性自动获取模块和键）
+    /// </summary>
+    /// <typeparam name="T">对象类型，必须标记 [SettingsDto] 特性</typeparam>
+    /// <param name="value">设置对象</param>
+    /// <param name="tenantId">租户ID</param>
+    /// <param name="reason">变更原因</param>
+    /// <returns>操作结果</returns>
+    Task<bool> SetTenantSettingAsync<T>(T value, string tenantId, string? reason = null) where T : class;
     
     /// <summary>
     /// 批量设置租户设置

@@ -8,6 +8,7 @@ using CodeSpirit.IdentityApi.Dtos.Auth;
 using CodeSpirit.IdentityApi.Dtos.User;
 using CodeSpirit.IdentityApi.Jwt;
 using CodeSpirit.IdentityApi.Models;
+using CodeSpirit.IdentityApi.Resources;
 using CodeSpirit.IdentityApi.Services.ThirdParty;
 using CodeSpirit.Settings.Services.Interfaces;
 using CodeSpirit.Shared.Repositories;
@@ -38,6 +39,7 @@ namespace CodeSpirit.IdentityApi.Services
         private readonly ICurrentUser _currentUser;
         private readonly IIdGenerator _idGenerator;
         private readonly IDataProtectionProvider _dataProtectionProvider;
+        private readonly ISmsCodeService _smsCodeService;
         private readonly int _refreshTokenExpirationDays;
 
         public AuthService(
@@ -55,7 +57,8 @@ namespace CodeSpirit.IdentityApi.Services
             ISettingsService settingsService,
             ICurrentUser currentUser,
             IIdGenerator idGenerator,
-            IDataProtectionProvider dataProtectionProvider)
+            IDataProtectionProvider dataProtectionProvider,
+            ISmsCodeService smsCodeService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -72,6 +75,7 @@ namespace CodeSpirit.IdentityApi.Services
             _currentUser = currentUser;
             _idGenerator = idGenerator;
             _dataProtectionProvider = dataProtectionProvider;
+            _smsCodeService = smsCodeService;
 
             // 刷新令牌过期时间，默认7天
             if (!int.TryParse(_configuration["Jwt:RefreshTokenExpirationDays"], out _refreshTokenExpirationDays))
@@ -697,7 +701,7 @@ namespace CodeSpirit.IdentityApi.Services
             try
             {
                 // 1. 获取平台配置
-                var config = GetPlatformConfig(model.PlatformType, model.TenantId);
+                var config = await GetPlatformConfigAsync(model.PlatformType, model.TenantId);
                 
                 // 2. 调用第三方API获取会话信息
                 var sessionInfo = await _thirdPartyApiService.GetSessionAsync(
@@ -771,6 +775,98 @@ namespace CodeSpirit.IdentityApi.Services
         }
 
         /// <summary>
+        /// 获取微信手机号
+        /// </summary>
+        /// <param name="code">手机号授权码</param>
+        /// <param name="tenantId">租户ID</param>
+        /// <returns>手机号信息</returns>
+        public async Task<WeChatPhoneResult> GetWeChatPhoneAsync(string code, string tenantId)
+        {
+            var config = await GetPlatformConfigAsync(ThirdPartyPlatformType.WeChatMiniProgram, tenantId);
+            
+            if (_thirdPartyApiService is WeChatApiService weChatApiService)
+            {
+                return await weChatApiService.GetPhoneNumberAsync(code, config);
+            }
+            
+            throw new InvalidOperationException("微信API服务未正确配置");
+        }
+
+        /// <summary>
+        /// 短信验证码登录方法
+        /// </summary>
+        /// <param name="request">短信登录请求</param>
+        /// <param name="ipAddress">客户端IP地址</param>
+        /// <param name="userAgent">客户端信息</param>
+        /// <returns>登录结果</returns>
+        public async Task<AuthResultDto> SmsLoginAsync(SmsLoginRequest request, string ipAddress, string userAgent)
+        {
+            try
+            {
+                var tenantId = request.TenantId ?? "default";
+
+                // 1. 验证验证码
+                var isValid = await _smsCodeService.VerifyCodeAsync(request.PhoneNumber, request.Code, tenantId);
+                if (!isValid)
+                {
+                    return AuthResultDto.CreateFailure("验证码错误或已过期");
+                }
+
+                // 2. 根据手机号查找用户
+                ApplicationUser user = null;
+                
+                // 使用 IgnoreQueryFilters 避免租户过滤器影响
+                user = await _context.Users
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber && u.TenantId == tenantId);
+
+                // 3. 如果用户不存在，创建新用户
+                if (user == null)
+                {
+                    var userId = _idGenerator.NewId();
+                    var userName = $"sms_{request.PhoneNumber}_{userId}";
+
+                    user = new ApplicationUser
+                    {
+                        Id = userId,
+                        TenantId = tenantId,
+                        UserName = userName,
+                        NormalizedUserName = userName.ToUpperInvariant(),
+                        PhoneNumber = request.PhoneNumber,
+                        PhoneNumberConfirmed = true,
+                        Name = $"用户{request.PhoneNumber.Substring(7)}", // 显示手机号后4位
+                        IsActive = true
+                    };
+
+                    var createResult = await _userManager.CreateAsync(user);
+                    if (!createResult.Succeeded)
+                    {
+                        _logger.LogError("创建短信登录用户失败: {Errors}", 
+                            string.Join(", ", createResult.Errors.Select(e => e.Description)));
+                        return AuthResultDto.CreateFailure($"创建用户失败: {string.Join(", ", createResult.Errors.Select(e => e.Description))}");
+                    }
+
+                    _logger.LogInformation("通过短信验证码创建新用户: {PhoneNumber}, UserId: {UserId}", 
+                        request.PhoneNumber, userId);
+                }
+
+                // 4. 验证用户状态
+                if (!user.IsActive)
+                {
+                    return AuthResultDto.CreateFailure("账号已被禁用");
+                }
+
+                // 5. 处理登录成功逻辑
+                return await ProcessSuccessfulLoginAsync(user, ipAddress, userAgent, tenantId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "短信验证码登录异常，手机号: {PhoneNumber}", request.PhoneNumber);
+                return AuthResultDto.CreateFailure($"短信验证码登录失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// 通过UnionId查找第三方账号
         /// </summary>
         private async Task<ThirdPartyAccount> FindAccountByUnionIdAsync(string unionId, string tenantId)
@@ -813,9 +909,8 @@ namespace CodeSpirit.IdentityApi.Services
                 UserName = userName,
                 NormalizedUserName = userName.ToUpperInvariant(),
                 Name = GetPlatformDisplayName(platformType),
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                CreatedBy = 0
+                IsActive = true
+                // CreatedAt 和 CreatedBy 由 SetAuditFields 自动设置
             };
             
             var result = await _userManager.CreateAsync(user);
@@ -942,66 +1037,54 @@ namespace CodeSpirit.IdentityApi.Services
         }
 
         /// <summary>
-        /// 获取平台配置（优先从设置服务读取，其次从appsettings.json）
+        /// 获取平台配置（从设置服务读取）
         /// </summary>
-        private ThirdPartyPlatformConfig GetPlatformConfig(ThirdPartyPlatformType platformType, string tenantId)
+        private async Task<ThirdPartyPlatformConfig> GetPlatformConfigAsync(ThirdPartyPlatformType platformType, string tenantId)
         {
-            // 优先从设置服务读取
-            try
+            return platformType switch
             {
-                var settings = _settingsService.GetTenantSettingAsync<Dtos.Settings.ThirdPartyLoginSettingsDto>(
-                    "ThirdPartyLogin", 
-                    "Configuration", 
-                    tenantId).Result;
-                
-                if (settings != null)
-                {
-                    return platformType switch
-                    {
-                        ThirdPartyPlatformType.WeChatMiniProgram => new ThirdPartyPlatformConfig
-                        {
-                            AppId = settings.WeChatAppId ?? string.Empty,
-                            AppSecret = settings.WeChatAppSecret ?? string.Empty
-                        },
-                        ThirdPartyPlatformType.AlipayMiniProgram => new ThirdPartyPlatformConfig
-                        {
-                            AppId = settings.AlipayAppId ?? string.Empty,
-                            AppSecret = settings.AlipayAppSecret ?? string.Empty
-                        },
-                        _ => throw new NotSupportedException($"不支持的平台类型: {platformType}")
-                    };
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "从设置服务读取配置失败，将使用appsettings.json配置");
-            }
-            
-            // 从appsettings.json读取（备用）
-            var configSection = platformType switch
-            {
-                ThirdPartyPlatformType.WeChatMiniProgram => _configuration.GetSection("ThirdParty:WeChat"),
-                ThirdPartyPlatformType.AlipayMiniProgram => _configuration.GetSection("ThirdParty:Alipay"),
+                ThirdPartyPlatformType.WeChatMiniProgram => await GetWeChatConfigAsync(tenantId),
+                ThirdPartyPlatformType.AlipayMiniProgram => await GetAlipayConfigAsync(tenantId),
                 _ => throw new NotSupportedException($"不支持的平台类型: {platformType}")
             };
+        }
+        
+        /// <summary>
+        /// 获取微信小程序配置
+        /// </summary>
+        private async Task<ThirdPartyPlatformConfig> GetWeChatConfigAsync(string tenantId)
+        {
+            var settings = await _settingsService.GetTenantSettingAsync<Dtos.Settings.WeChatLoginSettingsDto>(tenantId);
+            
+            if (settings == null || string.IsNullOrEmpty(settings.AppId))
+            {
+                throw new BusinessException(IdentityErrorsResources.ThirdPartyLoginSettingsNotFound);
+            }
             
             return new ThirdPartyPlatformConfig
             {
-                AppId = configSection["AppId"] ?? string.Empty,
-                AppSecret = configSection["AppSecret"] ?? string.Empty
+                AppId = settings.AppId,
+                AppSecret = settings.AppSecret
             };
         }
-    }
-
-    /// <summary>
-    /// 存放错误消息的静态类
-    /// </summary>
-    public static class ErrorMessages
-    {
-        public const string InvalidCredentials = "用户名或密码不正确，请重新输入！";
-        public const string AccountLocked = "账户被锁定，请稍后再试！";
-        public const string InactiveAccount = "账户未激活，请联系管理员！";
-        public const string InvalidToken = "无效的令牌！";
-        public const string RefreshTokenExpired = "刷新令牌已过期！";
+        
+        /// <summary>
+        /// 获取支付宝小程序配置
+        /// </summary>
+        private async Task<ThirdPartyPlatformConfig> GetAlipayConfigAsync(string tenantId)
+        {
+            var settings = await _settingsService.GetTenantSettingAsync<Dtos.Settings.AlipayLoginSettingsDto>(tenantId);
+            
+            if (settings == null || string.IsNullOrEmpty(settings.AppId))
+            {
+                throw new BusinessException(IdentityErrorsResources.ThirdPartyLoginSettingsNotFound);
+            }
+            
+            return new ThirdPartyPlatformConfig
+            {
+                AppId = settings.AppId,
+                AppSecret = settings.AppSecret
+            };
+        }
     }
 }

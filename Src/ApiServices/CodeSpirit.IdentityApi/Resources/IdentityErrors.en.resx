@@ -117,5 +117,10 @@
   <data name="ResetPasswordResult" xml:space="preserve">
     <value>Reset Password Result</value>
   </data>
+  
+  <!-- Third-party Login Error Messages -->
+  <data name="ThirdPartyLoginSettingsNotFound" xml:space="preserve">
+    <value>Third-party login configuration not found. Please contact the administrator to configure the settings.</value>
+  </data>
 </root>
 

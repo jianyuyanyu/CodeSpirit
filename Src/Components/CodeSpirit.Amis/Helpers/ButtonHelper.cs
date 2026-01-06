@@ -490,13 +490,13 @@ namespace CodeSpirit.Amis.Helpers
             return CreateButton(title, "dialog", dialogOrDrawer: drawerBody, dialogSize: dialogSize);
         }
 
-        public JObject CreateDetailButton(ApiRouteInfo detailRoute, IEnumerable<PropertyInfo> detailPropertites, DialogSize dialogSize = DialogSize.LG)
+        public JObject CreateDetailButton(ApiRouteInfo detailRoute, IEnumerable<PropertyInfo> detailPropertites, DialogSize dialogSize = DialogSize.LG, Type dtoType = null)
         {
             string title = GetLocalizedText("Common.View", GetSharedResourcesType(), "查看");
             string closeText = GetLocalizedText("Common.Close", GetSharedResourcesType(), "关闭");
             JArray controls = [];
 
-            List<JObject> formFields = GetFormFieldsWithAiSupport(detailPropertites, null, isReadOnly: true);
+            List<JObject> formFields = GetFormFieldsWithAiSupport(detailPropertites, dtoType, isReadOnly: true);
 
             // 遍历字段,在每个字段后面添加分割线(最后一个字段除外)
             for (int i = 0; i < formFields.Count(); i++)
@@ -548,11 +548,6 @@ namespace CodeSpirit.Amis.Helpers
                     },
                     ["controls"] = controls,
                     ["mode"] = "horizontal",
-                    ["horizontal"] = new JObject
-                    {
-                        ["left"] = 3,
-                        ["right"] = 9
-                    },
                     ["static"] = true,
                     ["submitText"] = "",
                     ["actions"] = new JArray

@@ -2,7 +2,7 @@
 
 ## 📚 文档总览
 
-本文档库包含 **96+** 个主要文档，按照 **11** 个核心类别进行分类，涵盖从核心架构到具体实现的完整技术体系。
+本文档库包含 **97+** 个主要文档，按照 **11** 个核心类别进行分类，涵盖从核心架构到具体实现的完整技术体系。
 所有文档已按功能分类组织到对应的目录中，便于查找和管理。
 
 ## 🗂️ 目录结构
@@ -10,7 +10,7 @@
 ```
 Docs/
 ├── 01-Core-Docs/                          # 📘 核心文档 (8个文件)
-├── 02-UI-Generation/                      # 🎨 界面生成引擎 (17个文件)  
+├── 02-UI-Generation/                      # 🎨 界面生成引擎 (19个文件)  
 ├── 03-Core-Components/                    # 🔧 核心组件 (35个文件)
 ├── 04-Identity-Auth/                      # 🔐 身份认证与权限 (9个文件)
 ├── 05-Multi-Tenancy/                      # 🏢 多租户架构 (7个文件)
@@ -48,7 +48,7 @@ Docs/
 - 08-aliyun-qwen-free-trial-guide-zh-CN.md (阿里云通义千问免费体验指南)
 - 08-aliyun-qwen-free-trial-guide-en-US.md
 
-### 🎨 02-UI-Generation (18个文件)
+### 🎨 02-UI-Generation (19个文件)
 **界面生成引擎**：AMIS引擎、智能图表、UDL系统等前端生成相关
 - AMIS列自动推断功能说明.md
 - CodeSpirit.Amis.AiForm智能表单使用指南.md ⭐ **新增**
@@ -63,6 +63,7 @@ Docs/
 - CodeSpirit.UdlCards.SDK使用指南.md
 - CrudDialogOperation使用指南.md ⭐ **新增**
 - OperationAttribute-Actions配置使用指南.md ⭐ **新增**
+- codespirit-page-tabs-guide-zh-CN.md ⭐ **新增** (页面顶部Tab功能指南)
 - UDL-Cards简易实现方案.md
 - UDL-Cards详细实现方案.md
 - UDL-UI描述语言设计方案.md

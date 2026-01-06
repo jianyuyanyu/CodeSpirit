@@ -1315,7 +1315,7 @@ namespace CodeSpirit.Amis.Column
                     Type actualType = actions.Detail.ReturnType.GetUnderlyingDataType();
                     PropertyInfo[] properties = actualType.GetProperties();
 
-                    JObject detailButton = buttonHelper.CreateDetailButton(apiRoute.Detail, properties);
+                    JObject detailButton = buttonHelper.CreateDetailButton(apiRoute.Detail, properties, dtoType: actualType);
                     buttons.Add(detailButton);
                 }
             }

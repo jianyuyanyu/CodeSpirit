@@ -25,12 +25,13 @@ namespace CodeSpirit.Amis
         private readonly AmisApiHelper _amisApiHelper;
         private readonly AsideHelper _asideHelper;
         private readonly CardHelper _cardHelper;
+        private readonly TabsHelper _tabsHelper;
 
         /// <summary>
         /// 构造函数，初始化所需的助手类。
         /// </summary>
         public AmisCRUDConfigBuilder(ApiRouteHelper apiRouteHelper, ColumnHelper columnHelper, ButtonHelper buttonHelper,
-                                 SearchFieldHelper searchFieldHelper, AmisContext amisContext, UtilityHelper utilityHelper, AmisApiHelper amisApiHelper, AsideHelper asideHelper, CardHelper cardHelper)
+                                 SearchFieldHelper searchFieldHelper, AmisContext amisContext, UtilityHelper utilityHelper, AmisApiHelper amisApiHelper, AsideHelper asideHelper, CardHelper cardHelper, TabsHelper tabsHelper)
         {
             _apiRouteHelper = apiRouteHelper;
             _columnHelper = columnHelper;
@@ -41,6 +42,7 @@ namespace CodeSpirit.Amis
             _amisApiHelper = amisApiHelper;
             _asideHelper = asideHelper;
             _cardHelper = cardHelper;
+            _tabsHelper = tabsHelper;
         }
 
         /// <summary>
@@ -133,21 +135,46 @@ namespace CodeSpirit.Amis
             
             JObject asideConfig = _asideHelper.GenerateAsideConfig(queryDtoType, crudName);
 
+            // 检查是否需要生成Tabs配置
+            JObject? tabsConfig = null;
+            JObject? countApiConfig = null;
+            if (_tabsHelper.ShouldGenerateTabs(queryDtoType))
+            {
+                tabsConfig = _tabsHelper.GenerateTabsConfig(queryDtoType, crudConfig, crudName);
+                countApiConfig = _tabsHelper.CreateCountApiConfig(queryDtoType);
+            }
+
             // 构建页面配置
             JObject pageConfig = new()
             {
                 ["type"] = "page",
                 ["title"] = controllerType.GetDisplayName(_utilityHelper),
-                ["body"] = new JArray()
-                {
-                    crudConfig
-                },
+                ["body"] = new JArray(),
                 ["data"] = new JObject()
                 {
                     ["ROOT_API"] = _apiRouteHelper.GetRootApi(),
                     ["BASE_API"] = $"{_apiRouteHelper.GetRootApi()}/{_apiRouteHelper.GetRoute().TrimStart('/')}"
                 }
             };
+
+            // 如果有Tabs配置，将Tabs作为body；否则直接使用CRUD
+            if (tabsConfig != null)
+            {
+                pageConfig["body"] = tabsConfig;
+            }
+            else
+            {
+                pageConfig["body"] = new JArray()
+                {
+                    crudConfig
+                };
+            }
+
+            // 如果有CountApi配置，设置为页面的initApi
+            if (countApiConfig != null)
+            {
+                pageConfig["initApi"] = countApiConfig;
+            }
 
             // 如果有aside配置，添加到页面中
             if (asideConfig != null)

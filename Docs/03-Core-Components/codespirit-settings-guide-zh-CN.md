@@ -4,34 +4,27 @@
 
 CodeSpirit.Settings是码灵框架中的设置管理组件，提供了一套完整的应用配置管理解决方案。该组件支持全局设置和用户个性化设置管理，可以方便地对应用程序的各种配置进行集中管理，同时保留配置历史记录以便审计和回滚。
 
+![ScreenShot_2026-01-06_205544_708](../../Res/ScreenShot_2026-01-06_205544_708.png)
+
 ### 1.1 主要功能
 
 - **多级设置管理**：支持全局设置、用户设置、模块设置、组织设置和角色设置
+
 - **设置项类型丰富**：支持字符串、数值、布尔值、日期时间、JSON、单选、多选等多种数据类型
+
 - **历史记录追踪**：记录设置变更历史，支持版本追踪和审计
+
 - **批量操作**：支持批量设置导入导出，便于环境迁移和备份
+
 - **类型化访问**：提供泛型方法和扩展方法，方便进行类型转换
+
 - **易于集成**：提供简单的扩展方法快速集成到现有应用
+
+  ![image-20260106224425135](../../Res/image-20260106224425135.png)
 
 ## 2. 快速入门
 
-### 2.1 安装和配置
-
-将CodeSpirit.Settings添加到您的项目中，然后在服务配置中添加设置管理服务：
-
-```csharp
-// 在Program.cs或Startup.cs中配置服务
-builder.Services.AddSettingsManagerWithDatabase(
-    builder.Configuration,
-    options => options.UseSqlServer(connectionString)
-);
-
-// 在应用程序启动时初始化设置数据库
-var app = builder.Build();
-await app.UseSettingsManagerAsync();
-```
-
-### 2.2 基本用法
+### 2.1 基本用法
 
 #### 获取设置值
 

@@ -281,6 +281,14 @@ public class MultiLevelCacheService : ICacheService
                 _l1Keys.TryAdd(fullKey, 0);
                 _logger.LogDebug("已设置L1缓存: {Key}", fullKey);
             }
+            else if (options.Level == CacheLevel.L2Only && _memoryCache != null)
+            {
+                // 重要：使用 L2Only 时，必须清除 L1 中的旧数据
+                // 否则 GetAsync 会返回 L1 的过期数据
+                _memoryCache.Remove(fullKey);
+                _l1Keys.TryRemove(fullKey, out _);
+                _logger.LogDebug("L2Only模式：已清除L1缓存以保持一致性: {Key}", fullKey);
+            }
 
             // 设置L2缓存
             if (ShouldUseL2Cache(options) && _distributedCache != null)
@@ -326,6 +334,14 @@ public class MultiLevelCacheService : ICacheService
                 _memoryCache.Set(fullKey, value, l1Options);
                 _l1Keys.TryAdd(fullKey, 0);
                 _logger.LogDebug("已设置L1缓存: {Key}", fullKey);
+            }
+            else if (options.Level == CacheLevel.L2Only && _memoryCache != null)
+            {
+                // 重要：使用 L2Only 时，必须清除 L1 中的旧数据
+                // 否则 GetAsync 会返回 L1 的过期数据
+                _memoryCache.Remove(fullKey);
+                _l1Keys.TryRemove(fullKey, out _);
+                _logger.LogDebug("L2Only模式：已清除L1缓存以保持一致性: {Key}", fullKey);
             }
 
             // 设置L2缓存

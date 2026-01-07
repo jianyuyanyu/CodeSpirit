@@ -7,6 +7,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using CodeSpirit.Core.Authorization;
 using CodeSpirit.Core.Enums;
+using CodeSpirit.Caching.Abstractions;
+using CodeSpirit.Caching.Models;
+using CodeSpirit.Caching.DistributedLock;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CodeSpirit.Navigation
 {
@@ -17,6 +21,7 @@ namespace CodeSpirit.Navigation
     {
         private readonly INavigationTreeBuilder _treeBuilder;
         private readonly INavigationCacheManager _cacheManager;
+        private readonly IServiceProvider _serviceProvider;
         private readonly INavigationFilterService _filterService;
         private readonly ILogger<NavigationService> _logger;
 
@@ -25,18 +30,21 @@ namespace CodeSpirit.Navigation
         /// </summary>
         /// <param name="treeBuilder">导航树构建器</param>
         /// <param name="cacheManager">缓存管理器</param>
+        /// <param name="serviceProvider">服务提供程序（用于动态解析 Scoped 服务）</param>
         /// <param name="filterService">过滤服务</param>
         /// <param name="logger">日志记录器</param>
         public NavigationService(
             INavigationTreeBuilder treeBuilder,
             INavigationCacheManager cacheManager,
+            IServiceProvider serviceProvider,
             INavigationFilterService filterService,
             ILogger<NavigationService> logger)
         {
-            _treeBuilder = treeBuilder;
-            _cacheManager = cacheManager;
-            _filterService = filterService;
-            _logger = logger;
+            _treeBuilder = treeBuilder ?? throw new ArgumentNullException(nameof(treeBuilder));
+            _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            _filterService = filterService ?? throw new ArgumentNullException(nameof(filterService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -48,19 +56,16 @@ namespace CodeSpirit.Navigation
         {
             try
             {
-                // 1. 尝试从缓存获取完整导航树
+                // 1. 从缓存获取完整导航树（由 InitializeNavigationTree 初始化）
                 var cachedNodes = await _cacheManager.GetCachedNavigationAsync();
 
-                if (cachedNodes == null)
+                if (cachedNodes == null || !cachedNodes.Any())
                 {
-                    // 2. 构建导航树
-                    cachedNodes = _treeBuilder.BuildNavigationTree();
-
-                    // 3. 写入缓存
-                    await _cacheManager.SetCachedNavigationAsync(cachedNodes);
+                    _logger.LogWarning("Navigation cache is empty. Please ensure InitializeNavigationTree is called during startup.");
+                    return new List<NavigationNode>();  // 返回空列表而不是覆盖缓存
                 }
 
-                // 4. 根据平台类型在内存中过滤
+                // 2. 根据平台类型在内存中过滤
                 // 注意：这里只应用平台过滤，认证和权限过滤应该在 Controller 层通过 FilterNodesByContext 进行
                 var context = new NavigationFilterContext
                 {
@@ -70,24 +75,20 @@ namespace CodeSpirit.Navigation
                     IsAuthenticated = true
                 };
 
-                // 调试日志：记录过滤前的节点平台类型
-                if (cachedNodes != null && cachedNodes.Any())
-                {
-                    var platformTypes = cachedNodes.Select(n => n.PlatformType).Distinct().ToList();
-                    _logger.LogDebug(
-                        "Filtering {Count} nodes for platform {PlatformType}. Node platform types: {NodePlatformTypes}",
-                        cachedNodes.Count,
-                        platformType,
-                        string.Join(", ", platformTypes));
-                }
+                // 调试日志：记录缓存中的模块总数和平台类型
+                var platformTypes = cachedNodes.Select(n => n.PlatformType).Distinct().ToList();
+                _logger.LogDebug(
+                    "Retrieved {Count} modules from cache for platform {PlatformType}. Node platform types: {NodePlatformTypes}",
+                    cachedNodes.Count,
+                    platformType,
+                    string.Join(", ", platformTypes));
 
                 var filtered = _filterService.FilterNodes(cachedNodes, context);
                 
                 _logger.LogDebug(
-                    "Filtered {Count} nodes for platform {PlatformType}, result: {ResultCount} nodes",
-                    cachedNodes?.Count ?? 0,
-                    platformType,
-                    filtered?.Count ?? 0);
+                    "Filtered result: {ResultCount} nodes for platform {PlatformType}",
+                    filtered?.Count ?? 0,
+                    platformType);
 
                 return filtered;
             }
@@ -148,6 +149,8 @@ namespace CodeSpirit.Navigation
         {
             _logger.LogInformation("Starting navigation tree initialization");
 
+            const string lockKey = "Navigation:InitLock";
+
             try
             {
                 // 1. 构建当前服务的导航树
@@ -158,14 +161,32 @@ namespace CodeSpirit.Navigation
                     navigationTree.Count,
                     string.Join(", ", navigationTree.Select(m => $"{m.Name}({m.PlatformType})")));
 
-                // 2. 获取现有缓存数据（包含版本信息）
+                // 2. 使用分布式锁保护并发合并（直接使用 IDistributedLockProvider）
+                using var scope = _serviceProvider.CreateScope();
+                var lockProvider = scope.ServiceProvider.GetRequiredService<IDistributedLockProvider>();
+                
+                _logger.LogDebug("Acquiring distributed lock: {LockKey}", lockKey);
+                
+                using var lockHandle = await lockProvider.AcquireLockAsync(
+                    lockKey,
+                    TimeSpan.FromSeconds(30),  // 获取锁的超时时间
+                    TimeSpan.FromSeconds(60)   // 锁的最大持有时间
+                );
+                
+                _logger.LogDebug("Acquired distributed lock for navigation tree merge");
+                
+                // 3. 在锁保护下，通过 NavigationCacheManager 读取和合并
                 var existingCacheData = await _cacheManager.GetCachedNavigationDataAsync();
                 
                 if (existingCacheData != null && existingCacheData.Nodes != null && existingCacheData.Nodes.Any())
                 {
-                    // 3. 合并策略：合并当前服务的模块到现有缓存中
-                    var existingModuleNames = existingCacheData.Nodes.Select(m => m.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-                    var newModules = navigationTree.Where(m => !existingModuleNames.Contains(m.Name)).ToList();
+                    // 4. 合并策略：合并当前服务的模块到现有缓存中
+                    var existingModuleNames = existingCacheData.Nodes
+                        .Select(m => m.Name)
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    var newModules = navigationTree
+                        .Where(m => !existingModuleNames.Contains(m.Name))
+                        .ToList();
                     
                     if (newModules.Any())
                     {
@@ -179,11 +200,11 @@ namespace CodeSpirit.Navigation
                         var oldVersion = existingCacheData.Version;
                         
                         // 合并到现有缓存
-                        var mergedCache = existingCacheData.Nodes.ToList();
-                        mergedCache.AddRange(newModules);
+                        var merged = existingCacheData.Nodes.ToList();
+                        merged.AddRange(newModules);
                         
-                        // 写入合并后的缓存（自动计算新版本）
-                        await _cacheManager.SetCachedNavigationAsync(mergedCache);
+                        // 写入合并后的缓存（通过 NavigationCacheManager）
+                        await _cacheManager.SetCachedNavigationAsync(merged);
                         
                         // 获取新版本并比较
                         var newVersion = await _cacheManager.GetCurrentVersionAsync();
@@ -194,14 +215,10 @@ namespace CodeSpirit.Navigation
                                 "Navigation content changed! Old version: {OldVersion}, New version: {NewVersion}, Added {Count} modules", 
                                 oldVersion, newVersion, newModules.Count);
                         }
-                        else
-                        {
-                            _logger.LogInformation("Navigation content unchanged, version: {Version}", newVersion);
-                        }
                         
                         _logger.LogInformation(
                             "Navigation tree merged successfully. Total modules: {TotalCount}",
-                            mergedCache.Count);
+                            merged.Count);
                     }
                     else
                     {
@@ -212,7 +229,7 @@ namespace CodeSpirit.Navigation
                 }
                 else
                 {
-                    // 4. 如果缓存不存在，直接写入
+                    // 5. 如果缓存不存在，直接写入
                     _logger.LogInformation(
                         "No existing cache found. Writing {Count} modules to cache: {Modules}",
                         navigationTree.Count,
@@ -225,12 +242,19 @@ namespace CodeSpirit.Navigation
                         version, navigationTree.Count);
                 }
 
-                // 5. 验证缓存写入
+                // 6. 验证缓存写入
                 var cached = await _cacheManager.GetCachedNavigationAsync();
                 _logger.LogInformation(
                     "Navigation tree initialization completed. Cached {CachedCount} modules, verified {VerifiedCount} modules",
                     navigationTree.Count,
                     cached?.Count ?? 0);
+                
+                _logger.LogDebug("Released distributed lock: {LockKey}", lockKey);
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogError(ex, "Failed to acquire distributed lock for navigation merge within timeout: {LockKey}", lockKey);
+                throw new InvalidOperationException("导航树初始化失败：无法获取分布式锁，可能存在其他服务正在初始化", ex);
             }
             catch (Exception ex)
             {

@@ -1,6 +1,8 @@
+using CodeSpirit.Caching.Abstractions;
+using CodeSpirit.Caching.Models;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.Navigation.Models;
-using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
@@ -12,33 +14,46 @@ using System.Threading.Tasks;
 namespace CodeSpirit.Navigation.Services
 {
     /// <summary>
-    /// 导航缓存管理器实现
+    /// 导航缓存管理器实现（使用 ICacheService 支持多级缓存和自动锁保护）
     /// </summary>
     public class NavigationCacheManager : INavigationCacheManager
     {
-        private readonly IDistributedCache _cache;
+        private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<NavigationCacheManager> _logger;
 
         // 简化后的缓存键：单一缓存键，不再按平台类型分离
-        private const string NAVIGATION_CACHE_KEY = "CodeSpirit:Navigation:All";
+        private const string NAVIGATION_CACHE_KEY = "Navigation:All";
 
-        private static readonly DistributedCacheEntryOptions _cacheOptions = new()
+        // 缓存选项：长期缓存，仅使用 L2（Redis）以便跨服务共享
+        private static readonly CacheOptions _cacheOptions = new()
         {
+            Level = CacheLevel.L2Only,  // 仅使用 Redis，确保多服务共享
             AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(365),
-            SlidingExpiration = TimeSpan.FromDays(90)
+            SlidingExpiration = TimeSpan.FromDays(90),
+            EnableBreakthroughProtection = false  // 在此层不需要锁保护，由 NavigationService 层处理
         };
 
         /// <summary>
         /// 初始化导航缓存管理器
         /// </summary>
-        /// <param name="cache">分布式缓存</param>
+        /// <param name="serviceProvider">服务提供程序（用于动态解析 Scoped 服务）</param>
         /// <param name="logger">日志记录器</param>
         public NavigationCacheManager(
-            IDistributedCache cache,
+            IServiceProvider serviceProvider,
             ILogger<NavigationCacheManager> logger)
         {
-            _cache = cache;
-            _logger = logger;
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+        
+        /// <summary>
+        /// 获取 ICacheService 实例（从 Scope 中动态解析）
+        /// </summary>
+        private ICacheService GetCacheService()
+        {
+            // 创建一个作用域来解析 Scoped 服务
+            using var scope = _serviceProvider.CreateScope();
+            return scope.ServiceProvider.GetRequiredService<ICacheService>();
         }
 
         /// <summary>
@@ -83,7 +98,9 @@ namespace CodeSpirit.Navigation.Services
         {
             try
             {
-                var cached = await _cache.GetAsync<NavigationCacheData>(NAVIGATION_CACHE_KEY);
+                using var scope = _serviceProvider.CreateScope();
+                var cacheService = scope.ServiceProvider.GetRequiredService<ICacheService>();
+                var cached = await cacheService.GetAsync<NavigationCacheData>(NAVIGATION_CACHE_KEY);
 
                 if (cached == null)
                 {
@@ -120,16 +137,6 @@ namespace CodeSpirit.Navigation.Services
                     return cacheData.Nodes;
                 }
 
-                // 尝试读取旧格式的缓存（向后兼容）
-                var oldCached = await _cache.GetAsync<List<NavigationNode>>(NAVIGATION_CACHE_KEY);
-                if (oldCached != null)
-                {
-                    _logger.LogDebug("Navigation cache hit (old format), {Count} modules", oldCached.Count);
-                    // 如果存在旧格式缓存，自动迁移到新格式
-                    await SetCachedNavigationAsync(oldCached);
-                    return oldCached;
-                }
-
                 _logger.LogDebug("Navigation cache miss");
                 return null;
             }
@@ -155,7 +162,9 @@ namespace CodeSpirit.Navigation.Services
                     Nodes = nodes
                 };
 
-                await _cache.SetAsync(NAVIGATION_CACHE_KEY, cacheData, _cacheOptions);
+                using var scope = _serviceProvider.CreateScope();
+                var cacheService = scope.ServiceProvider.GetRequiredService<ICacheService>();
+                await cacheService.SetAsync(NAVIGATION_CACHE_KEY, cacheData, _cacheOptions);
                 _logger.LogInformation("Navigation cache updated, version: {Version}, {Count} modules", 
                     version, nodes.Count);
             }
@@ -190,7 +199,9 @@ namespace CodeSpirit.Navigation.Services
         {
             try
             {
-                await _cache.RemoveAsync(NAVIGATION_CACHE_KEY);
+                using var scope = _serviceProvider.CreateScope();
+                var cacheService = scope.ServiceProvider.GetRequiredService<ICacheService>();
+                await cacheService.RemoveAsync(NAVIGATION_CACHE_KEY);
                 _logger.LogInformation("Navigation cache cleared");
             }
             catch (Exception ex)

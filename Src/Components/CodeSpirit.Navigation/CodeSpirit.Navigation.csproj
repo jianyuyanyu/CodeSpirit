@@ -17,6 +17,7 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\..\CodeSpirit.Core\CodeSpirit.Core.csproj" />
 	  <ProjectReference Include="..\CodeSpirit.Amis\CodeSpirit.Amis.csproj" />
+	  <ProjectReference Include="..\CodeSpirit.Caching\CodeSpirit.Caching.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

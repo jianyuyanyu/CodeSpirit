@@ -25,6 +25,7 @@
 - **[api-design.mdc](./api-design.mdc)** - API 设计：RESTful、路由、响应格式、操作特性
 - **[dependency-injection.mdc](./dependency-injection.mdc)** - 依赖注入：Scrutor 自动注册、生命周期管理
 - **[startup-framework.mdc](./startup-framework.mdc)** - 统一启动框架：API 项目配置标准化、中间件插入点
+- **[database.mdc](./database.mdc)** - 数据库与迁移：多数据库支持、DbContext 设计、迁移命令、雪花ID配置
 - **[i18n.mdc](./i18n.mdc)** - 多语言国际化：资源文件、本地化、前后端多语言支持
 - **[ai-development.mdc](./ai-development.mdc)** - AI 功能开发：AI 表单填充、长任务处理、LLM 集成
 - **[performance.mdc](./performance.mdc)** - 性能优化：异步编程、缓存策略、查询优化、分布式场景
@@ -63,6 +64,7 @@
 | api-design.mdc | `*Controller.cs`, `**/Controllers/**/*.cs` | API 设计规范（控制器） |
 | dependency-injection.mdc | `*Service.cs`, `**/Services/**/*.cs` | 依赖注入规范（服务） |
 | startup-framework.mdc | `*.cs` | 启动框架规范 |
+| database.mdc | `*DbContext*.cs`, `**/Data/**/*.cs`, `**/Configurations/**/*.cs` | 数据库与迁移规范 |
 | i18n.mdc | `*Dto.cs`, `*Enum.cs`, `*Controller.cs`, `**/Resources/**/*.cs` | 国际化规范（多文件类型） |
 | ai-development.mdc | `*.cs` | AI 开发规范 |
 | performance.mdc | `*.cs` | 性能优化规范 |

@@ -58,10 +58,13 @@ alwaysApply: true
 
 # 数据访问
 
-- **Code First 迁移**: 按数据库创建独立迁移（SqlServer/MySql）
+- **多数据库支持**: 使用数据库特定 DbContext（`SqlServer{Service}DbContext` / `MySql{Service}DbContext`）
+- **Code First 迁移**: 按数据库创建独立迁移（SqlServer/MySql），**必须使用数据库特定 DbContext**
+- **雪花 ID 配置**: 使用 `IIdGenerator` 的实体必须配置 `ValueGeneratedNever()`
 - **实体配置**: `IEntityTypeConfiguration<T>`
 - **只读查询**: `AsNoTracking()`，避免 N+1 用 `Include` + `AsSplitQuery()`
 - **多租户**: 实体实现 `IMultiTenant`，自动应用租户过滤器
+- 📖 [详细规范](mdc:.cursor/rules/database.mdc)
 
 # 代码质量
 
@@ -109,6 +112,7 @@ Src/
 - [API设计](mdc:.cursor/rules/api-design.mdc) - RESTful、路由、响应格式
 - [依赖注入](mdc:.cursor/rules/dependency-injection.mdc) - Scrutor自动注册
 - [启动框架](mdc:.cursor/rules/startup-framework.mdc) - Program.cs配置
+- [数据库迁移](mdc:.cursor/rules/database.mdc) - 多数据库、DbContext、迁移命令
 - [多语言](mdc:.cursor/rules/i18n.mdc) - 资源文件、本地化
 - [AI开发](mdc:.cursor/rules/ai-development.mdc) - AI表单、长任务、LLM
 - [性能优化](mdc:.cursor/rules/performance.mdc) - 异步、缓存、查询

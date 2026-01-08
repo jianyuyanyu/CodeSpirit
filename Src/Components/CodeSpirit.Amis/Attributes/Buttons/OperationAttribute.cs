@@ -87,7 +87,13 @@ public enum OperationActionType
     /// CRUD对话框（弹窗显示列表数据）
     /// </summary>
     [Display(Name = "CRUD对话框")]
-    CrudDialog = 6
+    CrudDialog = 6,
+
+    /// <summary>
+    /// 出参表单（展示返回数据的只读表单）
+    /// </summary>
+    [Display(Name = "出参表单")]
+    ReturnForm = 7
 }
 
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Property, AllowMultiple = true)]
@@ -111,6 +117,7 @@ public class OperationAttribute : Attribute
         OperationActionType.Service => "service",
         OperationActionType.AiForm => "aiForm",
         OperationActionType.CrudDialog => "crudDialog",
+        OperationActionType.ReturnForm => "return-form",
         _ => "ajax"
     };
     
@@ -297,6 +304,7 @@ public class OperationAttribute : Attribute
             "service" => OperationActionType.Service,
             "aiform" => OperationActionType.AiForm,
             "cruddialog" or "crudDialog" => OperationActionType.CrudDialog,
+            "return-form" or "returnform" => OperationActionType.ReturnForm,
             _ => OperationActionType.Ajax
         };
         Api = api;

@@ -40,7 +40,8 @@ namespace CodeSpirit.Navigation.Tests.Services
                 .Returns(requestCultureFeature.Object);
             httpContextAccessor.Setup(x => x.HttpContext).Returns(httpContext.Object);
 
-            var cultureResolver = new CultureResolver(httpContextAccessor.Object);
+            var cultureLoggerMock = new Mock<ILogger<CultureResolver>>();
+            var cultureResolver = new CultureResolver(httpContextAccessor.Object, cultureLoggerMock.Object);
             var logger = new Mock<ILogger<NavigationLocalizationService>>();
             var localizationService = new NavigationLocalizationService(cultureResolver, logger.Object);
 
@@ -83,7 +84,8 @@ namespace CodeSpirit.Navigation.Tests.Services
                 .Returns(requestCultureFeature.Object);
             httpContextAccessor.Setup(x => x.HttpContext).Returns(httpContext.Object);
 
-            var cultureResolver = new CultureResolver(httpContextAccessor.Object);
+            var cultureLoggerMock = new Mock<ILogger<CultureResolver>>();
+            var cultureResolver = new CultureResolver(httpContextAccessor.Object, cultureLoggerMock.Object);
             var logger = new Mock<ILogger<NavigationLocalizationService>>();
             var localizationService = new NavigationLocalizationService(cultureResolver, logger.Object);
 
@@ -146,7 +148,8 @@ namespace CodeSpirit.Navigation.Tests.Services
                 .Returns(requestCultureFeature.Object);
             httpContextAccessor.Setup(x => x.HttpContext).Returns(httpContext.Object);
 
-            var cultureResolver = new CultureResolver(httpContextAccessor.Object);
+            var cultureLoggerMock = new Mock<ILogger<CultureResolver>>();
+            var cultureResolver = new CultureResolver(httpContextAccessor.Object, cultureLoggerMock.Object);
             var logger = new Mock<ILogger<NavigationLocalizationService>>();
             var localizationService = new NavigationLocalizationService(cultureResolver, logger.Object);
 
@@ -184,7 +187,8 @@ namespace CodeSpirit.Navigation.Tests.Services
                 .Returns(requestCultureFeature.Object);
             httpContextAccessor.Setup(x => x.HttpContext).Returns(httpContext.Object);
 
-            var cultureResolver = new CultureResolver(httpContextAccessor.Object);
+            var cultureLoggerMock = new Mock<ILogger<CultureResolver>>();
+            var cultureResolver = new CultureResolver(httpContextAccessor.Object, cultureLoggerMock.Object);
             var logger = new Mock<ILogger<NavigationLocalizationService>>();
             var localizationService = new NavigationLocalizationService(cultureResolver, logger.Object);
 

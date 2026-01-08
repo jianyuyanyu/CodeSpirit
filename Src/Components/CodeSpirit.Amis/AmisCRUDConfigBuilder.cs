@@ -1,4 +1,4 @@
-﻿using CodeSpirit.Amis.Column;
+using CodeSpirit.Amis.Column;
 using CodeSpirit.Amis.Form;
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.Helpers.Dtos;
@@ -76,7 +76,19 @@ namespace CodeSpirit.Amis
             // 检查是否支持卡片模式
             bool isCardModeSupported = _cardHelper.IsCardModeSupported(controllerType);
 
-            // 获取列配置和搜索字段
+            // 提前检查是否需要 Tab Count Service（在生成列和按钮之前设置，以便按钮能正确添加 reload 配置）
+            Type queryDtoType = _utilityHelper.GetQueryDtoTypeFromMethod(actions.List);
+            JObject? countApiConfig = null;
+            if (_tabsHelper.ShouldGenerateTabs(queryDtoType))
+            {
+                countApiConfig = _tabsHelper.CreateCountApiConfig(queryDtoType);
+                if (countApiConfig != null)
+                {
+                    _amisContext.HasTabCountService = true;
+                }
+            }
+
+            // 获取列配置和搜索字段（必须在 HasTabCountService 设置之后，以便操作按钮能正确添加 reload）
             List<JObject> columns = _columnHelper.GetAmisColumns();
             List<JObject> searchFields = _searchFieldHelper.GetAmisSearchFields(actions.List);
 
@@ -131,17 +143,13 @@ namespace CodeSpirit.Amis
             }
 
             // 检查是否需要生成aside配置
-            Type queryDtoType = _utilityHelper.GetQueryDtoTypeFromMethod(actions.List);
-            
             JObject asideConfig = _asideHelper.GenerateAsideConfig(queryDtoType, crudName);
 
             // 检查是否需要生成Tabs配置
             JObject? tabsConfig = null;
-            JObject? countApiConfig = null;
             if (_tabsHelper.ShouldGenerateTabs(queryDtoType))
             {
                 tabsConfig = _tabsHelper.GenerateTabsConfig(queryDtoType, crudConfig, crudName);
-                countApiConfig = _tabsHelper.CreateCountApiConfig(queryDtoType);
             }
 
             // 构建页面配置
@@ -160,7 +168,22 @@ namespace CodeSpirit.Amis
             // 如果有Tabs配置，将Tabs作为body；否则直接使用CRUD
             if (tabsConfig != null)
             {
-                pageConfig["body"] = tabsConfig;
+                // 如果有CountApi配置，用Service组件包裹Tabs以支持reload刷新Count
+                if (countApiConfig != null)
+                {
+                    JObject serviceConfig = new JObject
+                    {
+                        ["type"] = "service",
+                        ["name"] = "tabCountService",  // 用于CRUD操作后reload刷新Count
+                        ["api"] = countApiConfig,
+                        ["body"] = tabsConfig
+                    };
+                    pageConfig["body"] = serviceConfig;
+                }
+                else
+                {
+                    pageConfig["body"] = tabsConfig;
+                }
             }
             else
             {
@@ -168,12 +191,6 @@ namespace CodeSpirit.Amis
                 {
                     crudConfig
                 };
-            }
-
-            // 如果有CountApi配置，设置为页面的initApi
-            if (countApiConfig != null)
-            {
-                pageConfig["initApi"] = countApiConfig;
             }
 
             // 如果有aside配置，添加到页面中

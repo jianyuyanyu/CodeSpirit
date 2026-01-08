@@ -19,35 +19,36 @@ namespace CodeSpirit.ConfigCenter.Controllers.ClientApi;
 public class ClientConfigController : ControllerBase
 {
     private readonly IConfigItemService _configItemService;
+    private readonly IConfigPublishHistoryService _publishHistoryService;
     private readonly ILogger<ClientConfigController> _logger;
+    private readonly IAppHealthService _appHealthService;
 
     public ClientConfigController(
         IConfigItemService configItemService,
-        ILogger<ClientConfigController> logger)
+        IConfigPublishHistoryService publishHistoryService,
+        ILogger<ClientConfigController> logger,
+        IAppHealthService appHealthService)
     {
         _configItemService = configItemService;
+        _publishHistoryService = publishHistoryService;
         _logger = logger;
+        _appHealthService = appHealthService;
     }
 
     /// <summary>
     /// 获取应用配置集合
     /// </summary>
     /// <param name="appId">应用ID</param>
-    /// <param name="environment">环境</param>
     /// <returns>应用配置集合</returns>
-    [HttpGet("{appId}/{environment}")]
+    [HttpGet("{appId}")]
     [DisplayName("获取应用配置")]
-    public async Task<ActionResult<ApiResponse<ConfigItemsExportDto>>> GetAppConfig(
-        string appId, 
-        string environment)
+    public async Task<ActionResult<ApiResponse<ConfigItemsExportDto>>> GetAppConfig(string appId)
     {
         try
         {
-            _logger.LogInformation("客户端API - 获取应用 {AppId} 在 {Environment} 环境的配置", 
-                appId, environment);
+            _logger.LogInformation("客户端API - 获取应用 {AppId} 的配置", appId);
                 
-            ConfigItemsExportDto configs = await _configItemService.GetAppConfigsWithInheritanceAsync(
-                appId, environment);
+            ConfigItemsExportDto configs = await _configItemService.GetAppConfigsWithInheritanceAsync(appId);
                 
             return new ApiResponse<ConfigItemsExportDto>
             {
@@ -58,7 +59,7 @@ public class ClientConfigController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取应用配置失败: {AppId}/{Environment}", appId, environment);
+            _logger.LogError(ex, "获取应用配置失败: {AppId}", appId);
             return new ApiResponse<ConfigItemsExportDto>
             {
                 Status = 500,
@@ -66,6 +67,46 @@ public class ClientConfigController : ControllerBase
             };
         }
     }
+
+    /// <summary>
+    /// 获取应用配置版本（轻量级API，用于轮询检测变更）
+    /// 此接口同时作为心跳接口，调用时会自动更新应用的健康状态
+    /// </summary>
+    /// <param name="appId">应用ID</param>
+    /// <returns>应用当前版本号</returns>
+    [HttpGet("{appId}/version")]
+    [DisplayName("获取配置版本")]
+    public async Task<ActionResult<ApiResponse<ConfigVersionDto>>> GetAppConfigVersion(string appId)
+    {
+        try
+        {
+            // 更新健康状态（作为心跳功能）
+            await _appHealthService.UpdateHealthStatusAsync(appId);
+            
+            var version = await _publishHistoryService.GetLatestVersionAsync(appId);
+            
+            return new ApiResponse<ConfigVersionDto>
+            {
+                Status = 200,
+                Msg = "Success",
+                Data = new ConfigVersionDto
+                {
+                    AppId = appId,
+                    Version = version
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取应用配置版本失败: {AppId}", appId);
+            return new ApiResponse<ConfigVersionDto>
+            {
+                Status = 500,
+                Msg = $"获取版本失败: {ex.Message}"
+            };
+        }
+    }
+
 
     /// <summary>
     /// 验证客户端连接

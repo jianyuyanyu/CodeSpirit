@@ -24,4 +24,10 @@ public class AppQueryDto : QueryDtoBase
     /// </summary>
     [DisplayName("是否启用")]
     public bool? Enabled { get; set; }
+
+    /// <summary>
+    /// 应用标签
+    /// </summary>
+    [DisplayName("应用标签")]
+    public string Tag { get; set; }
 }

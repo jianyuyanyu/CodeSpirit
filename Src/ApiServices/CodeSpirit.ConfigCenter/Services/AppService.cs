@@ -1,6 +1,9 @@
+#nullable enable
 using AutoMapper;
 using CodeSpirit.ConfigCenter.Dtos.App;
 using CodeSpirit.ConfigCenter.Models;
+using CodeSpirit.ConfigCenter.Models.Enums;
+using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using CodeSpirit.Shared.Dtos.Common;
@@ -10,33 +13,49 @@ using System.Linq.Dynamic.Core;
 
 namespace CodeSpirit.ConfigCenter.Services;
 
-/// <summary>
-/// 应用管理服务实现
-/// </summary>
-public class AppService : BaseCRUDIService<App, AppDto, string, CreateAppDto, UpdateAppDto, AppBatchImportItemDto>, IAppService
-{
     /// <summary>
-    /// 初始化应用管理服务
+    /// 应用管理服务实现
     /// </summary>
-    /// <param name="repository">应用仓储</param>
-    /// <param name="mapper">对象映射器</param>
-    /// <param name="importHelper">批量导入助手</param>
-    public AppService(
-        IRepository<App> repository, 
-        IMapper mapper,
-        EnhancedBatchImportHelper<AppBatchImportItemDto> importHelper)
-        : base(repository, mapper, importHelper)
+    public class AppService : BaseCRUDIService<App, AppDto, string, CreateAppDto, UpdateAppDto, AppBatchImportItemDto>, IAppService
     {
-    }
+        private readonly IAppHealthService _appHealthService;
+        private readonly IConfigPublishHistoryService _publishHistoryService;
+
+        /// <summary>
+        /// 初始化应用管理服务
+        /// </summary>
+        /// <param name="repository">应用仓储</param>
+        /// <param name="mapper">对象映射器</param>
+        /// <param name="importHelper">批量导入助手</param>
+        /// <param name="appHealthService">应用健康服务</param>
+        /// <param name="publishHistoryService">发布历史服务</param>
+        public AppService(
+            IRepository<App> repository, 
+            IMapper mapper,
+            EnhancedBatchImportHelper<AppBatchImportItemDto> importHelper,
+            IAppHealthService appHealthService,
+            IConfigPublishHistoryService publishHistoryService)
+            : base(repository, mapper, importHelper)
+        {
+            _appHealthService = appHealthService;
+            _publishHistoryService = publishHistoryService;
+        }
 
     /// <summary>
     /// 获取指定应用信息
     /// </summary>
     /// <param name="appId">应用ID</param>
     /// <returns>应用信息DTO</returns>
-    public async Task<AppDto> GetAppAsync(string appId)
+    public async Task<AppDto?> GetAppAsync(string appId)
     {
-        return await GetAsync(appId);
+        var appDto = await GetAsync(appId);
+        if (appDto != null)
+        {
+            await FillHealthStatusAsync(appDto);
+            await FillConfigCountAsync(appDto);
+            await FillConfigVersionAsync(appDto);
+        }
+        return appDto;
     }
 
     /// <summary>
@@ -60,12 +79,30 @@ public class AppService : BaseCRUDIService<App, AppDto, string, CreateAppDto, Up
         {
             predicate = predicate.And(x => x.Enabled == queryDto.Enabled.Value);
         }
+        if (!string.IsNullOrEmpty(queryDto.Tag))
+        {
+            predicate = predicate.And(x => x.Tag == queryDto.Tag);
+        }
 
-        return await GetPagedListAsync(
+        var result = await GetPagedListAsync(
             queryDto,
             predicate,
-            "InheritancedApp"
+            "InheritancedApp",
+            "ConfigItems"
         );
+
+        // 填充健康状态、配置数和配置版本
+        if (result != null && result.Items != null)
+        {
+            foreach (var appDto in result.Items)
+            {
+                await FillHealthStatusAsync(appDto);
+                await FillConfigCountAsync(appDto);
+                await FillConfigVersionAsync(appDto);
+            }
+        }
+
+        return result ?? new PageList<AppDto>();
     }
 
     /// <summary>
@@ -153,7 +190,7 @@ public class AppService : BaseCRUDIService<App, AppDto, string, CreateAppDto, Up
         // 执行批量更新：更新 `rowsDiff` 中的变化字段
         foreach (var rowDiff in request.RowsDiff)
         {
-            App app = appsToUpdate.FirstOrDefault(a => a.Id == rowDiff.Id);
+            App? app = appsToUpdate.FirstOrDefault(a => a.Id == rowDiff.Id);
             if (app != null)
             {
                 if (rowDiff.Enabled.HasValue)
@@ -194,14 +231,20 @@ public class AppService : BaseCRUDIService<App, AppDto, string, CreateAppDto, Up
     /// </summary>
     /// <param name="id">应用ID</param>
     /// <param name="updateDto">更新DTO</param>
-    /// <exception cref="AppServiceException">当应用选择自己作为继承源时抛出异常</exception>
-    protected override Task ValidateUpdateDto(string id, UpdateAppDto updateDto)
+    /// <exception cref="AppServiceException">当应用选择自己作为继承源或应用是自动注册时抛出异常</exception>
+    protected override async Task ValidateUpdateDto(string id, UpdateAppDto updateDto)
     {
         if (updateDto.InheritancedAppId == id)
         {
             throw new AppServiceException(400, "应用不能选择自己作为继承源！");
         }
-        return Task.CompletedTask;
+
+        // 检查应用是否是自动注册的
+        var app = await Repository.GetByIdAsync(id);
+        if (app != null && app.IsAutoRegistered)
+        {
+            throw new AppServiceException(400, "自动注册的应用不允许编辑！");
+        }
     }
 
     /// <summary>
@@ -260,6 +303,17 @@ public class AppService : BaseCRUDIService<App, AppDto, string, CreateAppDto, Up
         {
             throw new AppServiceException(400, "无法删除存在配置项的应用，请先删除所有配置项！");
         }
+
+        // Check for published config items
+        bool hasPublishedConfigItems = await Repository.CreateQuery()
+            .Where(x => x.Id == entity.Id)
+            .SelectMany(x => x.ConfigItems)
+            .AnyAsync(x => x.Status == ConfigStatus.Released);
+
+        if (hasPublishedConfigItems)
+        {
+            throw new AppServiceException(400, "无法删除存在已发布配置项的应用，请先取消发布或删除所有已发布的配置项！");
+        }
     }
 
     #endregion
@@ -271,5 +325,106 @@ public class AppService : BaseCRUDIService<App, AppDto, string, CreateAppDto, Up
     private static string GenerateAppSecret()
     {
         return Guid.NewGuid().ToString("N");
+    }
+
+    /// <summary>
+    /// 填充健康状态
+    /// </summary>
+    /// <param name="appDto">应用DTO</param>
+    private async Task FillHealthStatusAsync(AppDto appDto)
+    {
+        if (string.IsNullOrEmpty(appDto.Id))
+        {
+            return;
+        }
+
+        try
+        {
+            appDto.HealthStatus = await _appHealthService.GetHealthStatusAsync(appDto.Id);
+        }
+        catch (Exception)
+        {
+            // 记录错误但不影响主流程
+            // 健康状态保持为 null（未知状态）
+        }
+    }
+
+    /// <summary>
+    /// 填充配置数量
+    /// </summary>
+    /// <param name="appDto">应用DTO</param>
+    private async Task FillConfigCountAsync(AppDto appDto)
+    {
+        if (string.IsNullOrEmpty(appDto.Id))
+        {
+            return;
+        }
+
+        try
+        {
+            // 如果映射时已经填充了配置数（ConfigItems 已加载），则不需要再次查询
+            // 注意：ConfigCount 为 0 也可能是真的没有配置项，所以不能简单地判断 > 0
+            // 这里我们总是查询一次，确保数据准确
+            var configCount = await Repository.CreateQuery()
+                .Where(x => x.Id == appDto.Id)
+                .SelectMany(x => x.ConfigItems)
+                .CountAsync();
+
+            appDto.ConfigCount = configCount;
+        }
+        catch (Exception)
+        {
+            // 记录错误但不影响主流程
+            // 配置数保持为映射时的值或 0
+        }
+    }
+
+    /// <summary>
+    /// 填充配置版本号（从发布历史获取最新版本）
+    /// </summary>
+    /// <param name="appDto">应用DTO</param>
+    private async Task FillConfigVersionAsync(AppDto appDto)
+    {
+        if (string.IsNullOrEmpty(appDto.Id))
+        {
+            return;
+        }
+
+        try
+        {
+            var version = await _publishHistoryService.GetLatestVersionAsync(appDto.Id);
+            appDto.ConfigVersion = version;
+        }
+        catch (Exception)
+        {
+            // 记录错误但不影响主流程
+            // 配置版本保持为默认值 0
+        }
+    }
+
+    /// <summary>
+    /// 获取应用选择列表（用于下拉选择）
+    /// </summary>
+    /// <param name="name">应用名称搜索关键词</param>
+    /// <returns>应用列表</returns>
+    public async Task<List<AppDto>> GetAppsForSelectAsync(string? name = null)
+    {
+        ExpressionStarter<App> predicate = PredicateBuilder.New<App>(true);
+
+        // 支持按名称搜索
+        if (!string.IsNullOrEmpty(name))
+        {
+            predicate = predicate.And(x => x.Name.Contains(name));
+        }
+
+        // 只获取启用的应用
+        predicate = predicate.And(x => x.Enabled);
+
+        var apps = await Repository.Find(predicate)
+            .OrderBy(x => x.Id)
+            .ToListAsync();
+
+        var appDtos = Mapper.Map<List<AppDto>>(apps);
+        return appDtos;
     }
 }

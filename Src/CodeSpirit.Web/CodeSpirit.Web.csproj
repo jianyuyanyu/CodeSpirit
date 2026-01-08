@@ -22,6 +22,7 @@
     <ProjectReference Include="..\Components\CodeSpirit.Aggregator\CodeSpirit.Aggregator.csproj" />
     <ProjectReference Include="..\Components\CodeSpirit.Audit\CodeSpirit.Audit.csproj" />
     <ProjectReference Include="..\Components\CodeSpirit.Charts\CodeSpirit.Charts.csproj" />
+    <ProjectReference Include="..\Components\CodeSpirit.ConfigCenter.Sdk\CodeSpirit.ConfigCenter.Sdk.csproj" />
     <ProjectReference Include="..\Components\CodeSpirit.Messaging\CodeSpirit.Messaging.csproj" />
     <ProjectReference Include="..\Components\CodeSpirit.MultiTenant\CodeSpirit.MultiTenant.csproj" />
     <ProjectReference Include="..\Components\CodeSpirit.Navigation\CodeSpirit.Navigation.csproj" />

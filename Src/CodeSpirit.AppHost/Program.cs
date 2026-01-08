@@ -138,142 +138,126 @@ else
 }
 
 // === 添加 API 服务 ===
+// 💡 JWT、LLM、AiFormFillLLM、Audit 等配置已迁移到配置中心种子数据
 
 // 添加 ConfigCenter 服务（第一个服务，没有依赖其他 API）
-var configService = builder.AddProject<Projects.CodeSpirit_ConfigCenter>("config")
-    .WithReference(configDb)
-    .WithReference(seqService)
-    .WithReference(cache)
-    .WithEnvironment("DatabaseType", databaseType)
-    .WithJwtConfiguration(parameters.Jwt.SecretKey, parameters.Jwt.Issuer, parameters.Jwt.Audience)
-    .WithLlmConfiguration(
-        parameters.Llm.ApiKey,
-        parameters.Llm.ApiBaseUrl,
-        parameters.Llm.ModelName,
-        parameters.Llm.TimeoutSeconds,
-        parameters.Llm.MaxTokens,
-        parameters.Llm.UseProxy,
-        parameters.Llm.ProxyAddress)
-    .WithAiFormFillLlmConfiguration(
-        parameters.AiFormFillLlm.ApiKey,
-        parameters.AiFormFillLlm.ApiBaseUrl,
-        parameters.AiFormFillLlm.ModelName,
-        parameters.AiFormFillLlm.DisableThinking,
-        parameters.AiFormFillLlm.ResponseFormatType,
-        parameters.AiFormFillLlm.Temperature,
-        parameters.AiFormFillLlm.TopP,
-        parameters.AiFormFillLlm.EnableStreaming)
-    .WaitFor(configDb)
-    .WithHealthCheck()
-    .WithEnvironmentAwareDeploymentTag("config", () => "2.0.0");
+var configService = builder.AddStandardApiService<Projects.CodeSpirit_ConfigCenter>(
+    name: "config",
+    database: configDb,
+    parameters: parameters,
+    cache: cache,
+    rabbitmqService: rabbitmqService,
+    seqService: seqService,
+    configService: null,  // ConfigCenter 自身不需要
+    identityService: null,  // 启动时 IdentityService 还不存在
+    databaseType: databaseType,
+    version: "2.0.0");
 
 // 添加 IdentityService 服务
 var identityService = builder.AddStandardApiService<Projects.CodeSpirit_IdentityApi>(
-        name: "identity",
-        database: identityDb,
-        parameters: parameters,
-        cache: cache,
-        rabbitmqService: rabbitmqService,
-        identityService: null!, // 第一个身份服务，传入 null
-        databaseType: databaseType,
-        settingsDb: settingsDb)  // IdentityApi 需要访问设置数据库
-    .WithReference(seqService)
-    .WithReference(configService)
-    .WithHealthCheck()
-    .WithEnvironmentAwareDeploymentTag("identity", () => "2.1.0");
+    name: "identity",
+    database: identityDb,
+    parameters: parameters,
+    cache: cache,
+    rabbitmqService: rabbitmqService,
+    seqService: seqService,
+    configService: configService,
+    identityService: null,  // 第一个身份服务，传入 null
+    databaseType: databaseType,
+    version: "2.1.0",
+    settingsDb: settingsDb);
+
+// 配置 configService 可以通过服务发现访问 identityService
+// 注意：虽然 identityService 在 configService 之后定义，但 Aspire 支持延迟引用
+configService.WithReference(identityService);
 
 // 添加消息服务
 var messagingService = builder.AddStandardApiService<Projects.CodeSpirit_MessagingApi>(
-        name: "messaging",
-        database: messagingDb,
-        parameters: parameters,
-        cache: cache,
-        rabbitmqService: rabbitmqService,
-        identityService: identityService,
-        databaseType: databaseType)
-    .WithReference(seqService)
-    .WithReference(configService)
-    .WithHealthCheck()
-    .WithEnvironmentAwareDeploymentTag("messaging", () => "2.0.0");
+    name: "messaging",
+    database: messagingDb,
+    parameters: parameters,
+    cache: cache,
+    rabbitmqService: rabbitmqService,
+    seqService: seqService,
+    configService: configService,
+    identityService: identityService,
+    databaseType: databaseType,
+    version: "2.0.0");
 
-// 添加考试服务（需要访问设置数据库）
+// 添加考试服务
 var examService = builder.AddStandardApiService<Projects.CodeSpirit_ExamApi>(
-        name: "exam",
-        database: examDb,
-        parameters: parameters,
-        cache: cache,
-        rabbitmqService: rabbitmqService,
-        identityService: identityService,
-        databaseType: databaseType,
-        settingsDb: settingsDb)  // 考试服务需要访问设置数据库
-    .WithReference(seqService)
-    .WithReference(configService)
-    .WithReference(identityService)
-    .WithHealthCheck()
-    .WithEnvironmentAwareDeploymentTag("exam", () => "2.0.0");
+    name: "exam",
+    database: examDb,
+    parameters: parameters,
+    cache: cache,
+    rabbitmqService: rabbitmqService,
+    seqService: seqService,
+    configService: configService,
+    identityService: identityService,
+    databaseType: databaseType,
+    version: "2.0.0",
+    settingsDb: settingsDb);
 
 // 添加文件存储服务
 var fileService = builder.AddStandardApiService<Projects.CodeSpirit_FileStorageApi>(
-        name: "file",
-        database: fileDb,
-        parameters: parameters,
-        cache: cache,
-        rabbitmqService: rabbitmqService,
-        identityService: identityService,
-        databaseType: databaseType)
-    .WithReference(seqService)
-    .WithReference(configService)
-    .WithHealthCheck()
-    .WithEnvironmentAwareDeploymentTag("file", () => "2.0.0");
+    name: "file",
+    database: fileDb,
+    parameters: parameters,
+    cache: cache,
+    rabbitmqService: rabbitmqService,
+    seqService: seqService,
+    configService: configService,
+    identityService: identityService,
+    databaseType: databaseType,
+    version: "2.0.0");
 
-// 添加问卷调查服务（需要访问设置数据库）
+// 添加问卷调查服务
 var surveyService = builder.AddStandardApiService<Projects.CodeSpirit_SurveyApi>(
-        name: "survey",
-        database: surveyDb,
-        parameters: parameters,
-        cache: cache,
-        rabbitmqService: rabbitmqService,
-        identityService: identityService,
-        databaseType: databaseType,
-        settingsDb: settingsDb)  // 问卷调查服务需要访问设置数据库
-    .WithReference(seqService)
-    .WithReference(configService)
-    .WithHealthCheck()
-    .WithEnvironmentAwareDeploymentTag("survey", () => "2.0.0");
+    name: "survey",
+    database: surveyDb,
+    parameters: parameters,
+    cache: cache,
+    rabbitmqService: rabbitmqService,
+    seqService: seqService,
+    configService: configService,
+    identityService: identityService,
+    databaseType: databaseType,
+    version: "2.0.0",
+    settingsDb: settingsDb);
 
-// 添加审批服务（需要访问设置数据库）
+// 添加审批服务
 var approvalService = builder.AddStandardApiService<Projects.CodeSpirit_ApprovalApi>(
-        name: "approval",
-        database: approvalDb,
-        parameters: parameters,
-        cache: cache,
-        rabbitmqService: rabbitmqService,
-        identityService: identityService,
-        databaseType: databaseType,
-        settingsDb: settingsDb)  // 审批服务需要访问设置数据库
-    .WithReference(seqService)
-    .WithReference(configService)
-    .WithHealthCheck()
-    .WithEnvironmentAwareDeploymentTag("approval", () => "2.0.0");
+    name: "approval",
+    database: approvalDb,
+    parameters: parameters,
+    cache: cache,
+    rabbitmqService: rabbitmqService,
+    seqService: seqService,
+    configService: configService,
+    identityService: identityService,
+    databaseType: databaseType,
+    version: "2.0.0",
+    settingsDb: settingsDb);
 
 // 添加Pathfinder服务（AI目标管理）
 var pathfinderService = builder.AddStandardApiService<Projects.CodeSpirit_PathfinderApi>(
-        name: "pathfinder",
-        database: pathfinderDb,
-        parameters: parameters,
-        cache: cache,
-        rabbitmqService: rabbitmqService,
-        identityService: identityService,
-        databaseType: databaseType)
-    .WithReference(seqService)
-    .WithReference(configService)
-    .WithHealthCheck()
-    .WithEnvironmentAwareDeploymentTag("pathfinder", () => "1.0.0");
+    name: "pathfinder",
+    database: pathfinderDb,
+    parameters: parameters,
+    cache: cache,
+    rabbitmqService: rabbitmqService,
+    seqService: seqService,
+    configService: configService,
+    identityService: identityService,
+    databaseType: databaseType,
+    version: "1.0.0");
 
 // 添加 Web 前端应用
+// 💡 LLM、AiFormFillLLM、Audit 等配置已迁移到配置中心种子数据
 builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithExternalHttpEndpoints()
     .WithReference(cache)
+    .WaitFor(cache)  // ⚠️ 重要：等待 Redis 完全启动
     .WithReference(seqService)
     .WithReference(rabbitmqService)
     .WithReference(settingsDb)
@@ -285,20 +269,11 @@ builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithReference(surveyService)
     .WithReference(approvalService)
     .WithReference(pathfinderService)
+    .WithEnvironment("ServiceName", "webfrontend")
     .WithEnvironment("DatabaseType", databaseType)
-    .WithAiFormFillLlmConfiguration(
-        parameters.AiFormFillLlm.ApiKey,
-        parameters.AiFormFillLlm.ApiBaseUrl,
-        parameters.AiFormFillLlm.ModelName,
-        parameters.AiFormFillLlm.DisableThinking,
-        parameters.AiFormFillLlm.ResponseFormatType,
-        parameters.AiFormFillLlm.Temperature,
-        parameters.AiFormFillLlm.TopP,
-        parameters.AiFormFillLlm.EnableStreaming)
-    .WithEnvironment("Audit__StorageProvider", "GreptimeDB")
+    // GreptimeDB URL 必须由 Aspire 服务端点提供（不在配置中心）
     .WithEnvironment("Audit__GreptimeDB__Url", greptimedbService.GetEndpoint("greptimedb-http"))
-    .WithEnvironment("Audit__GreptimeDB__Database", "audit_logs")
-    .WithEnvironment("Audit__GreptimeDB__TableName", "audit_logs")
+    // TablePrefix 是服务特有的，不放在公共配置
     .WithEnvironment("Audit__GreptimeDB__TablePrefix", "web")
     .WithUrlForEndpoint("https", url =>
     {
@@ -386,7 +361,7 @@ static void PrintFrameworkInfo(string databaseType)
         Console.ForegroundColor = ConsoleColor.Cyan;
         Console.Write("  .NET版本: ");
         Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine(".NET 9");
+        Console.WriteLine(".NET 10");
         
         Console.ForegroundColor = ConsoleColor.Cyan;
         Console.Write("  架构模式: ");

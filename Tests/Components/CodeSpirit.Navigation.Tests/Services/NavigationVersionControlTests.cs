@@ -1,7 +1,8 @@
+using CodeSpirit.Caching.Abstractions;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.Navigation.Models;
 using CodeSpirit.Navigation.Services;
-using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Newtonsoft.Json;
@@ -19,17 +20,31 @@ namespace CodeSpirit.Navigation.Tests.Services
     /// </summary>
     public class NavigationVersionControlTests
     {
-        private readonly Mock<IDistributedCache> _cacheMock;
+        private readonly Mock<IServiceProvider> _serviceProviderMock;
+        private readonly Mock<ICacheService> _cacheServiceMock;
         private readonly Mock<ILogger<NavigationCacheManager>> _loggerMock;
         private readonly NavigationCacheManager _cacheManager;
 
         public NavigationVersionControlTests()
         {
-            _cacheMock = new Mock<IDistributedCache>();
+            _cacheServiceMock = new Mock<ICacheService>();
             _loggerMock = new Mock<ILogger<NavigationCacheManager>>();
+            
+            // 创建 ServiceProvider mock
+            _serviceProviderMock = new Mock<IServiceProvider>();
+            var serviceScopeMock = new Mock<IServiceScope>();
+            var scopedServiceProviderMock = new Mock<IServiceProvider>();
+            
+            scopedServiceProviderMock.Setup(x => x.GetService(typeof(ICacheService)))
+                .Returns(_cacheServiceMock.Object);
+            scopedServiceProviderMock.Setup(x => x.GetRequiredService(typeof(ICacheService)))
+                .Returns(_cacheServiceMock.Object);
+            
+            serviceScopeMock.Setup(x => x.ServiceProvider).Returns(scopedServiceProviderMock.Object);
+            _serviceProviderMock.Setup(x => x.CreateScope()).Returns(serviceScopeMock.Object);
 
             _cacheManager = new NavigationCacheManager(
-                _cacheMock.Object,
+                _serviceProviderMock.Object,
                 _loggerMock.Object);
         }
 
@@ -54,21 +69,21 @@ namespace CodeSpirit.Navigation.Tests.Services
                 }
             };
 
-            byte[] capturedBytes1 = null;
-            byte[] capturedBytes2 = null;
+            NavigationCacheData capturedData1 = null;
+            NavigationCacheData capturedData2 = null;
 
-            _cacheMock.Setup(x => x.SetAsync(
+            _cacheServiceMock.Setup(x => x.SetAsync(
                 It.IsAny<string>(),
-                It.IsAny<byte[]>(),
-                It.IsAny<DistributedCacheEntryOptions>(),
+                It.IsAny<NavigationCacheData>(),
+                It.IsAny<CodeSpirit.Caching.Models.CacheOptions>(),
                 It.IsAny<CancellationToken>()))
-                .Callback<string, byte[], DistributedCacheEntryOptions, CancellationToken>(
+                .Callback<string, NavigationCacheData, CodeSpirit.Caching.Models.CacheOptions, CancellationToken>(
                     (key, value, options, token) => 
                     {
-                        if (capturedBytes1 == null)
-                            capturedBytes1 = value;
+                        if (capturedData1 == null)
+                            capturedData1 = value;
                         else
-                            capturedBytes2 = value;
+                            capturedData2 = value;
                     })
                 .Returns(Task.CompletedTask);
 
@@ -82,13 +97,8 @@ namespace CodeSpirit.Navigation.Tests.Services
             await _cacheManager.SetCachedNavigationAsync(nodes);
 
             // 断言
-            var json1 = Encoding.UTF8.GetString(capturedBytes1);
-            var json2 = Encoding.UTF8.GetString(capturedBytes2);
-            var cacheData1 = JsonConvert.DeserializeObject<NavigationCacheData>(json1);
-            var cacheData2 = JsonConvert.DeserializeObject<NavigationCacheData>(json2);
-
             // 版本哈希应该相同（基于内容，不包含时间戳）
-            Assert.Equal(cacheData1.Version, cacheData2.Version);
+            Assert.Equal(capturedData1.Version, capturedData2.Version);
         }
 
         /// <summary>
@@ -108,21 +118,21 @@ namespace CodeSpirit.Navigation.Tests.Services
                 new NavigationNode("module1", "Module 1 Changed", "/module1")  // 标题不同
             };
 
-            byte[] capturedBytes1 = null;
-            byte[] capturedBytes2 = null;
+            NavigationCacheData capturedData1 = null;
+            NavigationCacheData capturedData2 = null;
 
-            _cacheMock.Setup(x => x.SetAsync(
+            _cacheServiceMock.Setup(x => x.SetAsync(
                 It.IsAny<string>(),
-                It.IsAny<byte[]>(),
-                It.IsAny<DistributedCacheEntryOptions>(),
+                It.IsAny<NavigationCacheData>(),
+                It.IsAny<CodeSpirit.Caching.Models.CacheOptions>(),
                 It.IsAny<CancellationToken>()))
-                .Callback<string, byte[], DistributedCacheEntryOptions, CancellationToken>(
+                .Callback<string, NavigationCacheData, CodeSpirit.Caching.Models.CacheOptions, CancellationToken>(
                     (key, value, options, token) => 
                     {
-                        if (capturedBytes1 == null)
-                            capturedBytes1 = value;
+                        if (capturedData1 == null)
+                            capturedData1 = value;
                         else
-                            capturedBytes2 = value;
+                            capturedData2 = value;
                     })
                 .Returns(Task.CompletedTask);
 
@@ -131,12 +141,7 @@ namespace CodeSpirit.Navigation.Tests.Services
             await _cacheManager.SetCachedNavigationAsync(nodes2);
 
             // 断言
-            var json1 = Encoding.UTF8.GetString(capturedBytes1);
-            var json2 = Encoding.UTF8.GetString(capturedBytes2);
-            var cacheData1 = JsonConvert.DeserializeObject<NavigationCacheData>(json1);
-            var cacheData2 = JsonConvert.DeserializeObject<NavigationCacheData>(json2);
-
-            Assert.NotEqual(cacheData1.Version, cacheData2.Version);
+            Assert.NotEqual(capturedData1.Version, capturedData2.Version);
         }
 
         /// <summary>
@@ -162,21 +167,21 @@ namespace CodeSpirit.Navigation.Tests.Services
                 new NavigationNode("module1", "Module 1", "/module1") { Order = 1 }
             };
 
-            byte[] capturedBytes1 = null;
-            byte[] capturedBytes2 = null;
+            NavigationCacheData capturedData1 = null;
+            NavigationCacheData capturedData2 = null;
 
-            _cacheMock.Setup(x => x.SetAsync(
+            _cacheServiceMock.Setup(x => x.SetAsync(
                 It.IsAny<string>(),
-                It.IsAny<byte[]>(),
-                It.IsAny<DistributedCacheEntryOptions>(),
+                It.IsAny<NavigationCacheData>(),
+                It.IsAny<CodeSpirit.Caching.Models.CacheOptions>(),
                 It.IsAny<CancellationToken>()))
-                .Callback<string, byte[], DistributedCacheEntryOptions, CancellationToken>(
+                .Callback<string, NavigationCacheData, CodeSpirit.Caching.Models.CacheOptions, CancellationToken>(
                     (key, value, options, token) => 
                     {
-                        if (capturedBytes1 == null)
-                            capturedBytes1 = value;
+                        if (capturedData1 == null)
+                            capturedData1 = value;
                         else
-                            capturedBytes2 = value;
+                            capturedData2 = value;
                     })
                 .Returns(Task.CompletedTask);
 
@@ -185,14 +190,9 @@ namespace CodeSpirit.Navigation.Tests.Services
             await _cacheManager.SetCachedNavigationAsync(nodes2);
 
             // 断言
-            var json1 = Encoding.UTF8.GetString(capturedBytes1);
-            var json2 = Encoding.UTF8.GetString(capturedBytes2);
-            var cacheData1 = JsonConvert.DeserializeObject<NavigationCacheData>(json1);
-            var cacheData2 = JsonConvert.DeserializeObject<NavigationCacheData>(json2);
-
             // 当前实现：顺序不同会导致哈希不同（这是合理的，因为顺序可能影响导航显示）
             // 如果需要顺序无关，可以在ComputeContentHash中先排序
-            Assert.NotEqual(cacheData1.Version, cacheData2.Version);
+            Assert.NotEqual(capturedData1.Version, capturedData2.Version);
         }
 
         /// <summary>
@@ -207,26 +207,23 @@ namespace CodeSpirit.Navigation.Tests.Services
                 new NavigationNode("test", "Test", "/test")
             };
 
-            byte[] capturedBytes = null;
-            _cacheMock.Setup(x => x.SetAsync(
+            NavigationCacheData capturedData = null;
+            _cacheServiceMock.Setup(x => x.SetAsync(
                 It.IsAny<string>(),
-                It.IsAny<byte[]>(),
-                It.IsAny<DistributedCacheEntryOptions>(),
+                It.IsAny<NavigationCacheData>(),
+                It.IsAny<CodeSpirit.Caching.Models.CacheOptions>(),
                 It.IsAny<CancellationToken>()))
-                .Callback<string, byte[], DistributedCacheEntryOptions, CancellationToken>(
-                    (key, value, options, token) => capturedBytes = value)
+                .Callback<string, NavigationCacheData, CodeSpirit.Caching.Models.CacheOptions, CancellationToken>(
+                    (key, value, options, token) => capturedData = value)
                 .Returns(Task.CompletedTask);
 
             // 执行
             await _cacheManager.SetCachedNavigationAsync(nodes);
 
             // 断言
-            var json = Encoding.UTF8.GetString(capturedBytes);
-            var cacheData = JsonConvert.DeserializeObject<NavigationCacheData>(json);
-
-            Assert.NotNull(cacheData.Version);
-            Assert.True(cacheData.Version.Length <= 16, $"Version length should be <= 16, but was {cacheData.Version.Length}");
-            Assert.True(cacheData.Version.Length > 0, "Version should not be empty");
+            Assert.NotNull(capturedData.Version);
+            Assert.True(capturedData.Version.Length <= 16, $"Version length should be <= 16, but was {capturedData.Version.Length}");
+            Assert.True(capturedData.Version.Length > 0, "Version should not be empty");
         }
 
         /// <summary>
@@ -299,29 +296,26 @@ namespace CodeSpirit.Navigation.Tests.Services
                 }
             };
 
-            byte[] capturedBytes = null;
-            _cacheMock.Setup(x => x.SetAsync(
+            NavigationCacheData capturedData = null;
+            _cacheServiceMock.Setup(x => x.SetAsync(
                 It.IsAny<string>(),
-                It.IsAny<byte[]>(),
-                It.IsAny<DistributedCacheEntryOptions>(),
+                It.IsAny<NavigationCacheData>(),
+                It.IsAny<CodeSpirit.Caching.Models.CacheOptions>(),
                 It.IsAny<CancellationToken>()))
-                .Callback<string, byte[], DistributedCacheEntryOptions, CancellationToken>(
-                    (key, value, options, token) => capturedBytes = value)
+                .Callback<string, NavigationCacheData, CodeSpirit.Caching.Models.CacheOptions, CancellationToken>(
+                    (key, value, options, token) => capturedData = value)
                 .Returns(Task.CompletedTask);
 
             // 执行
             await _cacheManager.SetCachedNavigationAsync(complexNodes);
 
             // 断言
-            var json = Encoding.UTF8.GetString(capturedBytes);
-            var cacheData = JsonConvert.DeserializeObject<NavigationCacheData>(json);
-
-            Assert.NotNull(cacheData);
-            Assert.NotNull(cacheData.Version);
-            Assert.Equal(2, cacheData.Nodes.Count);
-            Assert.Equal(2, cacheData.Nodes[0].Children.Count);
-            Assert.Equal("module1", cacheData.Nodes[0].Name);
-            Assert.Equal("module2", cacheData.Nodes[1].Name);
+            Assert.NotNull(capturedData);
+            Assert.NotNull(capturedData.Version);
+            Assert.Equal(2, capturedData.Nodes.Count);
+            Assert.Equal(2, capturedData.Nodes[0].Children.Count);
+            Assert.Equal("module1", capturedData.Nodes[0].Name);
+            Assert.Equal("module2", capturedData.Nodes[1].Name);
         }
 
         /// <summary>
@@ -349,21 +343,21 @@ namespace CodeSpirit.Navigation.Tests.Services
                 }
             };
 
-            byte[] capturedBytes1 = null;
-            byte[] capturedBytes2 = null;
+            NavigationCacheData capturedData1 = null;
+            NavigationCacheData capturedData2 = null;
 
-            _cacheMock.Setup(x => x.SetAsync(
+            _cacheServiceMock.Setup(x => x.SetAsync(
                 It.IsAny<string>(),
-                It.IsAny<byte[]>(),
-                It.IsAny<DistributedCacheEntryOptions>(),
+                It.IsAny<NavigationCacheData>(),
+                It.IsAny<CodeSpirit.Caching.Models.CacheOptions>(),
                 It.IsAny<CancellationToken>()))
-                .Callback<string, byte[], DistributedCacheEntryOptions, CancellationToken>(
+                .Callback<string, NavigationCacheData, CodeSpirit.Caching.Models.CacheOptions, CancellationToken>(
                     (key, value, options, token) => 
                     {
-                        if (capturedBytes1 == null)
-                            capturedBytes1 = value;
+                        if (capturedData1 == null)
+                            capturedData1 = value;
                         else
-                            capturedBytes2 = value;
+                            capturedData2 = value;
                     })
                 .Returns(Task.CompletedTask);
 
@@ -372,13 +366,8 @@ namespace CodeSpirit.Navigation.Tests.Services
             await _cacheManager.SetCachedNavigationAsync(nodes2);
 
             // 断言
-            var json1 = Encoding.UTF8.GetString(capturedBytes1);
-            var json2 = Encoding.UTF8.GetString(capturedBytes2);
-            var cacheData1 = JsonConvert.DeserializeObject<NavigationCacheData>(json1);
-            var cacheData2 = JsonConvert.DeserializeObject<NavigationCacheData>(json2);
-
             // 由于使用了NullValueHandling.Ignore和DefaultValueHandling.Ignore，版本应该相同
-            Assert.Equal(cacheData1.Version, cacheData2.Version);
+            Assert.Equal(capturedData1.Version, capturedData2.Version);
         }
     }
 }

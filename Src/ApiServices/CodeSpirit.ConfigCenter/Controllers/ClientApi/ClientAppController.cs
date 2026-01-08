@@ -62,7 +62,7 @@ public class ClientAppController : ControllerBase
             {
                 Id = request.Id,
                 Name = request.Name ?? $"Auto registered: {request.Id}",
-                Description = request.Description ?? $"通过客户端API自动注册，注册时间：{DateTime.Now}",
+                Description = request.Description ?? $"通过客户端API自动注册，注册时间：{DateTime.Now}"
             };
             
             var result = await _appService.CreateAppAsync(app);
@@ -88,4 +88,4 @@ public class ClientAppController : ControllerBase
             };
         }
     }
-} 
+}

@@ -10,12 +10,6 @@ public class ConfigItemsExportDto
     public string AppId { get; set; }
 
     /// <summary>
-    /// 环境
-    /// </summary>
-    [DisplayName("环境")]
-    public string Environment { get; set; }
-
-    /// <summary>
     /// 配置项集合，Key为配置键，Value为配置值
     /// </summary>
     [DisplayName("配置项集合")]
@@ -27,4 +21,10 @@ public class ConfigItemsExportDto
     /// </summary>
     [DisplayName("包含继承配置")]
     public bool IncludesInheritedConfig { get; set; }
+
+    /// <summary>
+    /// 配置版本号
+    /// </summary>
+    [DisplayName("配置版本")]
+    public long Version { get; set; }
 }

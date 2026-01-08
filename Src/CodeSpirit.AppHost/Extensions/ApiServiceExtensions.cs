@@ -10,11 +10,25 @@ namespace CodeSpirit.AppHost.Extensions;
 public static class ApiServiceExtensions
 {
     /// <summary>
-    /// 添加标准API服务配置（简化版本）
+    /// 添加标准API服务配置
     /// </summary>
     /// <remarks>
-    /// 自动配置JWT、LLM、AI表单填充等通用配置
+    /// 自动配置：数据库、缓存、消息队列、日志、配置中心、健康检查等。
+    /// 💡 JWT、LLM、AiFormFillLLM、Audit 等业务配置已迁移到配置中心种子数据，
+    /// 服务启动后通过配置中心 SDK 自动获取。
     /// </remarks>
+    /// <param name="builder">分布式应用构建器</param>
+    /// <param name="name">服务名称</param>
+    /// <param name="database">主数据库</param>
+    /// <param name="parameters">应用参数</param>
+    /// <param name="cache">Redis 缓存</param>
+    /// <param name="rabbitmqService">RabbitMQ 消息队列</param>
+    /// <param name="seqService">Seq 日志服务</param>
+    /// <param name="configService">配置中心服务（可选，ConfigCenter 自身不需要）</param>
+    /// <param name="identityService">身份认证服务（可选）</param>
+    /// <param name="databaseType">数据库类型</param>
+    /// <param name="version">服务版本号</param>
+    /// <param name="settingsDb">设置数据库（可选）</param>
     public static IResourceBuilder<ProjectResource> AddStandardApiService<TProject>(
         this IDistributedApplicationBuilder builder,
         string name,
@@ -22,45 +36,38 @@ public static class ApiServiceExtensions
         AppParameters parameters,
         IResourceBuilder<IResourceWithConnectionString> cache,
         IResourceBuilder<RabbitMQServerResource> rabbitmqService,
+        IResourceBuilder<SeqResource> seqService,
+        IResourceBuilder<ProjectResource>? configService,
         IResourceBuilder<ProjectResource>? identityService,
         string databaseType,
+        string version = "1.0.0",
         IResourceBuilder<IResourceWithConnectionString>? settingsDb = null)
         where TProject : IProjectMetadata, new()
     {
         var service = builder.AddProject<TProject>(name)
             .WithReference(database)
             .WithReference(cache)
-            .WithReference(rabbitmqService);
+            .WaitFor(cache)  // ⚠️ 重要：等待 Redis 完全启动
+            .WithReference(rabbitmqService)
+            .WithReference(seqService);  // Seq 日志服务
 
-        // 只有当 identityService 不为 null 时才添加引用
+        // 配置中心引用（ConfigCenter 自身不需要）
+        if (configService != null)
+        {
+            service = service.WithReference(configService);
+        }
+
+        // 身份认证服务引用
         if (identityService != null)
         {
             service = service.WithReference(identityService);
         }
 
-        service = service.WithEnvironment("DatabaseType", databaseType)
-            // JWT配置
-            .WithEnvironment("Jwt__SecretKey", parameters.Jwt.SecretKey)
-            .WithEnvironment("Jwt__Issuer", parameters.Jwt.Issuer)
-            .WithEnvironment("Jwt__Audience", parameters.Jwt.Audience)
-            // LLM配置
-            .WithEnvironment("LLM__ApiKey", parameters.Llm.ApiKey)
-            .WithEnvironment("LLM__ApiBaseUrl", parameters.Llm.ApiBaseUrl)
-            .WithEnvironment("LLM__ModelName", parameters.Llm.ModelName)
-            .WithEnvironment("LLM__TimeoutSeconds", parameters.Llm.TimeoutSeconds)
-            .WithEnvironment("LLM__MaxTokens", parameters.Llm.MaxTokens)
-            .WithEnvironment("LLM__UseProxy", parameters.Llm.UseProxy)
-            .WithEnvironment("LLM__ProxyAddress", parameters.Llm.ProxyAddress)
-            // AI表单填充LLM配置
-            .WithEnvironment("AiFormFillLLM__ApiKey", parameters.AiFormFillLlm.ApiKey)
-            .WithEnvironment("AiFormFillLLM__ApiBaseUrl", parameters.AiFormFillLlm.ApiBaseUrl)
-            .WithEnvironment("AiFormFillLLM__ModelName", parameters.AiFormFillLlm.ModelName)
-            .WithEnvironment("AiFormFillLLM__DisableThinking", parameters.AiFormFillLlm.DisableThinking)
-            .WithEnvironment("AiFormFillLLM__ResponseFormatType", parameters.AiFormFillLlm.ResponseFormatType)
-            .WithEnvironment("AiFormFillLLM__Temperature", parameters.AiFormFillLlm.Temperature)
-            .WithEnvironment("AiFormFillLLM__TopP", parameters.AiFormFillLlm.TopP)
-            .WithEnvironment("AiFormFillLLM__EnableStreaming", parameters.AiFormFillLlm.EnableStreaming)
-            .WaitFor(database);
+        service = service.WithEnvironment("ServiceName", name)
+            .WithEnvironment("DatabaseType", databaseType)
+            .WaitFor(database)
+            .WithHealthCheck()  // 健康检查
+            .WithEnvironmentAwareDeploymentTag(name, () => version);  // 部署标签
 
         // 如果需要访问设置数据库
         if (settingsDb != null)

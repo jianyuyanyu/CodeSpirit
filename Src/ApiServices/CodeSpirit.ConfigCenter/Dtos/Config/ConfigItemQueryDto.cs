@@ -1,5 +1,6 @@
+using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Attributes.FormFields;
-using CodeSpirit.ConfigCenter.Models.Enums;
+using CodeSpirit.ConfigCenter.Configuration;
 using CodeSpirit.Core.Dtos;
 
 namespace CodeSpirit.ConfigCenter.Dtos.Config;
@@ -7,6 +8,7 @@ namespace CodeSpirit.ConfigCenter.Dtos.Config;
 /// <summary>
 /// 配置项查询 DTO
 /// </summary>
+[PageTabs<ConfigItemTabsConfig>]
 public class ConfigItemQueryDto : QueryDtoBase
 {
     /// <summary>
@@ -15,7 +17,7 @@ public class ConfigItemQueryDto : QueryDtoBase
     [StringLength(36)]
     [DisplayName("应用")]
     [AmisSelectField(
-        Source = "${ROOT_API}/api/config/Apps",
+        Source = "${ROOT_API}/api/config/Apps/select",
         ValueField = "id",
         LabelField = "name",
         Searchable = true,
@@ -23,12 +25,6 @@ public class ConfigItemQueryDto : QueryDtoBase
         Placeholder = "请选择应用"
     )]
     public string AppId { get; set; }
-
-    /// <summary>
-    /// 应用环境
-    /// </summary>
-    [DisplayName("环境")]
-    public EnvironmentType? Environment { get; set; }
 
     /// <summary>
     /// 配置分组
@@ -48,6 +44,7 @@ public class ConfigItemQueryDto : QueryDtoBase
     /// 配置状态
     /// </summary>
     [DisplayName("配置状态")]
+    [AmisFormField(Hidden = true)]
     public ConfigStatus? Status { get; set; }
 
     /// <summary>

@@ -16,7 +16,11 @@ public class AppMappingProfile : Profile
     {
         CreateMap<App, AppDto>()
             .ForMember(dest => dest.InheritancedAppName, 
-                      opt => opt.MapFrom(src => src.InheritancedApp != null ? src.InheritancedApp.Name : null));
+                      opt => opt.MapFrom(src => src.InheritancedApp != null ? src.InheritancedApp.Name : null))
+            .ForMember(dest => dest.Tags,
+                      opt => opt.MapFrom(src => string.IsNullOrEmpty(src.Tag) ? new List<string>() : new List<string> { src.Tag }))
+            .ForMember(dest => dest.ConfigCount,
+                      opt => opt.MapFrom(src => src.ConfigItems != null ? src.ConfigItems.Count : 0));
 
         CreateMap<CreateAppDto, App>()
             .ForMember(dest => dest.Secret, opt => opt.Ignore())

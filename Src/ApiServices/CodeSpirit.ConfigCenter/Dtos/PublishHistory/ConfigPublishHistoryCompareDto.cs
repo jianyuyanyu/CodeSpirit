@@ -13,30 +13,28 @@ public class ConfigPublishHistoryCompareDto
     /// 发布历史ID
     /// </summary>
     [DisplayName("发布历史ID")]
+    [AmisFormField(type: "static")]
     public int Id { get; set; }
 
     /// <summary>
     /// 应用ID
     /// </summary>
     [DisplayName("应用ID")]
+    [AmisFormField(type: "static")]
     public string AppId { get; set; }
-
-    /// <summary>
-    /// 环境
-    /// </summary>
-    [DisplayName("环境")]
-    public string Environment { get; set; }
 
     /// <summary>
     /// 发布说明
     /// </summary>
     [DisplayName("发布说明")]
+    [AmisFormField(type: "static")]
     public string Description { get; set; }
 
     /// <summary>
     /// 发布版本
     /// </summary>
     [DisplayName("发布版本")]
+    [AmisFormField(type: "static")]
     public long Version { get; set; }
 
     /// <summary>
@@ -51,6 +49,6 @@ public class ConfigPublishHistoryCompareDto
     /// </summary>
     [DisplayName("配置对比")]
     [Description("注意：左侧为旧配置，右侧为新的配置。")]
-    [AmisFormField(type: "diff-editor", AdditionalConfig = "{\"diffValue\":\"${oldConfigsJson}\",\"language\":\"json\"}")]
+    [AmisFormField(type: "diff-editor", AdditionalConfig = "{\"diffValue\":\"${oldConfigsJson}\",\"language\":\"json\",\"disabled\":true}")]
     public string NewConfigsJson { get; set; }
 }

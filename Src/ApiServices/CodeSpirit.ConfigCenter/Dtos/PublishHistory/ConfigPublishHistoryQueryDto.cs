@@ -1,5 +1,4 @@
 using CodeSpirit.Amis.Attributes.FormFields;
-using CodeSpirit.ConfigCenter.Models.Enums;
 using CodeSpirit.Core.Dtos;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -17,7 +16,7 @@ public class ConfigPublishHistoryQueryDto : QueryDtoBase
     [StringLength(36)]
     [DisplayName("应用")]
     [AmisSelectField(
-        Source = "${ROOT_API}/api/config/Apps",
+        Source = "${ROOT_API}/api/config/Apps/select",
         ValueField = "id",
         LabelField = "name",
         Searchable = true,
@@ -25,10 +24,4 @@ public class ConfigPublishHistoryQueryDto : QueryDtoBase
         Placeholder = "请选择应用"
     )]
     public string AppId { get; set; }
-
-    /// <summary>
-    /// 环境
-    /// </summary>
-    [DisplayName("环境")]
-    public EnvironmentType? Environment { get; set; }
 }

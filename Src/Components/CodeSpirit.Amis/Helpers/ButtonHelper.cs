@@ -1,4 +1,4 @@
-﻿using CodeSpirit.Amis.Attributes;
+using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Form;
 using CodeSpirit.Amis.Handlers;
@@ -463,7 +463,15 @@ namespace CodeSpirit.Amis.Helpers
             }
             // 如果 customActions 为 null，则使用默认按钮（不设置 actions 属性）
 
-            return CreateButton(localizedTitle, "dialog", dialogOrDrawer: dialogBody, dialogSize: dialogSize);
+            JObject button = CreateButton(localizedTitle, "dialog", dialogOrDrawer: dialogBody, dialogSize: dialogSize);
+            
+            // 如果存在 Tab Count Service，添加 reload 配置以刷新 Tab 数量
+            if (amisContext.HasTabCountService)
+            {
+                button["reload"] = "tabCountService";
+            }
+            
+            return button;
         }
 
         // 创建"编辑"按钮
@@ -487,7 +495,15 @@ namespace CodeSpirit.Amis.Helpers
                     ["controls"] = new JArray(GetFormFieldsWithAiSupport(updateParameters, method))
                 }
             };
-            return CreateButton(title, "dialog", dialogOrDrawer: drawerBody, dialogSize: dialogSize);
+            JObject button = CreateButton(title, "dialog", dialogOrDrawer: drawerBody, dialogSize: dialogSize);
+            
+            // 如果存在 Tab Count Service，添加 reload 配置以刷新 Tab 数量
+            if (amisContext.HasTabCountService)
+            {
+                button["reload"] = "tabCountService";
+            }
+            
+            return button;
         }
 
         public JObject CreateDetailButton(ApiRouteInfo detailRoute, IEnumerable<PropertyInfo> detailPropertites, DialogSize dialogSize = DialogSize.LG, Type dtoType = null)
@@ -576,7 +592,15 @@ namespace CodeSpirit.Amis.Helpers
                 ["method"] = deleteRoute.HttpMethod
             };
 
-            return CreateButton(label, "ajax", api: api, confirmText: confirmText);
+            JObject button = CreateButton(label, "ajax", api: api, confirmText: confirmText);
+            
+            // 如果存在 Tab Count Service，添加 reload 配置以刷新 Tab 数量
+            if (amisContext.HasTabCountService)
+            {
+                button["reload"] = "tabCountService";
+            }
+            
+            return button;
         }
 
         // 获取自定义操作按钮
@@ -722,6 +746,12 @@ namespace CodeSpirit.Amis.Helpers
                 }
 
                 button["api"] = api;
+                
+                // 如果存在 Tab Count Service，添加 reload 配置以刷新 Tab 数量
+                if (amisContext.HasTabCountService)
+                {
+                    button["reload"] = "tabCountService";
+                }
 
                 // 添加反馈弹框配置
                 if (!string.IsNullOrEmpty(op.FeedbackTitleResourceKey) || (!string.IsNullOrEmpty(op.FeedbackTitle) && !op.FeedbackBodyTpl.IsNullOrWhiteSpace()))
@@ -810,6 +840,12 @@ namespace CodeSpirit.Amis.Helpers
                 {
                     button["redirect"] = op.Redirect;
                 }
+                
+                // 如果存在 Tab Count Service，添加 reload 配置以刷新 Tab 数量
+                if (amisContext.HasTabCountService)
+                {
+                    button["reload"] = "tabCountService";
+                }
             }
             //动态表单
             else if (op.ActionType == "service")
@@ -817,6 +853,12 @@ namespace CodeSpirit.Amis.Helpers
                 // 对于 service 类型，创建一个 service 弹窗
                 var route = apiRouteHelper.GetApiRouteInfoForMethod(method);
                 button = CreateServiceDialogButton(label, route, op.DialogSize, op.Actions);
+                
+                // 如果存在 Tab Count Service，添加 reload 配置以刷新 Tab 数量
+                if (amisContext.HasTabCountService)
+                {
+                    button["reload"] = "tabCountService";
+                }
             }
             // CRUD对话框
             else if (op.ActionType == "crudDialog")
@@ -885,6 +927,12 @@ namespace CodeSpirit.Amis.Helpers
                 string title = label;
                 var route = apiRouteHelper.GetApiRouteInfoForMethod(method);
                 button = CreateAiFormButton(op, title, route, method);
+                
+                // 如果存在 Tab Count Service，添加 reload 配置以刷新 Tab 数量
+                if (amisContext.HasTabCountService)
+                {
+                    button["reload"] = "tabCountService";
+                }
             }
 
             // 添加其他通用配置

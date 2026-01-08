@@ -74,7 +74,6 @@ public class ConfigPublishHistoriesController : ApiControllerBase
     /// <param name="id">发布历史ID</param>
     /// <returns>回滚结果</returns>
     [HttpPost("{id:int}/rollback")]
-    [Operation("回滚", "ajax", null, "确定要回滚到此版本吗？")]
     public async Task<ActionResult<ApiResponse>> RollbackToHistory(int id)
     {
         var (success, message) = await _publishHistoryService.RollbackToHistoryAsync(id);
@@ -95,7 +94,37 @@ public class ConfigPublishHistoriesController : ApiControllerBase
     /// <param name="id">发布历史ID</param>
     /// <returns>配置对比结果</returns>
     [HttpGet("{id}/compare")]
-    [Operation(label: "发布对比", actionType: "return-form", null)]
+    [Operation(
+        "发布对比", 
+        OperationActionType.ReturnForm,
+        null, 
+        null, 
+        null, 
+        Icon = "fa fa-code-compare", 
+        DialogSize = DialogSize.Full,
+        Data = "{\"id\": \"${id}\"}",
+        Actions = @"[
+            {
+                ""type"": ""button"",
+                ""label"": ""回滚到此版本"",
+                ""level"": ""warning"",
+                ""icon"": ""fa fa-rotate-left"",
+                ""actionType"": ""ajax"",
+                ""api"": {
+                    ""method"": ""post"",
+                    ""url"": ""/config/api/config/ConfigPublishHistories/${id}/rollback""
+                },
+                ""confirmText"": ""确定要回滚到此版本吗？<br /><strong>注意：回滚操作仅将配置恢复为草稿状态，不会自动发布。<br />您需要进入配置管理界面手动发布配置后才能生效。</strong>"",
+                ""reload"": ""window"",
+                ""close"": true
+            },
+            {
+                ""type"": ""button"",
+                ""label"": ""关闭"",
+                ""actionType"": ""close""
+            }
+        ]"
+    )]
     public async Task<ActionResult<ApiResponse<ConfigPublishHistoryCompareDto>>> GetCompare(int id)
     {
         var result = await _publishHistoryService.GetPublishHistoryCompareAsync(id);

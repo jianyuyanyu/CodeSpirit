@@ -27,6 +27,32 @@ public static class JwtAuthenticationExtensions
         })
         .AddJwtBearer(options =>
         {
+            // 读取JWT配置，添加 null 检查
+            var secretKey = configuration["Jwt:SecretKey"];
+            var issuer = configuration["Jwt:Issuer"];
+            var audience = configuration["Jwt:Audience"];
+            
+            // 验证关键配置是否存在
+            if (string.IsNullOrEmpty(secretKey))
+            {
+                throw new InvalidOperationException(
+                    "JWT 配置错误: 'Jwt:SecretKey' 配置项未找到。" +
+                    "\n请检查：" +
+                    "\n1. appsettings.json 中是否配置了 Jwt:SecretKey" +
+                    "\n2. 配置中心是否正常工作并包含此配置" +
+                    "\n3. 配置中心的配置是否已成功加载");
+            }
+            
+            if (string.IsNullOrEmpty(issuer))
+            {
+                throw new InvalidOperationException("JWT 配置错误: 'Jwt:Issuer' 配置项未找到");
+            }
+            
+            if (string.IsNullOrEmpty(audience))
+            {
+                throw new InvalidOperationException("JWT 配置错误: 'Jwt:Audience' 配置项未找到");
+            }
+            
             options.RequireHttpsMetadata = false;
             options.IncludeErrorDetails = true;
             options.SaveToken = true;
@@ -35,11 +61,11 @@ public static class JwtAuthenticationExtensions
                 ValidateIssuer = true,
                 ValidateAudience = true,
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:SecretKey"])),
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
                 ClockSkew = TimeSpan.Zero, // 设置时钟偏移量为0，即不允许过期的Token被接受
                 RequireExpirationTime = true, // 要求Token必须有过期时间
-                ValidIssuer = configuration["Jwt:Issuer"],
-                ValidAudience = configuration["Jwt:Audience"],
+                ValidIssuer = issuer,
+                ValidAudience = audience,
                 NameClaimType = "id"
             };
         });

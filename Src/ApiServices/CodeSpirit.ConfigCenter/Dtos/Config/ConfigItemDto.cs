@@ -1,5 +1,4 @@
 using CodeSpirit.Amis.Attributes.Columns;
-using CodeSpirit.ConfigCenter.Models.Enums;
 
 namespace CodeSpirit.ConfigCenter.Dtos.Config;
 
@@ -44,15 +43,8 @@ public class ConfigItemDto
     [Required]
     [StringLength(4000)]
     [DisplayName("配置值")]
+    [AmisColumn(Type = "json")]
     public required string Value { get; set; }
-
-    /// <summary>
-    /// 应用环境
-    /// </summary>
-    [Required]
-    [DisplayName("环境")]
-    [Badge(Level = "info")]
-    public required EnvironmentType Environment { get; set; }
 
     /// <summary>
     /// 配置分组
@@ -85,6 +77,10 @@ public class ConfigItemDto
     /// 配置状态
     /// </summary>
     [DisplayName("配置状态")]
+    [AmisStatusColumn(
+        CustomStatusMap = @"{""0"": ""default"", ""1"": ""processing"", ""2"": ""success""}",
+        StatusLabelMap = @"{""0"": ""初始状态"", ""1"": ""编辑中"", ""2"": ""已发布""}"
+    )]
     public ConfigStatus Status { get; set; }
 
     /// <summary>

@@ -3,6 +3,7 @@ using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.Caching.Extensions;
 // using CodeSpirit.MultiTenant.Extensions; // 注释掉，避免循环引用
 using CodeSpirit.Navigation.Extensions;
+using CodeSpirit.ServiceDefaults;
 using CodeSpirit.ServiceDefaults.Middleware;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
@@ -117,6 +118,9 @@ public static class CommonApiServiceExtensions
         
         // CodeSpirit导航系统
         await app.UseCodeSpiritNavigationAsync();
+        
+        // 映射默认端点（健康检查等）- 必须在最后调用，因为健康检查端点应该在所有路由之后
+        app.MapDefaultEndpoints();
         
         return app;
     }

@@ -88,15 +88,17 @@ public class TabsHelper
             ["tabs"] = tabs
         };
 
-        // 设置默认激活的Tab - AMIS使用 activeKey
+        // 设置默认激活的Tab（使用索引值）
         if (!string.IsNullOrWhiteSpace(tabsAttr.DefaultTab))
         {
-            tabsConfig["activeKey"] = tabsAttr.DefaultTab;
+            // 查找defaultTab对应的索引
+            int defaultIndex = tabItems.FindIndex(t => t.Key == tabsAttr.DefaultTab);
+            tabsConfig["activeKey"] = defaultIndex >= 0 ? defaultIndex : 0;
         }
-        else if (tabItems.Any())
+        else
         {
-            // 如果没有指定默认Tab，使用第一个Tab
-            tabsConfig["activeKey"] = tabItems[0].Key;
+            // 默认使用第一个Tab
+            tabsConfig["activeKey"] = 0;
         }
 
         return tabsConfig;
@@ -159,20 +161,28 @@ public class TabsHelper
             ["tabs"] = tabs
         };
 
-        // 设置默认激活的Tab
+        // 设置默认激活的Tab（使用索引值）
         var defaultTab = defaultTabProp?.GetValue(configuration)?.ToString();
         if (!string.IsNullOrWhiteSpace(defaultTab))
         {
-            tabsConfig["activeKey"] = defaultTab;
-        }
-        else if (tabItemsList.Any())
-        {
-            var firstTabKeyProp = tabItemsList[0].GetType().GetProperty("Key");
-            var firstTabKey = firstTabKeyProp?.GetValue(tabItemsList[0])?.ToString();
-            if (!string.IsNullOrWhiteSpace(firstTabKey))
+            // 查找defaultTab对应的索引
+            int defaultIndex = 0;
+            for (int i = 0; i < tabItemsList.Count; i++)
             {
-                tabsConfig["activeKey"] = firstTabKey;
+                var keyProp = tabItemsList[i].GetType().GetProperty("Key");
+                var tabKey = keyProp?.GetValue(tabItemsList[i])?.ToString();
+                if (tabKey == defaultTab)
+                {
+                    defaultIndex = i;
+                    break;
+                }
             }
+            tabsConfig["activeKey"] = defaultIndex;
+        }
+        else
+        {
+            // 默认使用第一个Tab
+            tabsConfig["activeKey"] = 0;
         }
 
         return tabsConfig;
@@ -238,6 +248,8 @@ public class TabsHelper
                     apiConfig["url"] = apiUrl;
                 }
                 
+                // 使用 "&": "$$" 保留搜索表单提交的其他数据（如AppId等）
+                filterObj["&"] = "$$";
                 apiConfig["data"] = filterObj;
                 tabCrudConfig["api"] = apiConfig;
             }
@@ -247,10 +259,9 @@ public class TabsHelper
             }
         }
 
-        // 构建Tab对象
+        // 构建Tab对象（不使用hash避免URL参数解析问题）
         JObject tab = new JObject
         {
-            ["hash"] = key,
             ["tab"] = tabCrudConfig
         };
 
@@ -334,7 +345,9 @@ public class TabsHelper
                     apiConfig["url"] = apiUrl;
                 }
                 
+                // 使用 "&": "$$" 保留搜索表单提交的其他数据（如AppId等）
                 // 将filter条件添加到data参数中（这些参数会作为query string发送）
+                filterObj["&"] = "$$";
                 apiConfig["data"] = filterObj;
                 
                 tabCrudConfig["api"] = apiConfig;
@@ -344,10 +357,9 @@ public class TabsHelper
                 // JSON解析失败，忽略filter配置
             }
         }
-        // 构建Tab对象
+        // 构建Tab对象（不使用hash避免URL参数解析问题）
         JObject tab = new JObject
         {
-            ["hash"] = tabItem.Key,
             ["tab"] = tabCrudConfig
         };
 

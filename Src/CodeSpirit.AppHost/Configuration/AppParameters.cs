@@ -6,23 +6,12 @@ namespace CodeSpirit.AppHost.Configuration;
 /// <summary>
 /// 应用参数管理类，集中管理所有配置参数
 /// </summary>
+/// <remarks>
+/// 💡 JWT、LLM、AiFormFillLLM 等业务配置已迁移到配置中心种子数据，
+/// 此处仅保留基础设施相关的敏感参数（数据库密码、RabbitMQ 凭据等）。
+/// </remarks>
 public class AppParameters
 {
-    /// <summary>
-    /// JWT配置参数
-    /// </summary>
-    public JwtParameters Jwt { get; init; } = null!;
-
-    /// <summary>
-    /// LLM配置参数
-    /// </summary>
-    public LlmParameters Llm { get; init; } = null!;
-
-    /// <summary>
-    /// AI表单填充LLM配置参数
-    /// </summary>
-    public AiFormFillLlmParameters AiFormFillLlm { get; init; } = null!;
-
     /// <summary>
     /// 数据库配置参数
     /// </summary>
@@ -40,92 +29,14 @@ public class AppParameters
     {
         return new AppParameters
         {
-            Jwt = JwtParameters.Create(builder),
-            Llm = LlmParameters.Create(builder),
-            AiFormFillLlm = AiFormFillLlmParameters.Create(builder),
             Database = DatabaseParameters.Create(builder),
             RabbitMq = RabbitMqParameters.Create(builder)
         };
     }
 }
 
-/// <summary>
-/// JWT配置参数
-/// </summary>
-public class JwtParameters
-{
-    public IResourceBuilder<ParameterResource> SecretKey { get; init; } = null!;
-    public IResourceBuilder<ParameterResource> Issuer { get; init; } = null!;
-    public IResourceBuilder<ParameterResource> Audience { get; init; } = null!;
-
-    public static JwtParameters Create(IDistributedApplicationBuilder builder)
-    {
-        return new JwtParameters
-        {
-            SecretKey = builder.AddParameter("jwt-SecretKey", "ECBF8FA013844D77AE041A6800D7FF8F", secret: true),
-            Issuer = builder.AddParameter("jwt-Issuer", "codespirit.com"),
-            Audience = builder.AddParameter("jwt-Audience", "CodeSpirit")
-        };
-    }
-}
-
-/// <summary>
-/// LLM配置参数
-/// </summary>
-public class LlmParameters
-{
-    public IResourceBuilder<ParameterResource> ApiKey { get; init; } = null!;
-    public IResourceBuilder<ParameterResource> ApiBaseUrl { get; init; } = null!;
-    public IResourceBuilder<ParameterResource> ModelName { get; init; } = null!;
-    public IResourceBuilder<ParameterResource> TimeoutSeconds { get; init; } = null!;
-    public IResourceBuilder<ParameterResource> MaxTokens { get; init; } = null!;
-    public IResourceBuilder<ParameterResource> UseProxy { get; init; } = null!;
-    public IResourceBuilder<ParameterResource> ProxyAddress { get; init; } = null!;
-
-    public static LlmParameters Create(IDistributedApplicationBuilder builder)
-    {
-        return new LlmParameters
-        {
-            ApiKey = builder.AddParameter("llm-ApiKey", secret: true),
-            ApiBaseUrl = builder.AddParameter("llm-ApiBaseUrl", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
-            ModelName = builder.AddParameter("llm-ModelName", "qwen-flash"),
-            TimeoutSeconds = builder.AddParameter("llm-TimeoutSeconds", "120"),
-            MaxTokens = builder.AddParameter("llm-MaxTokens", "2048"),
-            UseProxy = builder.AddParameter("llm-UseProxy", "false"),
-            ProxyAddress = builder.AddParameter("llm-ProxyAddress", "", secret: false)
-        };
-    }
-}
-
-/// <summary>
-/// AI表单填充LLM配置参数
-/// </summary>
-public class AiFormFillLlmParameters
-{
-    public IResourceBuilder<ParameterResource> ApiKey { get; init; } = null!;
-    public IResourceBuilder<ParameterResource> ApiBaseUrl { get; init; } = null!;
-    public IResourceBuilder<ParameterResource> ModelName { get; init; } = null!;
-    public IResourceBuilder<ParameterResource> DisableThinking { get; init; } = null!;
-    public IResourceBuilder<ParameterResource> ResponseFormatType { get; init; } = null!;
-    public IResourceBuilder<ParameterResource> Temperature { get; init; } = null!;
-    public IResourceBuilder<ParameterResource> TopP { get; init; } = null!;
-    public IResourceBuilder<ParameterResource> EnableStreaming { get; init; } = null!;
-
-    public static AiFormFillLlmParameters Create(IDistributedApplicationBuilder builder)
-    {
-        return new AiFormFillLlmParameters
-        {
-            ApiKey = builder.AddParameter("ai-form-fill-llm-ApiKey", secret: true),
-            ApiBaseUrl = builder.AddParameter("ai-form-fill-llm-ApiBaseUrl", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
-            ModelName = builder.AddParameter("ai-form-fill-llm-ModelName", "qwen3-max-preview"),
-            DisableThinking = builder.AddParameter("ai-form-fill-llm-DisableThinking", "true"),
-            ResponseFormatType = builder.AddParameter("ai-form-fill-llm-ResponseFormatType", "json_object"),
-            Temperature = builder.AddParameter("ai-form-fill-llm-Temperature", "0.1"),
-            TopP = builder.AddParameter("ai-form-fill-llm-TopP", "0.9"),
-            EnableStreaming = builder.AddParameter("ai-form-fill-llm-EnableStreaming", "true")
-        };
-    }
-}
+// 💡 JWT、LLM、AiFormFillLLM 参数类已移除
+// 这些配置已迁移到配置中心种子数据，服务启动后通过配置中心 SDK 自动获取
 
 /// <summary>
 /// 数据库配置参数

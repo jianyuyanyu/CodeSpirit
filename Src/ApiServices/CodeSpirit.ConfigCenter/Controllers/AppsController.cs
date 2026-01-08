@@ -1,6 +1,4 @@
-using AutoMapper;
 using CodeSpirit.ConfigCenter.Dtos.App;
-using CodeSpirit.ConfigCenter.Models.Enums;
 using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
@@ -8,7 +6,6 @@ using CodeSpirit.Core.Enums;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
-using CodeSpirit.Core.Extensions;
 using CodeSpirit.ConfigCenter.Dtos.Config;
 
 namespace CodeSpirit.ConfigCenter.Controllers;
@@ -53,6 +50,22 @@ public class AppsController : ApiControllerBase
     public async Task<ActionResult<ApiResponse<PageList<AppDto>>>> GetApps([FromQuery] AppQueryDto queryDto)
     {
         PageList<AppDto> apps = await _appService.GetAppsAsync(queryDto);
+        return SuccessResponse(apps);
+    }
+
+    /// <summary>
+    /// 获取应用选择列表（用于下拉选择，支持搜索）
+    /// </summary>
+    /// <param name="name">应用名称搜索关键词</param>
+    /// <param name="term">搜索关键词（AMIS select 组件传递的参数）</param>
+    /// <returns>应用列表</returns>
+    [HttpGet("select")]
+    [DisplayName("获取应用选择列表")]
+    public async Task<ActionResult<ApiResponse<List<AppDto>>>> GetAppsForSelect([FromQuery] string? name = null, [FromQuery] string? term = null)
+    {
+        // 优先使用 term 参数（AMIS select 组件传递），如果没有则使用 name 参数
+        string? searchKeyword = !string.IsNullOrEmpty(term) ? term : name;
+        List<AppDto> apps = await _appService.GetAppsForSelectAsync(searchKeyword);
         return SuccessResponse(apps);
     }
 
@@ -102,30 +115,14 @@ public class AppsController : ApiControllerBase
     /// <param name="id">应用ID</param>
     /// <returns>操作结果</returns>
     [HttpDelete("{id}")]
-    [Operation("删除", "ajax", null, "确定要删除此应用吗？")]
+    [Operation("删除", "ajax", null, "确定要删除此应用吗？删除前将检查是否存在配置项或已发布的配置项。",visibleOn: "!isAutoRegistered")]
     public async Task<ActionResult<ApiResponse>> DeleteApp(string id)
     {
         await _appService.DeleteAppAsync(id);
         return SuccessResponse();
     }
 
-    /// <summary>
-    /// 批量导入应用
-    /// </summary>
-    /// <param name="importDto">导入数据</param>
-    /// <returns>导入结果</returns>
-    [HttpPost("batch/import")]
-    [DisplayName("批量导入应用")]
-    public async Task<ActionResult<ApiResponse>> BatchImport([FromBody] BatchImportDtoBase<AppBatchImportItemDto> importDto)
-    {
-        ArgumentNullException.ThrowIfNull(importDto);
 
-        (int successCount, List<string> failedAppIds) = await _appService.BatchImportAppsAsync(importDto.ImportData);
-
-        return failedAppIds.Any()
-            ? SuccessResponse($"成功导入 {successCount} 个应用，但以下应用导入失败: {string.Join(", ", failedAppIds)}")
-            : SuccessResponse($"成功导入 {successCount} 个应用！");
-    }
 
     /// <summary>
     /// 批量删除应用
@@ -133,7 +130,7 @@ public class AppsController : ApiControllerBase
     /// <param name="request">批量删除请求数据</param>
     /// <returns>删除结果</returns>
     [HttpPost("batch/delete")]
-    [Operation("批量删除", "ajax", null, "确定要批量删除?", isBulkOperation: true)]
+    [Operation("批量删除", "ajax", null, "确定要批量删除?", isBulkOperation: true, visibleOn: "!isAutoRegistered")]
     public async Task<ActionResult<ApiResponse>> BatchDelete([FromBody] BatchOperationDto<string> request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -149,14 +146,14 @@ public class AppsController : ApiControllerBase
     /// 配置管理（仅用于生成跳转操作）
     /// </summary>
     /// <returns>操作结果</returns>
-    [Operation("配置管理", "link", "/config/configItems?appId=${id}", null)]
+    [Operation("配置管理", "link", "/config/configItems?appId=${id}", null, Icon = "fa-solid fa-gear")]
     [DisplayName("配置管理")]
     public ActionResult<ApiResponse> ManageSettings()
     {
         return SuccessResponse();
     }
 
-    [Operation("发布历史", "link", "/config/configPublishHistories?appId=${id}", null)]
+    [Operation("发布历史", "link", "/config/configPublishHistories?appId=${id}", null, Icon = "fa-solid fa-clock-rotate-left")]
     [DisplayName("发布历史")]
     public ActionResult<ApiResponse> ConfigPublishHistories()
     {
@@ -168,60 +165,28 @@ public class AppsController : ApiControllerBase
     /// </summary>
     /// <param name="id">应用ID</param>
     /// <returns>表单配置JSON对象</returns>
-    [Operation(label: "批量配置", actionType: "service")]
+    [Operation(label: "批量配置", actionType: "service", Icon = "fa-solid fa-sliders")]
     [HttpGet("batch/settings")]
     [DisplayName("批量配置")]
     public JObject CreateBatchConfigButton(string id)
     {
-        var tabsArray = new JArray();
-
-        foreach (EnvironmentType envType in Enum.GetValues<EnvironmentType>())
-        {
-            var envName = envType.ToString();
-            var displayName = envType.GetDisplayName() ?? envName;
-
-            tabsArray.Add(new JObject
-            {
-                ["title"] = $"{displayName}",
-                ["body"] = new JObject
-                {
-                    ["type"] = "form",
-                    ["title"] = "",
-                    ["initApi"] = $"get:${{ROOT_API}}/api/config/ConfigItems/${{id}}/{envName}/collection",
-                    ["api"] = $"put:${{ROOT_API}}/api/config/ConfigItems/${{id}}/{envName}/collection",
-                    ["body"] = new JArray
-                    {
-                        new JObject
-                        {
-                            ["type"] = "json-editor",
-                            ["name"] = "configs",
-                            ["language"] = "json",
-                            ["placeholder"] = "请输入JSON格式的配置。",
-                            ["required"] = true
-                        }
-                    }
-                }
-            });
-        }
-
         return new JObject
         {
-            ["type"] = "tabs",
-            ["tabs"] = tabsArray
+            ["type"] = "form",
+            ["title"] = "",
+            ["initApi"] = $"get:${{ROOT_API}}/api/config/ConfigItems/${{id}}/collection",
+            ["api"] = $"put:${{ROOT_API}}/api/config/ConfigItems/${{id}}/collection",
+            ["body"] = new JArray
+            {
+                new JObject
+                {
+                    ["type"] = "json-editor",
+                    ["name"] = "configs",
+                    ["language"] = "json",
+                    ["placeholder"] = "请输入JSON格式的配置。",
+                    ["required"] = true
+                }
+            }
         };
-    }
-
-    /// <summary>
-    /// 总体配置查看
-    /// </summary>
-    /// <param name="id"></param>
-    /// <returns></returns>
-    [HttpGet("{id}/view")]
-    [Operation(label: "配置查看", actionType: "return-form", null)]
-    [DisplayName("配置查看")]
-    public async Task<ActionResult<ApiResponse<ConfigItemsExportDto>>> GetCompare(string id)
-    {
-        var result = await _configItemService.GetAppConfigsWithInheritanceAsync(id, environment: EnvironmentType.Development.ToString());
-        return SuccessResponse(result);
     }
 }

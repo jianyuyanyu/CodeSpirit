@@ -17,7 +17,7 @@ namespace CodeSpirit.ConfigCenter.Migrations.SqlServer
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.7")
+                .HasAnnotation("ProductVersion", "9.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -118,9 +118,6 @@ namespace CodeSpirit.ConfigCenter.Migrations.SqlServer
                     b.Property<string>("Description")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
-
-                    b.Property<int>("Environment")
-                        .HasColumnType("int");
 
                     b.Property<string>("Group")
                         .HasMaxLength(50)
@@ -246,10 +243,6 @@ namespace CodeSpirit.ConfigCenter.Migrations.SqlServer
                     b.Property<string>("Description")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("Environment")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");

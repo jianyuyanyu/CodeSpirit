@@ -2,32 +2,33 @@ using CodeSpirit.Amis;
 using CodeSpirit.Audit.Extensions;
 using CodeSpirit.Authorization;
 using CodeSpirit.Authorization.Extensions;
+using CodeSpirit.Caching.Abstractions;
+using CodeSpirit.Caching.Extensions;
+using CodeSpirit.Caching.Services;
 using CodeSpirit.Charts.Extensions;
+using CodeSpirit.ConfigCenter.Sdk.Extensions;
+using CodeSpirit.LLM;
+using CodeSpirit.Localization.Extensions;
+using CodeSpirit.Localization.Services;
 using CodeSpirit.Messaging.Extensions;
 using CodeSpirit.Messaging.Hubs;
+using CodeSpirit.MultiTenant.Abstractions;
 using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.Navigation.Extensions;
+using CodeSpirit.ScheduledTasks.Extensions;
 using CodeSpirit.ServiceDefaults;
+using CodeSpirit.Settings.Extensions;
 using CodeSpirit.Shared.EventBus.Extensions;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Notifications.Events;
 using CodeSpirit.Shared.Services.Background;
 using CodeSpirit.Shared.Services.Files;
 using CodeSpirit.UdlCards.Extensions;
-using CodeSpirit.MultiTenant.Abstractions;
-using CodeSpirit.Caching.Abstractions;
-using CodeSpirit.Caching.Extensions;
-using CodeSpirit.Caching.Services;
-using CodeSpirit.LLM;
-using CodeSpirit.ScheduledTasks.Extensions;
 using CodeSpirit.Web.Extensions;
 using CodeSpirit.Web.Hubs;
 using CodeSpirit.Web.Middlewares;
 using CodeSpirit.Web.Options;
 using CodeSpirit.Web.Services.EventHandlers;
-using CodeSpirit.Localization.Extensions;
-using CodeSpirit.Localization.Services;
-using CodeSpirit.Settings.Extensions;
 using System.Text;
 
 /// <summary>
@@ -47,8 +48,11 @@ public class Program
 
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-        // Add service defaults & Aspire client integrations.
+        // Add service defaults & Aspire client integrations (必须在配置中心之前，因为需要服务发现).
         builder.AddServiceDefaults("webfrontend");
+
+        // 添加配置中心集成（在服务发现之后，在其他业务服务之前）
+        builder.AddCodeSpiritConfigCenter();
 
         // Add messaging service client
         builder.Services.AddHttpClient("Messaging", client =>

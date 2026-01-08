@@ -28,11 +28,30 @@ public class ApplicationIdMiddleware
     }
 
     /// <summary>
+    /// 需要忽略的路径前缀列表（健康检查、监控等）
+    /// </summary>
+    private static readonly string[] ExcludedPathPrefixes = new[]
+    {
+        "/health",
+        "/alive",
+        "/metrics",
+        "/swagger",
+        "/favicon.ico"
+    };
+
+    /// <summary>
     /// 中间件执行方法
     /// </summary>
     /// <param name="context">HTTP上下文</param>
     public async Task InvokeAsync(HttpContext context)
     {
+        // 检查是否为需要忽略的路径（健康检查、监控等）
+        if (ShouldSkip(context))
+        {
+            await _next(context);
+            return;
+        }
+
         // 使用日志作用域添加应用程序ID
         using var logScope = _logger.BeginScope(new Dictionary<string, object>
         {
@@ -54,6 +73,31 @@ public class ApplicationIdMiddleware
                 _applicationId, context.Request.Path);
             throw;
         }
+    }
+
+    /// <summary>
+    /// 检查是否应该跳过中间件处理
+    /// </summary>
+    /// <param name="context">HTTP上下文</param>
+    /// <returns>如果应该跳过则返回 true</returns>
+    private static bool ShouldSkip(HttpContext context)
+    {
+        var requestPath = context.Request.Path.Value;
+        if (string.IsNullOrEmpty(requestPath))
+        {
+            return false;
+        }
+
+        // 检查路径是否在排除列表中
+        foreach (var excludePath in ExcludedPathPrefixes)
+        {
+            if (requestPath.StartsWith(excludePath, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 

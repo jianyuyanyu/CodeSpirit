@@ -44,10 +44,10 @@ public class MemoryCacheConfigService : IConfigCacheService
         return Task.CompletedTask;
     }
 
-    public Task ClearAppConfigsAsync(string appId, string environment)
+    public Task ClearAppConfigsAsync(string appId)
     {
         // 由于是内存缓存，这里简化处理
-        _logger.LogInformation("Clear app configs: {AppId}/{Environment}", appId, environment);
+        _logger.LogInformation("Clear app configs: {AppId}", appId);
         return Task.CompletedTask;
     }
 } 

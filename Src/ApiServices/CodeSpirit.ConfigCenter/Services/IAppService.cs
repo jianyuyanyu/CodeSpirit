@@ -40,8 +40,8 @@ namespace CodeSpirit.ConfigCenter.Services
         /// 获取指定应用的详细信息
         /// </summary>
         /// <param name="appId">应用ID</param>
-        /// <returns>应用详细信息</returns>
-        Task<AppDto> GetAppAsync(string appId);
+        /// <returns>应用详细信息，如果不存在则返回 null</returns>
+        Task<AppDto?> GetAppAsync(string appId);
 
         /// <summary>
         /// 分页查询应用列表

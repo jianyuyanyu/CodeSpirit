@@ -1,8 +1,6 @@
-using CodeSpirit.ConfigCenter.Hubs;
+using CodeSpirit.ConfigCenter.Events;
 using CodeSpirit.Core.DependencyInjection;
-using Microsoft.AspNetCore.SignalR;
-using System;
-using System.Threading.Tasks;
+using CodeSpirit.Shared.EventBus.Interfaces;
 
 namespace CodeSpirit.ConfigCenter.Services;
 
@@ -14,48 +12,44 @@ public interface IConfigNotificationService : IScopedDependency
     /// <summary>
     /// 发送配置变更通知
     /// </summary>
-    Task NotifyConfigChangedAsync(string appId, string environment);
+    Task NotifyConfigChangedAsync(string appId, long version);
 }
 
 /// <summary>
-/// 配置通知服务实现
+/// 配置通知服务实现 - 使用事件总线实现分布式通知
 /// </summary>
 public class ConfigNotificationService : IConfigNotificationService
 {
-    private readonly IHubContext<ConfigHub> _hubContext;
+    private readonly IEventBus _eventBus;
     private readonly ILogger<ConfigNotificationService> _logger;
 
+    /// <summary>
+    /// 构造函数
+    /// </summary>
     public ConfigNotificationService(
-        IHubContext<ConfigHub> hubContext,
+        IEventBus eventBus,
         ILogger<ConfigNotificationService> logger)
     {
-        _hubContext = hubContext;
+        _eventBus = eventBus;
         _logger = logger;
     }
 
     /// <summary>
     /// 发送配置变更通知
     /// </summary>
-    public async Task NotifyConfigChangedAsync(string appId, string environment)
+    /// <remarks>
+    /// 通过事件总线发布事件，所有配置中心实例都会收到通知并推送给各自的SSE客户端
+    /// </remarks>
+    public async Task NotifyConfigChangedAsync(string appId, long version)
     {
-        var groupName = GetAppConfigGroupName(appId, environment);
-        
-        _logger.LogInformation("正在发送应用 {AppId} 在 {Environment} 环境的配置变更通知", 
-            appId, environment);
-            
-        await _hubContext.Clients.Group(groupName).SendAsync("ConfigChanged", new 
+        var @event = new ConfigChangedEvent
         {
             AppId = appId,
-            Environment = environment,
+            Version = version,
             Timestamp = DateTime.UtcNow
-        });
-    }
+        };
 
-    /// <summary>
-    /// 获取应用配置组名称
-    /// </summary>
-    private string GetAppConfigGroupName(string appId, string environment)
-    {
-        return $"config:{appId}:{environment}";
+        await _eventBus.PublishAsync(@event);
+        _logger.LogInformation("已发布配置变更事件: AppId={AppId}, Version={Version}", appId, version);
     }
 } 

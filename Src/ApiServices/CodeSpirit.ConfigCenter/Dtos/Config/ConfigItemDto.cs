@@ -1,5 +1,4 @@
 using CodeSpirit.Amis.Attributes.Columns;
-using CodeSpirit.ConfigCenter.Models.Enums;
 
 namespace CodeSpirit.ConfigCenter.Dtos.Config;
 
@@ -44,15 +43,8 @@ public class ConfigItemDto
     [Required]
     [StringLength(4000)]
     [DisplayName("配置值")]
+    [AmisColumn(Type = "json")]
     public required string Value { get; set; }
-
-    /// <summary>
-    /// 应用环境
-    /// </summary>
-    [Required]
-    [DisplayName("环境")]
-    [Badge(Level = "info")]
-    public required EnvironmentType Environment { get; set; }
 
     /// <summary>
     /// 配置分组

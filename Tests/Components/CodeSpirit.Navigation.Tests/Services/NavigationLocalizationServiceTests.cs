@@ -34,13 +34,14 @@ namespace CodeSpirit.Navigation.Tests.Services
             var httpContext = new Mock<HttpContext>();
             var requestCultureFeature = new Mock<IRequestCultureFeature>();
             var requestCulture = new RequestCulture(culture);
+            var loggerMock = new Mock<ILogger<CultureResolver>>();
             
             requestCultureFeature.Setup(x => x.RequestCulture).Returns(requestCulture);
             httpContext.Setup(x => x.Features.Get<IRequestCultureFeature>())
                 .Returns(requestCultureFeature.Object);
             httpContextAccessor.Setup(x => x.HttpContext).Returns(httpContext.Object);
 
-            return new CultureResolver(httpContextAccessor.Object);
+            return new CultureResolver(httpContextAccessor.Object, loggerMock.Object);
         }
 
         /// <summary>

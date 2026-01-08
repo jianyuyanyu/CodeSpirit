@@ -1,4 +1,3 @@
-using CodeSpirit.ConfigCenter.Models.Enums;
 using CodeSpirit.Shared.Entities;
 
 namespace CodeSpirit.ConfigCenter.Models;
@@ -30,13 +29,6 @@ public class ConfigItem : AuditableEntityBase<int>
     [StringLength(4000)]
     [DisplayName("配置值")]
     public required string Value { get; set; }
-
-    /// <summary>
-    /// 应用环境，如Development/Staging/Production
-    /// </summary>
-    [Required]
-    [DisplayName("应用环境")]
-    public required EnvironmentType Environment { get; set; } = EnvironmentType.Development;
 
     /// <summary>
     /// 配置分组

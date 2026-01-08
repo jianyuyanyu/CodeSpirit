@@ -57,11 +57,6 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
             predicate = predicate.And(x => x.AppId == queryDto.AppId);
         }
 
-        if (queryDto.Environment.HasValue)
-        {
-            predicate = predicate.And(x => x.Environment == queryDto.Environment.Value.ToString());
-        }
-
         // 使用基类的分页方法
         return await GetPagedListAsync(
             queryDto,
@@ -103,8 +98,7 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
         {
             // 获取最新版本号
             long latestVersion = await _publishHistoryRepository.Find(h =>
-                h.AppId == createDto.AppId &&
-                h.Environment == createDto.Environment)
+                h.AppId == createDto.AppId)
                 .OrderByDescending(h => h.Version)
                 .Select(h => h.Version)
                 .FirstOrDefaultAsync();
@@ -158,7 +152,7 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "创建发布历史记录失败: {AppId}/{Environment}", createDto.AppId, createDto.Environment);
+            _logger.LogError(ex, "创建发布历史记录失败: {AppId}", createDto.AppId);
             throw new AppServiceException(500, "创建发布历史记录失败");
         }
     }
@@ -166,7 +160,7 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
     /// <summary>
     /// 手动创建发布历史记录 (原有API兼容方法)
     /// </summary>
-    public async Task<ConfigPublishHistory> CreatePublishHistoryAsync(string appId, string environment, string description, IEnumerable<ConfigItem> configItems)
+    public async Task<ConfigPublishHistory> CreatePublishHistoryAsync(string appId, string description, IEnumerable<ConfigItem> configItems)
     {
         if (configItems == null || !configItems.Any())
         {
@@ -177,8 +171,7 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
         {
             // 获取最新版本号
             long latestVersion = await _publishHistoryRepository.Find(h =>
-                h.AppId == appId &&
-                h.Environment == environment)
+                h.AppId == appId)
                 .OrderByDescending(h => h.Version)
                 .Select(h => h.Version)
                 .FirstOrDefaultAsync();
@@ -187,7 +180,6 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
             var publishHistory = new ConfigPublishHistory
             {
                 AppId = appId,
-                Environment = environment,
                 Description = description ?? string.Empty,
                 Version = latestVersion + 1
             };
@@ -237,7 +229,7 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "创建发布历史记录失败: {AppId}/{Environment}", appId, environment);
+            _logger.LogError(ex, "创建发布历史记录失败: {AppId}", appId);
             throw; // 重新抛出异常，确保调用方的事务回滚
         }
     }
@@ -303,16 +295,16 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
             // 事务完成后，清除缓存和发送通知
             if (successCount > 0)
             {
-                // 从第一个历史项获取应用和环境信息
+                // 从第一个历史项获取应用信息
                 var firstHistory = configItemHistories.First();
                 var configItem = await _configItemRepository.GetByIdAsync(firstHistory.ConfigItemId);
                 if (configItem != null)
                 {
                     var appId = configItem.AppId;
-                    var environment = configItem.Environment.ToString();
+                    var version = configItem.Version;
 
                     // 发送配置变更通知
-                    await _notificationService.NotifyConfigChangedAsync(appId, environment);
+                    await _notificationService.NotifyConfigChangedAsync(appId, version);
                 }
             }
 
@@ -384,7 +376,6 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
             {
                 Id = publishHistory.Id,
                 AppId = publishHistory.AppId,
-                Environment = publishHistory.Environment,
                 Description = publishHistory.Description,
                 Version = publishHistory.Version,
                 OldConfigsJson = oldConfigsJson,
@@ -440,11 +431,6 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
         if (string.IsNullOrEmpty(createDto.AppId))
         {
             throw new AppServiceException(400, "应用ID不能为空");
-        }
-
-        if (string.IsNullOrEmpty(createDto.Environment))
-        {
-            throw new AppServiceException(400, "环境不能为空");
         }
 
         // 可添加其他验证逻辑

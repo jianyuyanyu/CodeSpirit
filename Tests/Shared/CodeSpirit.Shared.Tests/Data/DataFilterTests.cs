@@ -1,6 +1,8 @@
 using CodeSpirit.Shared.Data;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Moq;
+using System;
 using Xunit;
 
 namespace CodeSpirit.Shared.Tests.Data;
@@ -35,8 +37,8 @@ public class DataFilterTests
     public void IsEnabled_DefaultState_ShouldReturnFalse()
     {
         // Arrange
-        var options = CreateOptions();
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
 
         // Act
         var result = dataFilter.IsEnabled<ITestFilter1>();
@@ -49,8 +51,8 @@ public class DataFilterTests
     public void Enable_ShouldReturnDisposable()
     {
         // Arrange
-        var options = CreateOptions();
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
 
         // Act
         var disposable = dataFilter.Enable<ITestFilter1>();
@@ -64,8 +66,8 @@ public class DataFilterTests
     public void Disable_ShouldReturnDisposable()
     {
         // Arrange
-        var options = CreateOptions();
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
         dataFilter.Enable<ITestFilter1>(); // 先启用
 
         // Act
@@ -80,8 +82,8 @@ public class DataFilterTests
     public void Enable_WhenAlreadyEnabled_ShouldReturnNullDisposable()
     {
         // Arrange
-        var options = CreateOptions();
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
         dataFilter.Enable<ITestFilter1>(); // 先启用
 
         // Act
@@ -99,8 +101,8 @@ public class DataFilterTests
     public void Disable_WhenAlreadyDisabled_ShouldReturnNullDisposable()
     {
         // Arrange
-        var options = CreateOptions();
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
 
         // Act
         var disposable = dataFilter.Disable<ITestFilter1>();
@@ -122,7 +124,8 @@ public class DataFilterTests
     {
         // Arrange
         var options = CreateOptions();
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
         var initialState = dataFilter.IsEnabled<ITestFilter1>(); // false
 
         // Act
@@ -140,7 +143,8 @@ public class DataFilterTests
     {
         // Arrange
         var options = CreateOptions();
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
         dataFilter.Enable<ITestFilter1>(); // 先启用
         var initialState = dataFilter.IsEnabled<ITestFilter1>(); // true
 
@@ -159,7 +163,8 @@ public class DataFilterTests
     {
         // Arrange
         var options = CreateOptions();
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
         dataFilter.Enable<ITestFilter1>(); // 先启用
 
         // Act
@@ -177,7 +182,8 @@ public class DataFilterTests
     {
         // Arrange
         var options = CreateOptions();
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
 
         // Act & Assert
         Assert.False(dataFilter.IsEnabled<ITestFilter1>()); // 初始状态：false
@@ -207,7 +213,8 @@ public class DataFilterTests
         // Arrange
         var options = CreateOptions();
         options.Value.DefaultStates[typeof(ITestFilter1)] = new DataFilterState(true);
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
 
         // Act
         var result = dataFilter.IsEnabled<ITestFilter1>();
@@ -222,7 +229,8 @@ public class DataFilterTests
         // Arrange
         var options = CreateOptions();
         options.Value.DefaultStates[typeof(ITestFilter1)] = new DataFilterState(false);
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
 
         // Act
         var result = dataFilter.IsEnabled<ITestFilter1>();
@@ -237,7 +245,8 @@ public class DataFilterTests
         // Arrange
         var options = CreateOptions();
         // 不设置默认状态
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
 
         // Act
         var result = dataFilter.IsEnabled<ITestFilter1>();
@@ -252,7 +261,8 @@ public class DataFilterTests
         // Arrange
         var options = CreateOptions();
         options.Value.DefaultStates[typeof(ITestFilter1)] = new DataFilterState(true);
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
 
         // Act & Assert
         Assert.True(dataFilter.IsEnabled<ITestFilter1>()); // 默认启用
@@ -274,7 +284,8 @@ public class DataFilterTests
     {
         // Arrange
         var options = CreateOptions();
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
 
         // Act & Assert
         // Filter1: 启用
@@ -304,7 +315,8 @@ public class DataFilterTests
         options.Value.DefaultStates[typeof(ITestFilter1)] = new DataFilterState(true);
         options.Value.DefaultStates[typeof(ITestFilter2)] = new DataFilterState(false);
         // ITestFilter3 没有默认状态
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
 
         // Act & Assert
         Assert.True(dataFilter.IsEnabled<ITestFilter1>()); // 默认启用
@@ -321,7 +333,8 @@ public class DataFilterTests
     {
         // Arrange
         var options = CreateOptions();
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
         const int threadCount = 10;
         const int operationsPerThread = 100;
 
@@ -367,7 +380,8 @@ public class DataFilterTests
     {
         // Arrange
         var options = CreateOptions();
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
         const int threadCount = 5;
 
         // Act
@@ -401,7 +415,8 @@ public class DataFilterTests
     {
         // Arrange
         var options = CreateOptions();
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
 
         // Act
         var filter1 = dataFilter.Enable<ITestFilter1>();
@@ -420,7 +435,8 @@ public class DataFilterTests
     {
         // Arrange
         var options = CreateOptions();
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
         var disposable = dataFilter.Enable<ITestFilter1>();
 
         // Act & Assert
@@ -434,7 +450,8 @@ public class DataFilterTests
     {
         // Arrange
         var options = CreateOptions();
-        var dataFilter = new DataFilter(options);
+        var serviceProvider = CreateServiceProvider();
+        var dataFilter = new DataFilter(serviceProvider);
 
         // Act
         using (dataFilter.Enable<ITestFilter1>())
@@ -551,6 +568,20 @@ public class DataFilterTests
         var mockOptions = new Mock<IOptions<DataFilterOptions>>();
         mockOptions.Setup(x => x.Value).Returns(options);
         return mockOptions.Object;
+    }
+
+    private static IServiceProvider CreateServiceProvider()
+    {
+        var services = new ServiceCollection();
+        services.AddOptions();
+        services.Configure<DataFilterOptions>(options =>
+        {
+            options.DefaultStates[typeof(ITestFilter1)] = new DataFilterState(false);
+            options.DefaultStates[typeof(ITestFilter2)] = new DataFilterState(false);
+            options.DefaultStates[typeof(ITestFilter3)] = new DataFilterState(false);
+        });
+        services.AddScoped(typeof(IDataFilter<>), typeof(DataFilter<>));
+        return services.BuildServiceProvider();
     }
 
     #endregion

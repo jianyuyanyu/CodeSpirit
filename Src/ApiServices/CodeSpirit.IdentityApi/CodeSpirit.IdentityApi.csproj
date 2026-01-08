@@ -30,7 +30,7 @@
 		<ProjectReference Include="..\..\Components\CodeSpirit.AiFormFill\CodeSpirit.AiFormFill.csproj" />
 		<ProjectReference Include="..\..\Components\CodeSpirit.Audit\CodeSpirit.Audit.csproj" />
 		<ProjectReference Include="..\..\Components\CodeSpirit.Charts\CodeSpirit.Charts.csproj" />
-		<ProjectReference Include="..\..\Components\CodeSpirit.ConfigCenter.Client\CodeSpirit.ConfigCenter.Client.csproj" />
+		<ProjectReference Include="..\..\Components\CodeSpirit.ConfigCenter.Sdk\CodeSpirit.ConfigCenter.Sdk.csproj" />
 		<ProjectReference Include="..\..\Components\CodeSpirit.Localization\CodeSpirit.Localization.csproj" />
 		<ProjectReference Include="..\..\Components\CodeSpirit.MultiTenant\CodeSpirit.MultiTenant.csproj" />
 		<ProjectReference Include="..\..\Components\CodeSpirit.Settings\CodeSpirit.Settings.csproj" />

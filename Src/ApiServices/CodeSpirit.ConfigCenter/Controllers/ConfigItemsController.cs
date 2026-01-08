@@ -53,14 +53,13 @@ public class ConfigItemsController : ApiControllerBase
     /// 获取指定配置项
     /// </summary>
     /// <param name="appId">应用ID</param>
-    /// <param name="environment">环境</param>
     /// <param name="key">配置键</param>
     /// <returns>配置项详情</returns>
-    [HttpGet("{appId}/{environment}/{key}")]
+    [HttpGet("{appId}/{key}")]
     [DisplayName("获取配置项详情")]
-    public async Task<ActionResult<ApiResponse<ConfigItemDto>>> GetConfig(string appId, string environment, string key)
+    public async Task<ActionResult<ApiResponse<ConfigItemDto>>> GetConfig(string appId, string key)
     {
-        ConfigItemDto config = await _configItemService.GetConfigAsync(appId, environment, key);
+        ConfigItemDto config = await _configItemService.GetConfigAsync(appId, key);
         return SuccessResponse(config);
     }
 
@@ -121,13 +120,12 @@ public class ConfigItemsController : ApiControllerBase
     /// 获取应用配置集合
     /// </summary>
     /// <param name="appId">应用ID</param>
-    /// <param name="environment">环境</param>
     /// <returns>应用配置集合</returns>
-    [HttpGet("{appId}/{environment}/collection")]
+    [HttpGet("{appId}/collection")]
     [DisplayName("获取配置集合")]
-    public async Task<ActionResult<ApiResponse<ConfigItemsExportDto>>> GetConfigCollection(string appId, string environment)
+    public async Task<ActionResult<ApiResponse<ConfigItemsExportDto>>> GetConfigCollection(string appId)
     {
-        ConfigItemsExportDto configs = await _configItemService.GetAppConfigsAsync(appId, environment);
+        ConfigItemsExportDto configs = await _configItemService.GetAppConfigsAsync(appId);
         return SuccessResponse(configs);
     }
 
@@ -135,15 +133,14 @@ public class ConfigItemsController : ApiControllerBase
     /// 批量更新应用配置
     /// </summary>
     /// <param name="appId">应用ID</param>
-    /// <param name="environment">环境</param>
     /// <param name="updateDto">更新请求数据</param>
     /// <returns>更新结果</returns>
-    [HttpPut("{appId}/{environment}/collection")]
+    [HttpPut("{appId}/collection")]
     [DisplayName("批量更新配置")]
-    public async Task<ActionResult<ApiResponse>> UpdateConfigCollection(string appId, string environment, [FromBody] ConfigItemsUpdateDto updateDto)
+    public async Task<ActionResult<ApiResponse>> UpdateConfigCollection(string appId, [FromBody] ConfigItemsUpdateDto updateDto)
     {
         // 验证路由参数与请求体参数是否一致
-        if (appId != updateDto.AppId || environment != updateDto.Environment)
+        if (appId != updateDto.AppId)
         {
             return BadRequest("路由参数与请求体参数不一致");
         }

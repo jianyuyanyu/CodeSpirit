@@ -1,6 +1,4 @@
-using AutoMapper;
 using CodeSpirit.ConfigCenter.Dtos.App;
-using CodeSpirit.ConfigCenter.Models.Enums;
 using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
@@ -8,7 +6,6 @@ using CodeSpirit.Core.Enums;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
-using CodeSpirit.Core.Extensions;
 using CodeSpirit.ConfigCenter.Dtos.Config;
 
 namespace CodeSpirit.ConfigCenter.Controllers;
@@ -173,41 +170,23 @@ public class AppsController : ApiControllerBase
     [DisplayName("批量配置")]
     public JObject CreateBatchConfigButton(string id)
     {
-        var tabsArray = new JArray();
-
-        foreach (EnvironmentType envType in Enum.GetValues<EnvironmentType>())
-        {
-            var envName = envType.ToString();
-            var displayName = envType.GetDisplayName() ?? envName;
-
-            tabsArray.Add(new JObject
-            {
-                ["title"] = $"{displayName}",
-                ["body"] = new JObject
-                {
-                    ["type"] = "form",
-                    ["title"] = "",
-                    ["initApi"] = $"get:${{ROOT_API}}/api/config/ConfigItems/${{id}}/{envName}/collection",
-                    ["api"] = $"put:${{ROOT_API}}/api/config/ConfigItems/${{id}}/{envName}/collection",
-                    ["body"] = new JArray
-                    {
-                        new JObject
-                        {
-                            ["type"] = "json-editor",
-                            ["name"] = "configs",
-                            ["language"] = "json",
-                            ["placeholder"] = "请输入JSON格式的配置。",
-                            ["required"] = true
-                        }
-                    }
-                }
-            });
-        }
-
         return new JObject
         {
-            ["type"] = "tabs",
-            ["tabs"] = tabsArray
+            ["type"] = "form",
+            ["title"] = "",
+            ["initApi"] = $"get:${{ROOT_API}}/api/config/ConfigItems/${{id}}/collection",
+            ["api"] = $"put:${{ROOT_API}}/api/config/ConfigItems/${{id}}/collection",
+            ["body"] = new JArray
+            {
+                new JObject
+                {
+                    ["type"] = "json-editor",
+                    ["name"] = "configs",
+                    ["language"] = "json",
+                    ["placeholder"] = "请输入JSON格式的配置。",
+                    ["required"] = true
+                }
+            }
         };
     }
 
@@ -221,7 +200,7 @@ public class AppsController : ApiControllerBase
     [DisplayName("配置查看")]
     public async Task<ActionResult<ApiResponse<ConfigItemsExportDto>>> GetCompare(string id)
     {
-        var result = await _configItemService.GetAppConfigsWithInheritanceAsync(id, environment: EnvironmentType.Development.ToString());
+        var result = await _configItemService.GetAppConfigsWithInheritanceAsync(id);
         return SuccessResponse(result);
     }
 }

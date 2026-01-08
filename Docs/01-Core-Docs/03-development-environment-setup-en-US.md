@@ -246,114 +246,71 @@ The project uses the following default configurations, automatically managed by 
 
   ![image-20251218195358167](../../Res/image-20251218195358167.png)
 
-## Required Parameters Configuration
+## Configuration Management
 
-CodeSpirit uses .NET Aspire's parameter management mechanism to configure sensitive information and environment-related parameters. Before the first startup, you need to configure the following required parameters. The prompt UI is shown below:
+CodeSpirit uses a **Config Center** to centrally manage business configurations, while infrastructure configurations are automatically handled by Aspire.
 
-![image-20251222221113504](../../Res/image-20251222221113504.png)
+### Configuration Architecture
 
-![image-20251222221245897](../../Res/image-20251222221245897.png)
+```
+┌─────────────────────────────────────────────────────────────────┐
+│               Configuration Source Priority (High to Low)       │
+├─────────────────────────────────────────────────────────────────┤
+│  1. Aspire Environment Variables (Highest) → Infrastructure     │
+│  2. appsettings.json                       → Local Override     │
+│  3. Config Center                          → Business Config    │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-### Parameter Configuration Methods
+> **💡 Development Tip**: Local `appsettings.json` has higher priority than Config Center, making it easy to temporarily override configurations during development and debugging.
 
-Aspire supports two parameter configuration methods. The configuration system reads them in the following priority order (higher priority overrides lower priority):
+### Infrastructure Parameters (Managed by Aspire)
 
-1. **User Secrets** (Recommended for development environment, avoids committing sensitive information to code repository)
-2. **appsettings.json** (Alternative for development environment)
-
-> **Tip**: For sensitive information (such as API keys), it is strongly recommended to use User Secrets to avoid committing keys to the code repository.
-
-### Required Parameters List
-
-#### LLM Configuration Parameters
-
-The following parameters are used to configure general LLM services (such as AI cards, intelligent approval, etc.):
-
-| Parameter Name | Description | Required | Default Value |
-|---------------|-------------|----------|---------------|
-| `llm-ApiKey` | LLM API Key | ✅ **Required** | None |
-| `llm-ApiBaseUrl` | LLM API Base URL | Optional | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
-| `llm-ModelName` | LLM Model Name | Optional | `qwen-flash` |
-| `llm-TimeoutSeconds` | Request Timeout (seconds) | Optional | `120` |
-| `llm-MaxTokens` | Maximum Tokens | Optional | `2048` |
-| `llm-UseProxy` | Use Proxy | Optional | `false` |
-| `llm-ProxyAddress` | Proxy Address | Optional | Empty string |
-
-#### AI Form Fill LLM Configuration Parameters
-
-The following parameters are used to configure AI form intelligent fill functionality:
-
-| Parameter Name | Description | Required | Default Value |
-|---------------|-------------|----------|---------------|
-| `ai-form-fill-llm-ApiKey` | AI Form Fill LLM API Key | ✅ **Required** | None |
-| `ai-form-fill-llm-ApiBaseUrl` | API Base URL | Optional | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
-| `ai-form-fill-llm-ModelName` | Model Name | Optional | `qwen3-max-preview` |
-| `ai-form-fill-llm-DisableThinking` | Disable Thinking Mode | Optional | `true` |
-| `ai-form-fill-llm-ResponseFormatType` | Response Format Type | Optional | `json_object` |
-| `ai-form-fill-llm-Temperature` | Temperature Parameter | Optional | `0.1` |
-| `ai-form-fill-llm-TopP` | TopP Parameter | Optional | `0.9` |
-| `ai-form-fill-llm-EnableStreaming` | Enable Streaming Response | Optional | `true` |
-
-#### Other Optional Parameters
-
-The following parameters have default values and usually do not need to be modified:
+The following parameters are automatically configured by Aspire and usually do not need modification:
 
 | Parameter Name | Description | Default Value |
 |---------------|-------------|---------------|
-| `jwt-SecretKey` | JWT Secret Key | `ECBF8FA013844D77AE041A6800D7FF8F` |
-| `jwt-Issuer` | JWT Issuer | `codespirit.com` |
-| `jwt-Audience` | JWT Audience | `CodeSpirit` |
 | `mysql-password` | MySQL Password | `Password123` |
 | `sqlserver-password` | SQL Server Password | `P@ssword123456` |
 | `rabbitmq-username` | RabbitMQ Username | `admin` |
 | `rabbitmq-password` | RabbitMQ Password | `Password123` |
 
-### Configuration Methods
+### Business Configuration (Managed by Config Center)
 
-#### Method 1: Using User Secrets (Recommended for Development Environment)
+The following configurations have been migrated to the Config Center. After the first startup, configure them through the **System Platform Management UI**:
 
-Use .NET User Secrets to securely store sensitive information without worrying about committing to the code repository:
+| Configuration | Description | Location |
+|--------------|-------------|----------|
+| **JWT** | JWT authentication config (SecretKey, Issuer, Audience, etc.) | Config Center → public app |
+| **LLM** | Large Language Model config (ApiKey, ModelName, etc.) | Config Center → public app |
+| **AiFormFillLLM** | AI Form Fill LLM config | Config Center → public app |
+| **Audit** | Audit log config | Config Center → public app |
+| **Logging** | Log level config | Config Center → public app |
 
-```bash
-# Navigate to AppHost project directory
-cd Src/CodeSpirit.AppHost
+### Configuring LLM API Keys
 
-# Initialize User Secrets (if not already initialized)
-dotnet user-secrets init
+After the first startup, you need to set LLM API keys in the Config Center to use AI features:
 
-# Set LLM API Key
-dotnet user-secrets set "llm-ApiKey" "your-llm-api-key-here"
+1. **Login to System Platform**
+   - Access: https://localhost:7120
+   - Account: `systemadmin`
+   - Password: `CodeSpirit@2025`
 
-# Set AI Form Fill LLM API Key
-dotnet user-secrets set "ai-form-fill-llm-ApiKey" "your-ai-form-fill-llm-api-key-here"
+2. **Navigate to Config Center**
+   - Find "Config Center" → "Application Configuration" in the left menu
+   - Select the `public` application (shared configuration for all services)
 
-# Clear all secrets
-# dotnet user-secrets clear
-```
+3. **Edit LLM Configuration**
+   - Find the `LLM` configuration item and click Edit
+   - Set the `ApiKey` field to your API key
+   - Click Save and Publish
 
-#### Method 2: Using appsettings.json (Alternative for Development Environment)
+4. **Edit AiFormFillLLM Configuration**
+   - Find the `AiFormFillLLM` configuration item and click Edit
+   - Set the `ApiKey` field to your API key
+   - Click Save and Publish
 
-Edit the `Src/CodeSpirit.AppHost/appsettings.json` file and add parameter configuration:
-
-```json
-{
-  "DatabaseType": "MySql",
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning",
-      "Aspire.Hosting.Dcp": "Warning"
-    }
-  },
-  "llm-ApiKey": "your-llm-api-key-here",
-  "ai-form-fill-llm-ApiKey": "your-ai-form-fill-llm-api-key-here"
-}
-```
-
-> **⚠️ Important Note**: 
-> - If using `appsettings.json` to configure sensitive information, ensure the file is added to `.gitignore`
-> - Or create an `appsettings.Local.json` file (this file is already in `.gitignore` by default) to avoid committing API keys to the code repository
-> - **Strongly recommend using User Secrets method**, which is more secure and won't be accidentally committed
+> **💡 Real-time Updates**: The Config Center uses SSE for real-time push. After publishing, all services automatically receive updates without restart.
 
 ### Obtaining API Keys
 
@@ -363,36 +320,24 @@ Free quota is sufficient for development phase:
 1. Visit [Alibaba Cloud DashScope Console](https://dashscope.console.aliyun.com/)
 2. Register/Login to your account
 3. Create an API Key
-4. Configure the API Key in the parameters above
+4. Configure the API Key in the Config Center
 
 #### OpenAI (If Using OpenAI-Compatible Interface)
 
-If using an OpenAI-compatible API service, you need to modify the following parameters:
+If using an OpenAI-compatible API service, when editing the `LLM` configuration in Config Center, modify:
+- `ApiBaseUrl`: `https://api.openai.com/v1`
+- `ModelName`: `gpt-4`
+- `ApiKey`: Your OpenAI API Key
 
-Configure using User Secrets:
-```bash
-dotnet user-secrets set "llm-ApiBaseUrl" "https://api.openai.com/v1"
-dotnet user-secrets set "llm-ModelName" "gpt-4"
-dotnet user-secrets set "llm-ApiKey" "your-openai-api-key-here"
-```
+### Verifying Configuration
 
-Or configure using appsettings.json:
-```json
-{
-  "llm-ApiBaseUrl": "https://api.openai.com/v1",
-  "llm-ModelName": "gpt-4",
-  "llm-ApiKey": "your-openai-api-key-here"
-}
-```
+After configuration is complete, you can verify by:
 
-### Verifying Parameter Configuration
+1. **Check Service Status**: Confirm all services are running normally in Aspire Dashboard
+2. **Test AI Features**: Try using AI form fill or other AI features
+3. **View Logs**: Check the Seq logging service for any configuration-related errors
 
-After starting the project, if parameters are configured incorrectly, you will see relevant error messages in the console or Aspire Dashboard. Ensure the following services can start normally:
-
-- ✅ ConfigCenter (Config Center) - Requires LLM parameters
-- ✅ Web Frontend - Requires AI Form Fill LLM parameters
-
-> **Tip**: If you don't need to use AI features temporarily, you can set a placeholder value, but some AI-dependent features will not work properly.
+> **Tip**: If you don't need AI features temporarily, you can leave ApiKey empty, but AI-related features will not work.
 
 ## Development Tool Configuration
 
@@ -552,30 +497,26 @@ If system memory is insufficient, you can:
 
 ### LLM API Key Not Configured
 
-If you encounter the following errors or services cannot start normally during startup:
+If AI features are not working properly:
 
-- ConfigCenter service startup failure
-- Web frontend cannot access AI features
-- Console prompts missing LLM configuration parameters
+- AI form fill functionality fails
+- Intelligent approval, AI cards, and other features report errors
+- Logs show LLM API call failures
 
 **Solution**:
 
-1. **Check if parameters are configured**:
-   ```bash
-   # View User Secrets (if using)
-   cd Src/CodeSpirit.AppHost
-   dotnet user-secrets list
-   ```
+1. **Login to System Platform to configure API keys**:
+   - Access System Platform: https://localhost:7120
+   - Account: `systemadmin` / Password: `CodeSpirit@2025`
+   - Navigate to "Config Center" → "Application Configuration" → Select `public` app
+   - Edit `LLM` and `AiFormFillLLM` configurations, set `ApiKey`
+   - Save and publish the configuration
 
-2. **Configure missing parameters**:
-   - Refer to the [Required Parameters Configuration](#required-parameters-configuration) section
-   - Ensure at least `llm-ApiKey` and `ai-form-fill-llm-ApiKey` are configured
+2. **Verify configuration is effective**:
+   - After publishing, services automatically receive updates (via SSE real-time push)
+   - No service restart needed, just refresh the page to use AI features
 
-3. **Verify configuration**:
-   - After restarting the application, check service status in Aspire Dashboard
-   - View service logs to confirm parameters are loaded correctly
-
-> **Tip**: If you don't need to use AI features temporarily, you can set a placeholder value (such as `placeholder-key`), but related AI features will not work properly.
+> **Tip**: If you don't need AI features temporarily, you can leave ApiKey empty, but related AI features will not work properly.
 
 ## Development Mode
 

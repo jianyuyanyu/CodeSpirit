@@ -26,6 +26,7 @@
     <ProjectReference Include="..\..\CodeSpirit.ServiceDefaults\CodeSpirit.ServiceDefaults.csproj" />
     <ProjectReference Include="..\..\Components\CodeSpirit.AiFormFill\CodeSpirit.AiFormFill.csproj" />
     <ProjectReference Include="..\..\Components\CodeSpirit.Audit\CodeSpirit.Audit.csproj" />
+    <ProjectReference Include="..\..\Components\CodeSpirit.ConfigCenter.Sdk\CodeSpirit.ConfigCenter.Sdk.csproj" />
     <ProjectReference Include="..\..\Components\CodeSpirit.MultiTenant\CodeSpirit.MultiTenant.csproj" />
     <ProjectReference Include="..\..\Components\CodeSpirit.LLM\CodeSpirit.LLM.csproj" />
     <ProjectReference Include="..\..\Components\CodeSpirit.Settings\CodeSpirit.Settings.csproj" />

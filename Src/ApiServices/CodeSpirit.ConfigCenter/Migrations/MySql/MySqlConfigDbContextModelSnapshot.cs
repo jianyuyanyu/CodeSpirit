@@ -17,7 +17,7 @@ namespace CodeSpirit.ConfigCenter.Migrations.MySql
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.7")
+                .HasAnnotation("ProductVersion", "9.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
@@ -118,9 +118,6 @@ namespace CodeSpirit.ConfigCenter.Migrations.MySql
                     b.Property<string>("Description")
                         .HasMaxLength(200)
                         .HasColumnType("varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-
-                    b.Property<int>("Environment")
-                        .HasColumnType("int");
 
                     b.Property<string>("Group")
                         .HasMaxLength(50)
@@ -246,10 +243,6 @@ namespace CodeSpirit.ConfigCenter.Migrations.MySql
                     b.Property<string>("Description")
                         .HasMaxLength(200)
                         .HasColumnType("varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-
-                    b.Property<string>("Environment")
-                        .IsRequired()
-                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("tinyint(1)");

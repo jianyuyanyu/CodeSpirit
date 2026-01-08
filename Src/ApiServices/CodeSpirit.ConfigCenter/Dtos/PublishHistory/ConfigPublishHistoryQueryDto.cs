@@ -1,5 +1,4 @@
 using CodeSpirit.Amis.Attributes.FormFields;
-using CodeSpirit.ConfigCenter.Models.Enums;
 using CodeSpirit.Core.Dtos;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -25,10 +24,4 @@ public class ConfigPublishHistoryQueryDto : QueryDtoBase
         Placeholder = "请选择应用"
     )]
     public string AppId { get; set; }
-
-    /// <summary>
-    /// 环境
-    /// </summary>
-    [DisplayName("环境")]
-    public EnvironmentType? Environment { get; set; }
 }

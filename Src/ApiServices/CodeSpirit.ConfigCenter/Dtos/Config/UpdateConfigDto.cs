@@ -1,5 +1,4 @@
 using CodeSpirit.Amis.Attributes.FormFields;
-using CodeSpirit.ConfigCenter.Models.Enums;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
@@ -10,13 +9,6 @@ namespace CodeSpirit.ConfigCenter.Dtos.Config;
 /// </summary>
 public class UpdateConfigDto
 {
-    /// <summary>
-    /// 应用环境
-    /// </summary>
-    [Required]
-    [DisplayName("环境")]
-    public required EnvironmentType Environment { get; set; }
-
     /// <summary>
     /// 配置值
     /// </summary>

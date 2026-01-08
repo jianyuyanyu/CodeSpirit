@@ -17,13 +17,6 @@ public class CreateConfigPublishHistoryDto
     public string AppId { get; set; }
 
     /// <summary>
-    /// 环境
-    /// </summary>
-    [Required]
-    [DisplayName("环境")]
-    public string Environment { get; set; }
-
-    /// <summary>
     /// 描述
     /// </summary>
     [StringLength(200)]

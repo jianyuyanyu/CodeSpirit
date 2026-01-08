@@ -1,5 +1,4 @@
 using CodeSpirit.Amis.Attributes.FormFields;
-using CodeSpirit.ConfigCenter.Models.Enums;
 using CodeSpirit.Core.Dtos;
 
 namespace CodeSpirit.ConfigCenter.Dtos.Config;
@@ -23,12 +22,6 @@ public class ConfigItemQueryDto : QueryDtoBase
         Placeholder = "请选择应用"
     )]
     public string AppId { get; set; }
-
-    /// <summary>
-    /// 应用环境
-    /// </summary>
-    [DisplayName("环境")]
-    public EnvironmentType? Environment { get; set; }
 
     /// <summary>
     /// 配置分组

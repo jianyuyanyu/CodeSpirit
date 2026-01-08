@@ -17,6 +17,15 @@ public class AppDto
     [Badge(VisibleOn = "!enabled", Level = "warning", Text = "已禁用")]
     public string Name { get; set; }
 
+    /// <summary>
+    /// 服务健康状态
+    /// true表示健康，false表示不健康，null表示未知
+    /// </summary>
+    [DisplayName("健康状态")]
+    [TplColumn(template: "${healthStatus === true ? '<span class=\"antd-badge antd-badge-status antd-badge-status-success\"><span class=\"antd-badge-status-dot\"></span>健康</span>' : healthStatus === false ? '<span class=\"antd-badge antd-badge-status antd-badge-status-error\"><span class=\"antd-badge-status-dot\"></span>异常</span>' : '<span class=\"antd-badge antd-badge-status antd-badge-status-warning\"><span class=\"antd-badge-status-dot\"></span>未知</span>'}")]
+    [AmisColumn(QuickEdit = false, Disabled = true)]
+    public bool? HealthStatus { get; set; }
+
     [DisplayName("应用密钥")]
     [AmisColumn(Copyable = true)]
     public string Secret { get; set; }

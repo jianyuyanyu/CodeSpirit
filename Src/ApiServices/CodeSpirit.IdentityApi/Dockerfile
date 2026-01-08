@@ -14,7 +14,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["Src/CodeSpirit.IdentityApi/CodeSpirit.IdentityApi.csproj", "Src/CodeSpirit.IdentityApi/"]
-COPY ["Src/Components/CodeSpirit.ConfigCenter.Client/CodeSpirit.ConfigCenter.Client.csproj", "Src/Components/CodeSpirit.ConfigCenter.Client/"]
+COPY ["Src/Components/CodeSpirit.ConfigCenter.Sdk/CodeSpirit.ConfigCenter.Sdk.csproj", "Src/Components/CodeSpirit.ConfigCenter.Sdk/"]
 COPY ["Src/CodeSpirit.Core/CodeSpirit.Core.csproj", "Src/CodeSpirit.Core/"]
 COPY ["Src/CodeSpirit.ServiceDefaults/CodeSpirit.ServiceDefaults.csproj", "Src/CodeSpirit.ServiceDefaults/"]
 COPY ["Src/CodeSpirit.Shared/CodeSpirit.Shared.csproj", "Src/CodeSpirit.Shared/"]

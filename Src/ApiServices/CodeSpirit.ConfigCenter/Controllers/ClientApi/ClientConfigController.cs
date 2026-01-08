@@ -33,21 +33,16 @@ public class ClientConfigController : ControllerBase
     /// 获取应用配置集合
     /// </summary>
     /// <param name="appId">应用ID</param>
-    /// <param name="environment">环境</param>
     /// <returns>应用配置集合</returns>
-    [HttpGet("{appId}/{environment}")]
+    [HttpGet("{appId}")]
     [DisplayName("获取应用配置")]
-    public async Task<ActionResult<ApiResponse<ConfigItemsExportDto>>> GetAppConfig(
-        string appId, 
-        string environment)
+    public async Task<ActionResult<ApiResponse<ConfigItemsExportDto>>> GetAppConfig(string appId)
     {
         try
         {
-            _logger.LogInformation("客户端API - 获取应用 {AppId} 在 {Environment} 环境的配置", 
-                appId, environment);
+            _logger.LogInformation("客户端API - 获取应用 {AppId} 的配置", appId);
                 
-            ConfigItemsExportDto configs = await _configItemService.GetAppConfigsWithInheritanceAsync(
-                appId, environment);
+            ConfigItemsExportDto configs = await _configItemService.GetAppConfigsWithInheritanceAsync(appId);
                 
             return new ApiResponse<ConfigItemsExportDto>
             {
@@ -58,7 +53,7 @@ public class ClientConfigController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取应用配置失败: {AppId}/{Environment}", appId, environment);
+            _logger.LogError(ex, "获取应用配置失败: {AppId}", appId);
             return new ApiResponse<ConfigItemsExportDto>
             {
                 Status = 500,

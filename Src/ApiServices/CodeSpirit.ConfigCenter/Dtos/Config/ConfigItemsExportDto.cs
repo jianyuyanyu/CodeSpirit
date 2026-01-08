@@ -10,12 +10,6 @@ public class ConfigItemsExportDto
     public string AppId { get; set; }
 
     /// <summary>
-    /// 环境
-    /// </summary>
-    [DisplayName("环境")]
-    public string Environment { get; set; }
-
-    /// <summary>
     /// 配置项集合，Key为配置键，Value为配置值
     /// </summary>
     [DisplayName("配置项集合")]

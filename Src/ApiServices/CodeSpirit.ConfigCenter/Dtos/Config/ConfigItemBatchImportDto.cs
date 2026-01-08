@@ -1,4 +1,3 @@
-using CodeSpirit.ConfigCenter.Models.Enums;
 using Newtonsoft.Json;
 using System.ComponentModel.DataAnnotations;
 
@@ -32,13 +31,6 @@ public class ConfigItemBatchImportDto
     [Required]
     [StringLength(4000)]
     public required string Value { get; set; }
-
-    /// <summary>
-    /// 应用环境，如Development/Staging/Production
-    /// </summary>
-    [JsonProperty("应用环境")]
-    [Required]
-    public required EnvironmentType Environment { get; set; } = EnvironmentType.Development;
 
     /// <summary>
     /// 配置分组

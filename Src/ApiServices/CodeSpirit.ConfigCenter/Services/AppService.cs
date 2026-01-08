@@ -1,42 +1,55 @@
+#nullable enable
 using AutoMapper;
 using CodeSpirit.ConfigCenter.Dtos.App;
 using CodeSpirit.ConfigCenter.Models;
+using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using CodeSpirit.Shared.Dtos.Common;
+using CodeSpirit.Caching.Abstractions;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Dynamic.Core;
 
 namespace CodeSpirit.ConfigCenter.Services;
 
-/// <summary>
-/// 应用管理服务实现
-/// </summary>
-public class AppService : BaseCRUDIService<App, AppDto, string, CreateAppDto, UpdateAppDto, AppBatchImportItemDto>, IAppService
-{
     /// <summary>
-    /// 初始化应用管理服务
+    /// 应用管理服务实现
     /// </summary>
-    /// <param name="repository">应用仓储</param>
-    /// <param name="mapper">对象映射器</param>
-    /// <param name="importHelper">批量导入助手</param>
-    public AppService(
-        IRepository<App> repository, 
-        IMapper mapper,
-        EnhancedBatchImportHelper<AppBatchImportItemDto> importHelper)
-        : base(repository, mapper, importHelper)
+    public class AppService : BaseCRUDIService<App, AppDto, string, CreateAppDto, UpdateAppDto, AppBatchImportItemDto>, IAppService
     {
-    }
+        private readonly ICacheService? _cacheService;
+
+        /// <summary>
+        /// 初始化应用管理服务
+        /// </summary>
+        /// <param name="repository">应用仓储</param>
+        /// <param name="mapper">对象映射器</param>
+        /// <param name="importHelper">批量导入助手</param>
+        /// <param name="cacheService">缓存服务</param>
+        public AppService(
+            IRepository<App> repository, 
+            IMapper mapper,
+            EnhancedBatchImportHelper<AppBatchImportItemDto> importHelper,
+            ICacheService? cacheService = null)
+            : base(repository, mapper, importHelper)
+        {
+            _cacheService = cacheService;
+        }
 
     /// <summary>
     /// 获取指定应用信息
     /// </summary>
     /// <param name="appId">应用ID</param>
     /// <returns>应用信息DTO</returns>
-    public async Task<AppDto> GetAppAsync(string appId)
+    public async Task<AppDto?> GetAppAsync(string appId)
     {
-        return await GetAsync(appId);
+        var appDto = await GetAsync(appId);
+        if (appDto != null)
+        {
+            await FillHealthStatusAsync(appDto);
+        }
+        return appDto;
     }
 
     /// <summary>
@@ -61,11 +74,22 @@ public class AppService : BaseCRUDIService<App, AppDto, string, CreateAppDto, Up
             predicate = predicate.And(x => x.Enabled == queryDto.Enabled.Value);
         }
 
-        return await GetPagedListAsync(
+        var result = await GetPagedListAsync(
             queryDto,
             predicate,
             "InheritancedApp"
         );
+
+        // 填充健康状态
+        if (result != null && result.Items != null)
+        {
+            foreach (var appDto in result.Items)
+            {
+                await FillHealthStatusAsync(appDto);
+            }
+        }
+
+        return result ?? new PageList<AppDto>();
     }
 
     /// <summary>
@@ -153,7 +177,7 @@ public class AppService : BaseCRUDIService<App, AppDto, string, CreateAppDto, Up
         // 执行批量更新：更新 `rowsDiff` 中的变化字段
         foreach (var rowDiff in request.RowsDiff)
         {
-            App app = appsToUpdate.FirstOrDefault(a => a.Id == rowDiff.Id);
+            App? app = appsToUpdate.FirstOrDefault(a => a.Id == rowDiff.Id);
             if (app != null)
             {
                 if (rowDiff.Enabled.HasValue)
@@ -271,5 +295,29 @@ public class AppService : BaseCRUDIService<App, AppDto, string, CreateAppDto, Up
     private static string GenerateAppSecret()
     {
         return Guid.NewGuid().ToString("N");
+    }
+
+    /// <summary>
+    /// 从缓存填充健康状态
+    /// </summary>
+    /// <param name="appDto">应用DTO</param>
+    private async Task FillHealthStatusAsync(AppDto appDto)
+    {
+        if (_cacheService == null || string.IsNullOrEmpty(appDto.Id))
+        {
+            return;
+        }
+
+        try
+        {
+            var cacheKey = SseConnectionManager.GetHealthStatusCacheKeyForService(appDto.Id);
+            var healthStatus = await _cacheService.GetAsync<bool?>(cacheKey);
+            appDto.HealthStatus = healthStatus;
+        }
+        catch (Exception)
+        {
+            // 记录错误但不影响主流程
+            // 健康状态保持为 null（未知状态）
+        }
     }
 }

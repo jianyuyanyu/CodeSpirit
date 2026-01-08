@@ -16,13 +16,6 @@ public class ConfigPublishHistory : AuditableEntityBase<int>
     public required string AppId { get; set; }
 
     /// <summary>
-    /// 环境
-    /// </summary>
-    [Required]
-    [DisplayName("环境")]
-    public required string Environment { get; set; }
-
-    /// <summary>
     /// 发布说明
     /// </summary>
     [StringLength(200)]

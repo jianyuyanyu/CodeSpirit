@@ -29,12 +29,6 @@ public class ConfigPublishHistoryDto
     public string AppName { get; set; }
 
     /// <summary>
-    /// 环境
-    /// </summary>
-    [DisplayName("环境")]
-    public string Environment { get; set; }
-
-    /// <summary>
     /// 描述
     /// </summary>
     [DisplayName("发布说明")]

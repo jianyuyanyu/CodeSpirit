@@ -10,12 +10,6 @@ public class ConfigItemsUpdateDto : IValidatableObject
     [Required]
     public string AppId { get; set; }
 
-    /// <summary>
-    /// 环境
-    /// </summary>
-    [Required]
-    public string Environment { get; set; }
-
     private string _configs;
     private JObject _parsedConfigs;
 

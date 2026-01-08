@@ -1,5 +1,4 @@
 using CodeSpirit.ConfigCenter.Models;
-using CodeSpirit.ConfigCenter.Models.Enums;
 using CodeSpirit.Core.IdGenerator;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
@@ -76,26 +75,135 @@ public class ConfigSeederService : IScopedDependency
             publicApp = await _dbContext.Apps.FirstAsync(a => a.Id == publicApp.Id);
         }
 
-        // 创建身份认证应用（Identity），继承自public
-        var identityApp = new App
+        // 定义所有系统服务
+        var systemApps = new List<App>
         {
-            Id = "identity",
-            Name = "用户中心",
-            Secret = Guid.NewGuid().ToString("N"),
-            Description = "系统身份认证服务应用",
-            Enabled = true,
-            AutoPublish = true,
-            Tag = "系统",
-            IsAutoRegistered = true,
-            InheritancedAppId = publicApp.Id  // 继承自公共应用
+            new App
+            {
+                Id = "config",
+                Name = "配置中心",
+                Secret = Guid.NewGuid().ToString("N"),
+                Description = "系统配置中心服务",
+                Enabled = true,
+                AutoPublish = true,
+                Tag = "系统",
+                IsAutoRegistered = true,
+                InheritancedAppId = publicApp.Id
+            },
+            new App
+            {
+                Id = "identity",
+                Name = "用户中心",
+                Secret = Guid.NewGuid().ToString("N"),
+                Description = "系统身份认证服务",
+                Enabled = true,
+                AutoPublish = true,
+                Tag = "系统",
+                IsAutoRegistered = true,
+                InheritancedAppId = publicApp.Id
+            },
+            new App
+            {
+                Id = "messaging",
+                Name = "消息服务",
+                Secret = Guid.NewGuid().ToString("N"),
+                Description = "系统消息服务",
+                Enabled = true,
+                AutoPublish = true,
+                Tag = "系统",
+                IsAutoRegistered = true,
+                InheritancedAppId = publicApp.Id
+            },
+            new App
+            {
+                Id = "exam",
+                Name = "考试系统",
+                Secret = Guid.NewGuid().ToString("N"),
+                Description = "在线考试服务",
+                Enabled = true,
+                AutoPublish = true,
+                Tag = "业务",
+                IsAutoRegistered = true,
+                InheritancedAppId = publicApp.Id
+            },
+            new App
+            {
+                Id = "file",
+                Name = "文件存储",
+                Secret = Guid.NewGuid().ToString("N"),
+                Description = "文件存储服务",
+                Enabled = true,
+                AutoPublish = true,
+                Tag = "系统",
+                IsAutoRegistered = true,
+                InheritancedAppId = publicApp.Id
+            },
+            new App
+            {
+                Id = "survey",
+                Name = "问卷调查",
+                Secret = Guid.NewGuid().ToString("N"),
+                Description = "问卷调查服务",
+                Enabled = true,
+                AutoPublish = true,
+                Tag = "业务",
+                IsAutoRegistered = true,
+                InheritancedAppId = publicApp.Id
+            },
+            new App
+            {
+                Id = "approval",
+                Name = "审批流程",
+                Secret = Guid.NewGuid().ToString("N"),
+                Description = "审批流程服务",
+                Enabled = true,
+                AutoPublish = true,
+                Tag = "业务",
+                IsAutoRegistered = true,
+                InheritancedAppId = publicApp.Id
+            },
+            new App
+            {
+                Id = "pathfinder",
+                Name = "目标管理",
+                Secret = Guid.NewGuid().ToString("N"),
+                Description = "AI目标管理服务",
+                Enabled = true,
+                AutoPublish = true,
+                Tag = "业务",
+                IsAutoRegistered = true,
+                InheritancedAppId = publicApp.Id
+            },
+            new App
+            {
+                Id = "webfrontend",
+                Name = "Web前端",
+                Secret = Guid.NewGuid().ToString("N"),
+                Description = "Web前端应用",
+                Enabled = true,
+                AutoPublish = true,
+                Tag = "前端",
+                IsAutoRegistered = true,
+                InheritancedAppId = publicApp.Id
+            }
         };
 
-        if (!await _dbContext.Apps.AnyAsync(a => a.Id == identityApp.Id))
+        // 批量创建应用
+        foreach (var app in systemApps)
         {
-            await _dbContext.Apps.AddAsync(identityApp);
-            _logger.LogInformation("创建系统应用：{AppName}", identityApp.Name);
-            await _dbContext.SaveChangesAsync();
+            if (!await _dbContext.Apps.AnyAsync(a => a.Id == app.Id))
+            {
+                await _dbContext.Apps.AddAsync(app);
+                _logger.LogInformation("创建系统应用：{AppId} - {AppName}", app.Id, app.Name);
+            }
+            else
+            {
+                _logger.LogInformation("系统应用已存在：{AppId} - {AppName}", app.Id, app.Name);
+            }
         }
+
+        // 保存所有应用
+        await _dbContext.SaveChangesAsync();
     }
 
     private async Task SeedSystemConfigsAsync()
@@ -107,65 +215,169 @@ public class ConfigSeederService : IScopedDependency
         
         if (publicApp != null)
         {
-            // 为公共应用创建日志和连接字符串配置
-            var systemConfig = new
-            {
-                Logging = new
-                {
-                    LogLevel = new
-                    {
-                        Default = "Information",
-                        MicrosoftAspNetCore = "Warning"
-                    }
-                },
-                ConnectionStrings = new
-                {
-                    cache = "redis:6379,defaultDatabase=0,abortConnect=false,connectTimeout=5000,syncTimeout=5000"
-                }
-            };
-            
-            // 为所有环境创建配置
-            var environments = Enum.GetValues(typeof(EnvironmentType)).Cast<EnvironmentType>();
-            
-            foreach (var env in environments)
-            {
-                var publicConfigItem = new ConfigItem
-                {
-                    AppId = publicApp.Id,
-                    Key = "System",
-                    Value = JsonConvert.SerializeObject(systemConfig),
-                    Environment = env,
-                    Group = "系统配置",
-                    Description = "系统基础配置，包含日志级别和连接字符串",
-                    ValueType = ConfigValueType.Json,
-                    Status = ConfigStatus.Released
-                };
-                
-                if (!await _dbContext.Configs.AnyAsync(c => 
-                    c.AppId == publicConfigItem.AppId && 
-                    c.Key == publicConfigItem.Key && 
-                    c.Environment == publicConfigItem.Environment))
-                {
-                    await _dbContext.Configs.AddAsync(publicConfigItem);
-                    _logger.LogInformation("为应用 {AppName} 创建系统配置：{ConfigKey}，环境：{Environment}", 
-                        publicApp.Name, publicConfigItem.Key, env);
-                }
-            }
+            await SeedPublicAppConfigsAsync(publicApp);
         }
 
-        if (identityApp == null) return;
+        if (identityApp != null)
+        {
+            await SeedIdentityAppConfigsAsync(identityApp);
+        }
+    }
 
-        // 为Identity应用创建JWT配置（使用JSON格式）
+    /// <summary>
+    /// 初始化公共应用配置（所有服务共享）
+    /// </summary>
+    private async Task SeedPublicAppConfigsAsync(App publicApp)
+    {
+        // ⚠️ 注意：以下配置不应放入配置中心（由 Aspire 服务发现提供）：
+        // - ConnectionStrings:* - 由 Aspire 服务发现提供
+        // - Services:* - 由 Aspire 服务发现提供
+        // - GreptimeDB:Url 等服务端点 - 由 Aspire 服务端点提供
+        // 
+        // 💡 敏感配置（如 ApiKey）留空，启动后由用户在配置中心管理 UI 中编辑
+
+        // JWT 配置（所有应用共享）- 注意：SecretKey 应通过 Aspire secrets 覆盖
         var jwtConfig = new
         {
-            SecretKey = "ECBF8FA013844D77AE041A6800D7FF8F",
+            SecretKey = "ECBF8FA013844D77AE041A6800D7FF8F",  // 默认值，生产环境应通过 Aspire secrets 覆盖
             Issuer = "codespirit.com",
             Audience = "CodeSpirit",
             ExpirationMinutes = 60,
             RefreshTokenExpirationDays = 7
         };
 
-        // 用户密码配置（使用JSON格式）
+        // LLM 配置 - ApiKey 留空，启动后由用户在配置中心管理 UI 中编辑
+        var llmConfig = new
+        {
+            ApiKey = "",  // 请在配置中心管理 UI 中设置
+            ApiBaseUrl = "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            ModelName = "qwen-flash",
+            TimeoutSeconds = 120,
+            MaxTokens = 2048,
+            UseProxy = false,
+            ProxyAddress = ""
+        };
+
+        // AI 表单填充 LLM 配置 - ApiKey 留空，启动后由用户在配置中心管理 UI 中编辑
+        var aiFormFillLlmConfig = new
+        {
+            ApiKey = "",  // 请在配置中心管理 UI 中设置
+            ApiBaseUrl = "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            ModelName = "qwen3-max-preview",
+            DisableThinking = true,
+            ResponseFormatType = "json_object",
+            Temperature = 0.1,
+            TopP = 0.9,
+            EnableStreaming = true
+        };
+
+        // 审计配置（非服务端点部分）
+        var auditConfig = new
+        {
+            StorageProvider = "GreptimeDB",
+            GreptimeDB = new
+            {
+                Database = "audit_logs",
+                TableName = "audit_logs"
+                // 注意：Url 不在此配置，由 Aspire 服务端点提供
+            },
+            SensitiveData = new
+            {
+                SensitiveFieldPatterns = new[]
+                {
+                    "password",
+                    "secret",
+                    "token",
+                    "apiKey",
+                    "key",
+                    "auth",
+                    "credential"
+                }
+            }
+        };
+
+        // 公共应用配置项列表
+        var publicConfigs = new List<ConfigItem>
+        {
+            new ConfigItem
+            {
+                AppId = publicApp.Id,
+                Key = "Logging",
+                Value = JsonConvert.SerializeObject(new
+                {
+                    LogLevel = new
+                    {
+                        Default = "Information",
+                        MicrosoftAspNetCore = "Warning"
+                    }
+                }),
+                Group = "系统配置",
+                Description = "日志级别配置",
+                ValueType = ConfigValueType.Json,
+                Status = ConfigStatus.Released
+            },
+            new ConfigItem
+            {
+                AppId = publicApp.Id,
+                Key = "Jwt",
+                Value = JsonConvert.SerializeObject(jwtConfig),
+                Group = "安全配置",
+                Description = "JWT 认证配置（SecretKey 应通过 Aspire secrets 覆盖）",
+                ValueType = ConfigValueType.Json,
+                Status = ConfigStatus.Released
+            },
+            new ConfigItem
+            {
+                AppId = publicApp.Id,
+                Key = "LLM",
+                Value = JsonConvert.SerializeObject(llmConfig),
+                Group = "AI配置",
+                Description = "LLM 大语言模型配置，⚠️ 请在管理界面设置 ApiKey",
+                ValueType = ConfigValueType.Json,
+                Status = ConfigStatus.Released
+            },
+            new ConfigItem
+            {
+                AppId = publicApp.Id,
+                Key = "AiFormFillLLM",
+                Value = JsonConvert.SerializeObject(aiFormFillLlmConfig),
+                Group = "AI配置",
+                Description = "AI 表单填充 LLM 配置，⚠️ 请在管理界面设置 ApiKey",
+                ValueType = ConfigValueType.Json,
+                Status = ConfigStatus.Released
+            },
+            new ConfigItem
+            {
+                AppId = publicApp.Id,
+                Key = "Audit",
+                Value = JsonConvert.SerializeObject(auditConfig),
+                Group = "系统配置",
+                Description = "审计日志配置（GreptimeDB URL 由 Aspire 服务端点提供）",
+                ValueType = ConfigValueType.Json,
+                Status = ConfigStatus.Released
+            }
+        };
+
+        // 添加公共配置项
+        foreach (var config in publicConfigs)
+        {
+            if (!await _dbContext.Configs.AnyAsync(c => 
+                c.AppId == config.AppId && 
+                c.Key == config.Key))
+            {
+                await _dbContext.Configs.AddAsync(config);
+                _logger.LogInformation("为应用 {AppName} 创建配置：{ConfigKey}", 
+                    publicApp.Name, config.Key);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 初始化 Identity 应用特有配置
+    /// </summary>
+    private async Task SeedIdentityAppConfigsAsync(App identityApp)
+    {
+        // 用户密码配置
         var passwordConfig = new
         {
             RequireDigit = true,
@@ -175,7 +387,7 @@ public class ConfigSeederService : IScopedDependency
             RequiredLength = 6
         };
 
-        // 用户锁定配置（使用JSON格式）
+        // 用户锁定配置
         var lockoutConfig = new
         {
             DefaultLockoutMinutes = 5,
@@ -189,45 +401,25 @@ public class ConfigSeederService : IScopedDependency
             Lockout = lockoutConfig
         };
 
-        // 创建配置项列表
-        var configs = new List<ConfigItem>
+        // Identity 应用特有配置
+        var identityConfig = new ConfigItem
         {
-            new ConfigItem
-            {
-                AppId = identityApp.Id,
-                Key = "Jwt",
-                Value = JsonConvert.SerializeObject(jwtConfig),
-                Environment = EnvironmentType.Development,
-                Group = "JWT配置",
-                Description = "JWT配置，包含密钥、签发者、接收者、过期时间等",
-                ValueType = ConfigValueType.Json,
-                Status = ConfigStatus.Released
-            },
-            new ConfigItem
-            {
-                AppId = identityApp.Id,
-                Key = "User",
-                Value = JsonConvert.SerializeObject(userConfig),
-                Environment = EnvironmentType.Development,
-                Group = "用户配置",
-                Description = "用户配置，包含密码策略和锁定策略",
-                ValueType = ConfigValueType.Json,
-                Status = ConfigStatus.Released
-            }
+            AppId = identityApp.Id,
+            Key = "User",
+            Value = JsonConvert.SerializeObject(userConfig),
+            Group = "用户配置",
+            Description = "用户配置，包含密码策略和锁定策略",
+            ValueType = ConfigValueType.Json,
+            Status = ConfigStatus.Released
         };
 
-        // 添加配置项
-        foreach (var config in configs)
+        if (!await _dbContext.Configs.AnyAsync(c => 
+            c.AppId == identityConfig.AppId && 
+            c.Key == identityConfig.Key))
         {
-            if (!await _dbContext.Configs.AnyAsync(c => 
-                c.AppId == config.AppId && 
-                c.Key == config.Key && 
-                c.Environment == config.Environment))
-            {
-                await _dbContext.Configs.AddAsync(config);
-                _logger.LogInformation("为应用 {AppName} 创建系统配置：{ConfigKey}", 
-                    identityApp.Name, config.Key);
-            }
+            await _dbContext.Configs.AddAsync(identityConfig);
+            _logger.LogInformation("为应用 {AppName} 创建配置：{ConfigKey}", 
+                identityApp.Name, identityConfig.Key);
         }
     }
 } 

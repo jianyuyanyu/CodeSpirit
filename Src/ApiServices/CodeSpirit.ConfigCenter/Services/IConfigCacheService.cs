@@ -26,5 +26,5 @@ public interface IConfigCacheService : ISingletonDependency
     /// <summary>
     /// 清除应用的所有配置缓存
     /// </summary>
-    Task ClearAppConfigsAsync(string appId, string environment);
+    Task ClearAppConfigsAsync(string appId);
 } 

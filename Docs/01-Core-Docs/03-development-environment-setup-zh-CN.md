@@ -248,113 +248,71 @@ CodeSpirit/
 
   ![image-20251218195358167](../../Res/image-20251218195358167.png)
 
-## 必填参数配置
+## 配置管理
 
-CodeSpirit 使用 .NET Aspire 的参数管理机制来配置敏感信息和环境相关参数。在首次启动前，您需要配置以下必填参数。提示UI如下：
-![image-20251222221113504](../../Res/image-20251222221113504.png)
+CodeSpirit 采用 **配置中心** 统一管理业务配置，基础设施配置由 Aspire 自动处理。
 
-![image-20251222221245897](../../Res/image-20251222221245897.png)
+### 配置架构
 
-### 参数配置方式
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    配置来源优先级（从高到低）                     │
+├─────────────────────────────────────────────────────────────────┤
+│  1. Aspire 环境变量（最高）  → 基础设施配置（数据库、Redis等）    │
+│  2. appsettings.json        → 本地配置（可覆盖配置中心）         │
+│  3. 配置中心                → 业务配置（JWT、LLM、审计等）        │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-Aspire 支持两种参数配置方式，配置系统会按以下优先级读取（高优先级会覆盖低优先级）：
+> **💡 开发提示**：本地 `appsettings.json` 优先级高于配置中心，方便开发调试时临时覆盖配置。
 
-1. **User Secrets**（开发环境推荐，避免提交敏感信息到代码库）
-2. **appsettings.json**（开发环境备选方案）
+### 基础设施参数（Aspire 自动管理）
 
-> **提示**: 对于敏感信息（如 API 密钥），强烈推荐使用 User Secrets，避免将密钥提交到代码库。
-
-### 必填参数列表
-
-#### LLM 配置参数
-
-以下参数用于配置通用 LLM 服务（如 AI 卡片、智能审批等功能）：
-
-| 参数名称 | 说明 | 是否必填 | 默认值 |
-|---------|------|---------|--------|
-| `llm-ApiKey` | LLM API密钥 | ✅ **必填** | 无 |
-| `llm-ApiBaseUrl` | LLM API基础地址 | 可选 | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
-| `llm-ModelName` | LLM模型名称 | 可选 | `qwen-flash` |
-| `llm-TimeoutSeconds` | 请求超时时间（秒） | 可选 | `120` |
-| `llm-MaxTokens` | 最大Token数 | 可选 | `2048` |
-| `llm-UseProxy` | 是否使用代理 | 可选 | `false` |
-| `llm-ProxyAddress` | 代理地址 | 可选 | 空字符串 |
-
-#### AI表单填充 LLM 配置参数
-
-以下参数用于配置 AI 表单智能填充功能：
-
-| 参数名称 | 说明 | 是否必填 | 默认值 |
-|---------|------|---------|--------|
-| `ai-form-fill-llm-ApiKey` | AI表单填充LLM API密钥 | ✅ **必填** | 无 |
-| `ai-form-fill-llm-ApiBaseUrl` | API基础地址 | 可选 | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
-| `ai-form-fill-llm-ModelName` | 模型名称 | 可选 | `qwen3-max-preview` |
-| `ai-form-fill-llm-DisableThinking` | 禁用思考模式 | 可选 | `true` |
-| `ai-form-fill-llm-ResponseFormatType` | 响应格式类型 | 可选 | `json_object` |
-| `ai-form-fill-llm-Temperature` | 温度参数 | 可选 | `0.1` |
-| `ai-form-fill-llm-TopP` | TopP参数 | 可选 | `0.9` |
-| `ai-form-fill-llm-EnableStreaming` | 启用流式响应 | 可选 | `true` |
-
-#### 其他可选参数
-
-以下参数已有默认值，通常无需修改：
+以下参数由 Aspire 自动配置，通常无需修改：
 
 | 参数名称 | 说明 | 默认值 |
 |---------|------|--------|
-| `jwt-SecretKey` | JWT密钥 | `ECBF8FA013844D77AE041A6800D7FF8F` |
-| `jwt-Issuer` | JWT颁发者 | `codespirit.com` |
-| `jwt-Audience` | JWT受众 | `CodeSpirit` |
 | `mysql-password` | MySQL密码 | `Password123` |
 | `sqlserver-password` | SQL Server密码 | `P@ssword123456` |
 | `rabbitmq-username` | RabbitMQ用户名 | `admin` |
 | `rabbitmq-password` | RabbitMQ密码 | `Password123` |
 
-### 配置方法
+### 业务配置（配置中心管理）
 
-#### 方法一：使用 User Secrets（推荐开发环境）
+以下配置已迁移到配置中心，首次启动后通过 **系统平台管理界面** 进行配置：
 
-使用 .NET User Secrets 可以安全地存储敏感信息，无需担心提交到代码库：
+| 配置项 | 说明 | 配置位置 |
+|-------|------|----------|
+| **JWT** | JWT认证配置（SecretKey、Issuer、Audience等） | 配置中心 → public 应用 |
+| **LLM** | 大语言模型配置（ApiKey、ModelName等） | 配置中心 → public 应用 |
+| **AiFormFillLLM** | AI表单填充LLM配置 | 配置中心 → public 应用 |
+| **Audit** | 审计日志配置 | 配置中心 → public 应用 |
+| **Logging** | 日志级别配置 | 配置中心 → public 应用 |
 
-```bash
-# 进入 AppHost 项目目录
-cd Src/CodeSpirit.AppHost
+### 配置 LLM API 密钥
 
-# 初始化 User Secrets（如果尚未初始化）
-dotnet user-secrets init
+首次启动后，需要在配置中心设置 LLM API 密钥才能使用 AI 功能：
 
-# 设置 LLM API 密钥
-dotnet user-secrets set "llm-ApiKey" "your-llm-api-key-here"
+1. **登录系统平台**
+   - 访问：https://localhost:7120
+   - 账号：`systemadmin`
+   - 密码：`CodeSpirit@2025`
 
-# 设置 AI 表单填充 LLM API 密钥
-dotnet user-secrets set "ai-form-fill-llm-ApiKey" "your-ai-form-fill-llm-api-key-here"
+2. **进入配置中心**
+   - 在左侧菜单找到「配置中心」→「应用配置」
+   - 选择 `public` 应用（公共配置，所有服务共享）
 
-# 清除所有密钥
-# dotnet user-secrets clear
-```
+3. **编辑 LLM 配置**
+   - 找到 `LLM` 配置项，点击编辑
+   - 设置 `ApiKey` 字段为您的 API 密钥
+   - 点击保存并发布
 
-#### 方法二：使用 appsettings.json（开发环境备选）
+4. **编辑 AiFormFillLLM 配置**
+   - 找到 `AiFormFillLLM` 配置项，点击编辑
+   - 设置 `ApiKey` 字段为您的 API 密钥
+   - 点击保存并发布
 
-编辑 `Src/CodeSpirit.AppHost/appsettings.json` 文件，添加参数配置：
-
-```json
-{
-  "DatabaseType": "MySql",
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning",
-      "Aspire.Hosting.Dcp": "Warning"
-    }
-  },
-  "llm-ApiKey": "your-llm-api-key-here",
-  "ai-form-fill-llm-ApiKey": "your-ai-form-fill-llm-api-key-here"
-}
-```
-
-> **⚠️ 重要提示**: 
-> - 如果使用 `appsettings.json` 配置敏感信息，请确保该文件已添加到 `.gitignore` 中
-> - 或者创建 `appsettings.Local.json` 文件（该文件默认已在 `.gitignore` 中），避免将 API 密钥提交到代码库
-> - **强烈推荐使用 User Secrets 方式**，更安全且不会误提交
+> **💡 配置实时生效**：配置中心基于 SSE 实时推送，配置发布后所有服务自动获取更新，无需重启。
 
 ### 获取 API 密钥
 
@@ -364,38 +322,26 @@ dotnet user-secrets set "ai-form-fill-llm-ApiKey" "your-ai-form-fill-llm-api-key
 1. 访问 [阿里云 DashScope 控制台](https://dashscope.console.aliyun.com/)
 2. 注册/登录账号
 3. 创建 API Key
-4. 将 API Key 配置到上述参数中
+4. 将 API Key 配置到配置中心
 
 > 💡 **推荐阅读**：[阿里云通义千问免费体验指南](./阿里云通义千问免费体验指南.md) - 详细的注册指南、配置教程和成本分析，帮助您零成本体验 CodeSpirit 的强大 AI 能力！
 
 #### OpenAI（如使用 OpenAI 兼容接口）
 
-如果使用 OpenAI 兼容的 API 服务，需要修改以下参数：
+如果使用 OpenAI 兼容的 API 服务，在配置中心编辑 `LLM` 配置时修改：
+- `ApiBaseUrl`: `https://api.openai.com/v1`
+- `ModelName`: `gpt-4`
+- `ApiKey`: 您的 OpenAI API Key
 
-使用 User Secrets 配置：
-```bash
-dotnet user-secrets set "llm-ApiBaseUrl" "https://api.openai.com/v1"
-dotnet user-secrets set "llm-ModelName" "gpt-4"
-dotnet user-secrets set "llm-ApiKey" "your-openai-api-key-here"
-```
+### 验证配置
 
-或使用 appsettings.json 配置：
-```json
-{
-  "llm-ApiBaseUrl": "https://api.openai.com/v1",
-  "llm-ModelName": "gpt-4",
-  "llm-ApiKey": "your-openai-api-key-here"
-}
-```
+配置完成后，可以通过以下方式验证：
 
-### 验证参数配置
+1. **检查服务状态**：在 Aspire Dashboard 确认所有服务正常运行
+2. **测试 AI 功能**：尝试使用 AI 表单填充或其他 AI 功能
+3. **查看日志**：在 Seq 日志服务中查看是否有配置相关错误
 
-启动项目后，如果参数配置不正确，您会在控制台或 Aspire Dashboard 中看到相关错误信息。确保以下服务能够正常启动：
-
-- ✅ ConfigCenter（配置中心）- 需要 LLM 参数
-- ✅ Web 前端 - 需要 AI 表单填充 LLM 参数
-
-> **提示**: 如果暂时不需要使用 AI 功能，可以设置一个占位符值，但某些依赖 AI 的功能将无法正常工作。
+> **提示**: 如果暂时不需要使用 AI 功能，可以保持 ApiKey 为空，但 AI 相关功能将无法使用。
 
 ## 开发工具配置
 
@@ -556,30 +502,26 @@ docker restart sqlserver  # SQL Server
 
 ### LLM API 密钥未配置
 
-如果启动时遇到以下错误或服务无法正常启动：
+如果 AI 功能无法正常使用：
 
-- ConfigCenter 服务启动失败
-- Web 前端无法访问 AI 功能
-- 控制台提示缺少 LLM 配置参数
+- AI 表单填充功能失败
+- 智能审批、AI 卡片等功能报错
+- 日志提示 LLM API 调用失败
 
 **解决方案**：
 
-1. **检查参数是否已配置**：
-   ```bash
-   # 查看 User Secrets（如果使用）
-   cd Src/CodeSpirit.AppHost
-   dotnet user-secrets list
-   ```
+1. **登录系统平台配置 API 密钥**：
+   - 访问系统平台：https://localhost:7120
+   - 账号：`systemadmin` / 密码：`CodeSpirit@2025`
+   - 进入「配置中心」→「应用配置」→ 选择 `public` 应用
+   - 编辑 `LLM` 和 `AiFormFillLLM` 配置，设置 `ApiKey`
+   - 保存并发布配置
 
-2. **配置缺失的参数**：
-   - 参考 [必填参数配置](#必填参数配置) 章节
-   - 确保至少配置了 `llm-ApiKey` 和 `ai-form-fill-llm-ApiKey` 两个必填参数
+2. **验证配置生效**：
+   - 配置发布后，服务会自动获取更新（基于 SSE 实时推送）
+   - 无需重启服务，刷新页面即可使用 AI 功能
 
-3. **验证配置**：
-   - 重启应用后，检查 Aspire Dashboard 中的服务状态
-   - 查看服务日志确认参数是否正确加载
-
-> **提示**: 如果暂时不需要使用 AI 功能，可以设置占位符值（如 `placeholder-key`），但相关 AI 功能将无法正常工作。
+> **提示**: 如果暂时不需要使用 AI 功能，可以保持 ApiKey 为空，但相关 AI 功能将无法正常工作。
 
 ## 开发模式
 

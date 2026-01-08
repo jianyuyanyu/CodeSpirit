@@ -16,6 +16,7 @@ namespace CodeSpirit.Navigation.Tests.Services
     {
         private readonly Mock<INavigationTreeBuilder> _treeBuilderMock;
         private readonly Mock<INavigationCacheManager> _cacheManagerMock;
+        private readonly Mock<IServiceProvider> _serviceProviderMock;
         private readonly Mock<INavigationFilterService> _filterServiceMock;
         private readonly Mock<ILogger<NavigationService>> _loggerMock;
         private readonly NavigationService _service;
@@ -24,12 +25,14 @@ namespace CodeSpirit.Navigation.Tests.Services
         {
             _treeBuilderMock = new Mock<INavigationTreeBuilder>();
             _cacheManagerMock = new Mock<INavigationCacheManager>();
+            _serviceProviderMock = new Mock<IServiceProvider>();
             _filterServiceMock = new Mock<INavigationFilterService>();
             _loggerMock = new Mock<ILogger<NavigationService>>();
 
             _service = new NavigationService(
                 _treeBuilderMock.Object,
                 _cacheManagerMock.Object,
+                _serviceProviderMock.Object,
                 _filterServiceMock.Object,
                 _loggerMock.Object);
         }

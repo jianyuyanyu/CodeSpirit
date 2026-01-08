@@ -22,12 +22,6 @@ public class ConfigPublishHistoryCompareDto
     public string AppId { get; set; }
 
     /// <summary>
-    /// 环境
-    /// </summary>
-    [DisplayName("环境")]
-    public string Environment { get; set; }
-
-    /// <summary>
     /// 发布说明
     /// </summary>
     [DisplayName("发布说明")]

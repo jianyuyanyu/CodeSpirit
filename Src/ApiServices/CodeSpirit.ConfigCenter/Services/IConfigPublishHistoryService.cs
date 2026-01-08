@@ -37,12 +37,11 @@ public interface IConfigPublishHistoryService :
     /// 创建发布历史记录 (兼容旧接口)
     /// </summary>
     /// <param name="appId">应用ID</param>
-    /// <param name="environment">环境</param>
     /// <param name="description">发布描述</param>
     /// <param name="configItems">配置项列表</param>
     /// <returns>创建的发布历史记录</returns>
     Task<ConfigPublishHistory> CreatePublishHistoryAsync(
-        string appId, string environment, string description, IEnumerable<ConfigItem> configItems);
+        string appId, string description, IEnumerable<ConfigItem> configItems);
     
     /// <summary>
     /// 回滚到指定的发布历史

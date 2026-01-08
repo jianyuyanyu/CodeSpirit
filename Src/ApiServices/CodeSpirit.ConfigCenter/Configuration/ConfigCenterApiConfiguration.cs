@@ -3,12 +3,11 @@ using CodeSpirit.AiFormFill;
 using CodeSpirit.Audit.Extensions;
 using CodeSpirit.ConfigCenter.Data;
 using CodeSpirit.ConfigCenter.Data.Seeders;
-using CodeSpirit.ConfigCenter.Hubs;
 using CodeSpirit.ConfigCenter.Services;
-using CodeSpirit.ConfigCenter.Services.Implementations;
 using CodeSpirit.LLM;
 using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.Shared.Data;
+using CodeSpirit.Shared.EventBus.Extensions;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Startup;
@@ -17,7 +16,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 
 namespace CodeSpirit.ConfigCenter.Configuration;
 
@@ -56,13 +54,14 @@ public class ConfigCenterApiConfiguration : BaseApiConfiguration
         // 添加AI表单填充服务（包含自动端点功能）
         services.AddAiFormFillEndpoints();
         
-        // 添加SignalR服务
-        services.AddSignalR()
-            .AddNewtonsoftJsonProtocol(options =>
-            {
-                options.PayloadSerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
-                options.PayloadSerializerSettings.NullValueHandling = NullValueHandling.Ignore;
-            });
+        // 注册事件总线（用于分布式通知）
+        services.AddEventBus();
+        
+        // 注册配置变更事件处理器（订阅事件并推送给本地SSE客户端）
+        services.AddEventHandler<Events.ConfigChangedEvent, ConfigChangedEventHandler>();
+        
+        // 注册SSE连接管理器（自动管理健康状态）
+        services.AddSingleton<SseConnectionManager>();
         
         // 配置控制器和审计元数据过滤器
         ConfigureControllersWithAudit(services, configuration);
@@ -90,9 +89,6 @@ public class ConfigCenterApiConfiguration : BaseApiConfiguration
     {
         // 多租户中间件 - 必须在认证之前添加
         app.UseCodeSpiritMultiTenant();
-        
-        // 配置SignalR Hub路由
-        app.MapHub<ConfigHub>("/config-hub");
         
         // 使用聚合器
         app.UseCodeSpiritAggregator();

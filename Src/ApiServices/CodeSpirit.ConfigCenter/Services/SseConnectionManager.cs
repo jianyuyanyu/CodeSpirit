@@ -1,29 +1,17 @@
 using System.Collections.Concurrent;
-using CodeSpirit.Caching.Abstractions;
-using CodeSpirit.Caching.Models;
 using CodeSpirit.Core.DependencyInjection;
 using Microsoft.AspNetCore.Http;
 
 namespace CodeSpirit.ConfigCenter.Services;
 
 /// <summary>
-/// SSE 连接管理器 - 维护所有客户端连接并管理健康状态
+/// SSE 连接管理器 - 维护所有客户端连接
 /// </summary>
 public class SseConnectionManager : ISingletonDependency
 {
     private readonly ConcurrentDictionary<string, List<SseConnection>> _connections = new();
     private readonly ILogger<SseConnectionManager> _logger;
     private readonly IServiceProvider _serviceProvider;
-    
-    // 健康状态缓存键前缀
-    private const string HealthStatusCacheKeyPrefix = "configcenter:health:";
-    
-    // 健康状态缓存选项：缓存2分钟，使用分布式缓存
-    private static readonly CacheOptions HealthStatusCacheOptions = new()
-    {
-        AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(2),
-        Level = CacheLevel.L2Only // 使用分布式缓存，多实例共享
-    };
 
     /// <summary>
     /// 构造函数
@@ -58,7 +46,7 @@ public class SseConnectionManager : ISingletonDependency
         _logger.LogInformation("SSE连接已注册: AppId={AppId}, 当前连接数={Count}", appId, connectionCount);
 
         // 更新健康状态：有连接 = 服务健康
-        await UpdateHealthStatusAsync(appId, isHealthy: true);
+        await UpdateHealthStatusWithServiceAsync(appId, isHealthy: true);
     }
 
     /// <summary>
@@ -86,7 +74,7 @@ public class SseConnectionManager : ISingletonDependency
             // 如果没有连接了，标记为不健康
             if (isLastConnection)
             {
-                await UpdateHealthStatusAsync(appId, isHealthy: false);
+                await UpdateHealthStatusWithServiceAsync(appId, isHealthy: false);
             }
         }
     }
@@ -171,83 +159,29 @@ public class SseConnectionManager : ISingletonDependency
     }
 
     /// <summary>
-    /// 更新服务健康状态
+    /// 使用健康服务更新健康状态
     /// </summary>
-    private async Task UpdateHealthStatusAsync(string appId, bool isHealthy)
+    private async Task UpdateHealthStatusWithServiceAsync(string appId, bool isHealthy)
     {
         try
         {
             using var scope = _serviceProvider.CreateScope();
-            var cacheService = scope.ServiceProvider.GetService<ICacheService>();
+            var healthService = scope.ServiceProvider.GetService<IAppHealthService>();
             
-            if (cacheService == null)
+            if (healthService == null)
             {
-                _logger.LogDebug("缓存服务未配置，跳过健康状态更新");
+                _logger.LogDebug("健康服务未配置，跳过健康状态更新");
                 return;
             }
 
-            var cacheKey = GetHealthStatusCacheKey(appId);
-            await cacheService.SetAsync(cacheKey, isHealthy, HealthStatusCacheOptions);
-            
-            _logger.LogDebug("已更新服务 {AppId} 健康状态: {IsHealthy}", appId, isHealthy ? "健康" : "不健康");
+            await healthService.UpdateHealthStatusAsync(appId, isHealthy);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "更新服务 {AppId} 健康状态失败", appId);
+            _logger.LogWarning(ex, "更新应用 {AppId} 健康状态失败", appId);
         }
     }
 
-    /// <summary>
-    /// 获取健康状态缓存键
-    /// </summary>
-    private static string GetHealthStatusCacheKey(string appId)
-    {
-        return $"{HealthStatusCacheKeyPrefix}{appId}";
-    }
-
-    /// <summary>
-    /// 获取服务健康状态（供外部调用）
-    /// </summary>
-    /// <param name="appId">应用ID</param>
-    /// <returns>健康状态，null表示未知</returns>
-    public async Task<bool?> GetHealthStatusAsync(string appId)
-    {
-        try
-        {
-            using var scope = _serviceProvider.CreateScope();
-            var cacheService = scope.ServiceProvider.GetService<ICacheService>();
-            
-            if (cacheService == null)
-            {
-                return null;
-            }
-
-            var cacheKey = GetHealthStatusCacheKey(appId);
-            var cached = await cacheService.GetAsync<bool?>(cacheKey);
-            
-            // 如果缓存中没有，但有活跃连接，则认为是健康的
-            if (cached == null && GetConnectionCount(appId) > 0)
-            {
-                await UpdateHealthStatusAsync(appId, isHealthy: true);
-                return true;
-            }
-            
-            return cached;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "获取服务 {AppId} 健康状态失败", appId);
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// 获取健康状态缓存键（静态方法，供外部调用）
-    /// </summary>
-    public static string GetHealthStatusCacheKeyForService(string appId)
-    {
-        return $"{HealthStatusCacheKeyPrefix}{appId}";
-    }
 }
 
 /// <summary>

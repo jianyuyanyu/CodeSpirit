@@ -211,7 +211,7 @@ public class SseEventListener : BackgroundService
             _logger.LogDebug("轮询检查配置版本: AppId={AppId}, CurrentVersion={Version}", appId, _currentVersion);
         }
 
-        // 使用轻量级API获取版本号
+        // 使用轻量级API获取版本号（此调用会自动更新服务端的健康状态）
         var serverVersion = await _configClient.GetConfigVersionAsync(appId);
         
         // 如果获取版本失败（返回-1），则跳过本次检查

@@ -16,6 +16,7 @@ public class UpdateConfigDto
     [StringLength(4000)]
     [DisplayName("配置值")]
     [AmisFormField(Type = "json-editor", Placeholder = "请输入配置值（支持JSON格式）")]
+    [Description("如果配置已发布，修改配置值将生成一个新的配置以草稿状态展示在配置列表，原有的配置将保持不变，需发布后才会更新。")]
     public required string Value { get; set; }
 
     /// <summary>

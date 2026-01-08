@@ -49,6 +49,13 @@ public class AppDto
     public bool? HealthStatus { get; set; }
 
     /// <summary>
+    /// 当前配置版本号（从发布历史获取，不存储在数据库中）
+    /// </summary>
+    [DisplayName("配置版本")]
+    [AmisColumn(QuickEdit = false, Disabled = true)]
+    public long ConfigVersion { get; set; }
+
+    /// <summary>
     /// 应用描述
     /// </summary>
     [DisplayName("描述")]

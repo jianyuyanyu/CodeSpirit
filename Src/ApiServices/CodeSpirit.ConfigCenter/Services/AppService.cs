@@ -7,7 +7,6 @@ using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using CodeSpirit.Shared.Dtos.Common;
-using CodeSpirit.Caching.Abstractions;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Dynamic.Core;
@@ -19,7 +18,8 @@ namespace CodeSpirit.ConfigCenter.Services;
     /// </summary>
     public class AppService : BaseCRUDIService<App, AppDto, string, CreateAppDto, UpdateAppDto, AppBatchImportItemDto>, IAppService
     {
-        private readonly ICacheService? _cacheService;
+        private readonly IAppHealthService _appHealthService;
+        private readonly IConfigPublishHistoryService _publishHistoryService;
 
         /// <summary>
         /// 初始化应用管理服务
@@ -27,15 +27,18 @@ namespace CodeSpirit.ConfigCenter.Services;
         /// <param name="repository">应用仓储</param>
         /// <param name="mapper">对象映射器</param>
         /// <param name="importHelper">批量导入助手</param>
-        /// <param name="cacheService">缓存服务</param>
+        /// <param name="appHealthService">应用健康服务</param>
+        /// <param name="publishHistoryService">发布历史服务</param>
         public AppService(
             IRepository<App> repository, 
             IMapper mapper,
             EnhancedBatchImportHelper<AppBatchImportItemDto> importHelper,
-            ICacheService? cacheService = null)
+            IAppHealthService appHealthService,
+            IConfigPublishHistoryService publishHistoryService)
             : base(repository, mapper, importHelper)
         {
-            _cacheService = cacheService;
+            _appHealthService = appHealthService;
+            _publishHistoryService = publishHistoryService;
         }
 
     /// <summary>
@@ -50,6 +53,7 @@ namespace CodeSpirit.ConfigCenter.Services;
         {
             await FillHealthStatusAsync(appDto);
             await FillConfigCountAsync(appDto);
+            await FillConfigVersionAsync(appDto);
         }
         return appDto;
     }
@@ -87,13 +91,14 @@ namespace CodeSpirit.ConfigCenter.Services;
             "ConfigItems"
         );
 
-        // 填充健康状态和配置数
+        // 填充健康状态、配置数和配置版本
         if (result != null && result.Items != null)
         {
             foreach (var appDto in result.Items)
             {
                 await FillHealthStatusAsync(appDto);
                 await FillConfigCountAsync(appDto);
+                await FillConfigVersionAsync(appDto);
             }
         }
 
@@ -323,21 +328,19 @@ namespace CodeSpirit.ConfigCenter.Services;
     }
 
     /// <summary>
-    /// 从缓存填充健康状态
+    /// 填充健康状态
     /// </summary>
     /// <param name="appDto">应用DTO</param>
     private async Task FillHealthStatusAsync(AppDto appDto)
     {
-        if (_cacheService == null || string.IsNullOrEmpty(appDto.Id))
+        if (string.IsNullOrEmpty(appDto.Id))
         {
             return;
         }
 
         try
         {
-            var cacheKey = SseConnectionManager.GetHealthStatusCacheKeyForService(appDto.Id);
-            var healthStatus = await _cacheService.GetAsync<bool?>(cacheKey);
-            appDto.HealthStatus = healthStatus;
+            appDto.HealthStatus = await _appHealthService.GetHealthStatusAsync(appDto.Id);
         }
         catch (Exception)
         {
@@ -373,6 +376,29 @@ namespace CodeSpirit.ConfigCenter.Services;
         {
             // 记录错误但不影响主流程
             // 配置数保持为映射时的值或 0
+        }
+    }
+
+    /// <summary>
+    /// 填充配置版本号（从发布历史获取最新版本）
+    /// </summary>
+    /// <param name="appDto">应用DTO</param>
+    private async Task FillConfigVersionAsync(AppDto appDto)
+    {
+        if (string.IsNullOrEmpty(appDto.Id))
+        {
+            return;
+        }
+
+        try
+        {
+            var version = await _publishHistoryService.GetLatestVersionAsync(appDto.Id);
+            appDto.ConfigVersion = version;
+        }
+        catch (Exception)
+        {
+            // 记录错误但不影响主流程
+            // 配置版本保持为默认值 0
         }
     }
 }

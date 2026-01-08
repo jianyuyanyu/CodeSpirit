@@ -21,15 +21,18 @@ public class ClientConfigController : ControllerBase
     private readonly IConfigItemService _configItemService;
     private readonly IConfigPublishHistoryService _publishHistoryService;
     private readonly ILogger<ClientConfigController> _logger;
+    private readonly IAppHealthService _appHealthService;
 
     public ClientConfigController(
         IConfigItemService configItemService,
         IConfigPublishHistoryService publishHistoryService,
-        ILogger<ClientConfigController> logger)
+        ILogger<ClientConfigController> logger,
+        IAppHealthService appHealthService)
     {
         _configItemService = configItemService;
         _publishHistoryService = publishHistoryService;
         _logger = logger;
+        _appHealthService = appHealthService;
     }
 
     /// <summary>
@@ -67,6 +70,7 @@ public class ClientConfigController : ControllerBase
 
     /// <summary>
     /// 获取应用配置版本（轻量级API，用于轮询检测变更）
+    /// 此接口同时作为心跳接口，调用时会自动更新应用的健康状态
     /// </summary>
     /// <param name="appId">应用ID</param>
     /// <returns>应用当前版本号</returns>
@@ -76,6 +80,9 @@ public class ClientConfigController : ControllerBase
     {
         try
         {
+            // 更新健康状态（作为心跳功能）
+            await _appHealthService.UpdateHealthStatusAsync(appId);
+            
             var version = await _publishHistoryService.GetLatestVersionAsync(appId);
             
             return new ApiResponse<ConfigVersionDto>
@@ -99,6 +106,7 @@ public class ClientConfigController : ControllerBase
             };
         }
     }
+
 
     /// <summary>
     /// 验证客户端连接

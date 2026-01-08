@@ -17,7 +17,7 @@ public class ConfigItemQueryDto : QueryDtoBase
     [StringLength(36)]
     [DisplayName("应用")]
     [AmisSelectField(
-        Source = "${ROOT_API}/api/config/Apps",
+        Source = "${ROOT_API}/api/config/Apps/select",
         ValueField = "id",
         LabelField = "name",
         Searchable = true,
@@ -44,6 +44,7 @@ public class ConfigItemQueryDto : QueryDtoBase
     /// 配置状态
     /// </summary>
     [DisplayName("配置状态")]
+    [AmisFormField(Hidden = true)]
     public ConfigStatus? Status { get; set; }
 
     /// <summary>

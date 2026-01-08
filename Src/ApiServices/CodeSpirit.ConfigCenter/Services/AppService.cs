@@ -401,4 +401,30 @@ namespace CodeSpirit.ConfigCenter.Services;
             // 配置版本保持为默认值 0
         }
     }
+
+    /// <summary>
+    /// 获取应用选择列表（用于下拉选择）
+    /// </summary>
+    /// <param name="name">应用名称搜索关键词</param>
+    /// <returns>应用列表</returns>
+    public async Task<List<AppDto>> GetAppsForSelectAsync(string? name = null)
+    {
+        ExpressionStarter<App> predicate = PredicateBuilder.New<App>(true);
+
+        // 支持按名称搜索
+        if (!string.IsNullOrEmpty(name))
+        {
+            predicate = predicate.And(x => x.Name.Contains(name));
+        }
+
+        // 只获取启用的应用
+        predicate = predicate.And(x => x.Enabled);
+
+        var apps = await Repository.Find(predicate)
+            .OrderBy(x => x.Id)
+            .ToListAsync();
+
+        var appDtos = Mapper.Map<List<AppDto>>(apps);
+        return appDtos;
+    }
 }

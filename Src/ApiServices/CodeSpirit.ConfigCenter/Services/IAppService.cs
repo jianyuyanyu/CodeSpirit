@@ -1,4 +1,4 @@
-﻿using CodeSpirit.ConfigCenter.Dtos.App;
+using CodeSpirit.ConfigCenter.Dtos.App;
 using CodeSpirit.ConfigCenter.Models;
 using CodeSpirit.Core.DependencyInjection;
 
@@ -69,5 +69,12 @@ namespace CodeSpirit.ConfigCenter.Services
         /// </summary>
         /// <param name="request">快速保存请求数据</param>
         Task QuickSaveAppsAsync(QuickSaveRequestDto request);
+
+        /// <summary>
+        /// 获取应用选择列表（用于下拉选择）
+        /// </summary>
+        /// <param name="name">应用名称搜索关键词</param>
+        /// <returns>应用列表</returns>
+        Task<List<AppDto>> GetAppsForSelectAsync(string? name = null);
     }
 }

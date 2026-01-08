@@ -54,6 +54,22 @@ public class AppsController : ApiControllerBase
     }
 
     /// <summary>
+    /// 获取应用选择列表（用于下拉选择，支持搜索）
+    /// </summary>
+    /// <param name="name">应用名称搜索关键词</param>
+    /// <param name="term">搜索关键词（AMIS select 组件传递的参数）</param>
+    /// <returns>应用列表</returns>
+    [HttpGet("select")]
+    [DisplayName("获取应用选择列表")]
+    public async Task<ActionResult<ApiResponse<List<AppDto>>>> GetAppsForSelect([FromQuery] string? name = null, [FromQuery] string? term = null)
+    {
+        // 优先使用 term 参数（AMIS select 组件传递），如果没有则使用 name 参数
+        string? searchKeyword = !string.IsNullOrEmpty(term) ? term : name;
+        List<AppDto> apps = await _appService.GetAppsForSelectAsync(searchKeyword);
+        return SuccessResponse(apps);
+    }
+
+    /// <summary>
     /// 获取应用详情
     /// </summary>
     /// <param name="id">应用ID</param>

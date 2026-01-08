@@ -18,7 +18,7 @@ public class BatchAssignGroupsDto : BatchOperationDto<long>
     [Required(ErrorMessage = "考生组ID列表不能为空")]
     [MinLength(1, ErrorMessage = "至少需要选择一个考生组")]
     [AmisSelectField(
-        Source = "${ROOT_API}/api/exam/StudentGroups",
+        Source = "${ROOT_API}/api/exam/StudentGroups/select",
         ValueField = "id",
         LabelField = "name",
         Multiple = true,

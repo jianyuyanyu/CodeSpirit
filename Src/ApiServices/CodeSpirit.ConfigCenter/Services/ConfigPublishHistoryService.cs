@@ -20,6 +20,7 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
     private readonly IRepository<ConfigPublishHistory> _publishHistoryRepository;
     private readonly IRepository<ConfigItemPublishHistory> _configItemHistoryRepository;
     private readonly IRepository<ConfigItem> _configItemRepository;
+    private readonly IRepository<App> _appRepository;
     private readonly IConfigCacheService _cacheService;
     private readonly IConfigNotificationService _notificationService;
     private readonly ILogger<ConfigPublishHistoryService> _logger;
@@ -31,6 +32,7 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
         IRepository<ConfigPublishHistory> publishHistoryRepository,
         IRepository<ConfigItemPublishHistory> configItemHistoryRepository,
         IRepository<ConfigItem> configItemRepository,
+        IRepository<App> appRepository,
         IConfigCacheService cacheService,
         IConfigNotificationService notificationService,
         IMapper mapper,
@@ -40,6 +42,7 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
         _publishHistoryRepository = publishHistoryRepository;
         _configItemHistoryRepository = configItemHistoryRepository;
         _configItemRepository = configItemRepository;
+        _appRepository = appRepository;
         _cacheService = cacheService;
         _notificationService = notificationService;
         _logger = logger;
@@ -148,6 +151,9 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
             // 保存所有更改
             await _configItemHistoryRepository.SaveChangesAsync();
 
+            // 级联更新所有子应用的版本号
+            await CascadeUpdateChildAppVersionsAsync(createDto.AppId, publishHistory.Version);
+
             return Mapper.Map<ConfigPublishHistoryDto>(publishHistory);
         }
         catch (Exception ex)
@@ -224,6 +230,9 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
 
             // 保存所有更改
             await _configItemHistoryRepository.SaveChangesAsync();
+
+            // 级联更新所有子应用的版本号
+            await CascadeUpdateChildAppVersionsAsync(appId, publishHistory.Version);
 
             return publishHistory;
         }
@@ -438,4 +447,81 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
     }
 
     #endregion
+
+    /// <summary>
+    /// 获取应用的最新发布版本号
+    /// </summary>
+    /// <param name="appId">应用ID</param>
+    /// <returns>最新版本号，如果没有发布历史则返回0</returns>
+    public async Task<long> GetLatestVersionAsync(string appId)
+    {
+        if (string.IsNullOrEmpty(appId))
+        {
+            return 0;
+        }
+
+        var latestVersion = await _publishHistoryRepository
+            .Find(h => h.AppId == appId)
+            .OrderByDescending(h => h.Version)
+            .Select(h => (long?)h.Version)
+            .FirstOrDefaultAsync();
+
+        return latestVersion ?? 0;
+    }
+
+    /// <summary>
+    /// 级联更新所有子应用的版本号（当父应用发布时调用）
+    /// </summary>
+    /// <param name="parentAppId">父应用ID</param>
+    /// <param name="parentVersion">父应用新版本号</param>
+    private async Task CascadeUpdateChildAppVersionsAsync(string parentAppId, long parentVersion)
+    {
+        // 查找所有直接继承该应用的子应用
+        var childAppIds = await _appRepository
+            .Find(a => a.InheritancedAppId == parentAppId)
+            .Select(a => a.Id)
+            .ToListAsync();
+
+        if (!childAppIds.Any())
+        {
+            return;
+        }
+
+        _logger.LogInformation("父应用 {ParentAppId} 发布版本 {Version}，开始级联更新 {Count} 个子应用的版本",
+            parentAppId, parentVersion, childAppIds.Count);
+
+        foreach (var childAppId in childAppIds)
+        {
+            try
+            {
+                // 获取子应用当前最新版本
+                var childLatestVersion = await _publishHistoryRepository
+                    .Find(h => h.AppId == childAppId)
+                    .OrderByDescending(h => h.Version)
+                    .Select(h => h.Version)
+                    .FirstOrDefaultAsync();
+
+                // 为子应用创建一条继承更新的发布记录
+                var inheritedPublishHistory = new ConfigPublishHistory
+                {
+                    AppId = childAppId,
+                    Description = $"[继承更新] 父应用 {parentAppId} 发布了版本 {parentVersion}",
+                    Version = childLatestVersion + 1
+                };
+
+                await _publishHistoryRepository.AddAsync(inheritedPublishHistory, true);
+
+                _logger.LogDebug("子应用 {ChildAppId} 版本更新为 {Version}（继承自 {ParentAppId}）",
+                    childAppId, inheritedPublishHistory.Version, parentAppId);
+
+                // 递归更新该子应用的子应用
+                await CascadeUpdateChildAppVersionsAsync(childAppId, inheritedPublishHistory.Version);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "级联更新子应用 {ChildAppId} 版本失败", childAppId);
+                // 继续处理其他子应用，不中断整个流程
+            }
+        }
+    }
 }

@@ -56,4 +56,11 @@ public interface IConfigPublishHistoryService :
     /// <param name="publishHistoryId">发布历史ID</param>
     /// <returns>配置对比结果</returns>
     Task<ConfigPublishHistoryCompareDto> GetPublishHistoryCompareAsync(int publishHistoryId);
+
+    /// <summary>
+    /// 获取应用的最新发布版本号
+    /// </summary>
+    /// <param name="appId">应用ID</param>
+    /// <returns>最新版本号，如果没有发布历史则返回0</returns>
+    Task<long> GetLatestVersionAsync(string appId);
 } 

@@ -55,7 +55,15 @@ public class ConfigCacheService
             
             if (cached != null)
             {
-                _logger.LogDebug("从 Redis 缓存获取配置: {AppId}", appId);
+                if (_options.EnableDetailedLogging)
+                {
+                    _logger.LogInformation("从 Redis 缓存获取配置: AppId={AppId}, Version={Version}, ConfigCount={Count}", 
+                        appId, cached.Version, cached.Configs?.Count ?? 0);
+                }
+                else
+                {
+                    _logger.LogDebug("从 Redis 缓存获取配置: {AppId}", appId);
+                }
             }
             
             return cached;
@@ -90,7 +98,15 @@ public class ConfigCacheService
                 CodeSpirit.Caching.Models.CacheOptions.L2Only(TimeSpan.FromMinutes(_options.CacheExpirationMinutes)),
                 cancellationToken);
             
-            _logger.LogDebug("已保存配置到 Redis 缓存: {AppId}", appId);
+            if (_options.EnableDetailedLogging)
+            {
+                _logger.LogInformation("已保存配置到 Redis 缓存: AppId={AppId}, Version={Version}, ConfigCount={Count}, Expiration={Expiration}分钟", 
+                    appId, configs.Version, configs.Configs?.Count ?? 0, _options.CacheExpirationMinutes);
+            }
+            else
+            {
+                _logger.LogDebug("已保存配置到 Redis 缓存: {AppId}", appId);
+            }
         }
         catch (Exception ex)
         {
@@ -116,7 +132,15 @@ public class ConfigCacheService
 
             var cacheKey = GetCacheKey(appId);
             await cacheService.RemoveAsync(cacheKey, cancellationToken);
-            _logger.LogDebug("已清除缓存: {AppId}", appId);
+            
+            if (_options.EnableDetailedLogging)
+            {
+                _logger.LogInformation("已清除 Redis 缓存: AppId={AppId}", appId);
+            }
+            else
+            {
+                _logger.LogDebug("已清除缓存: {AppId}", appId);
+            }
         }
         catch (Exception ex)
         {

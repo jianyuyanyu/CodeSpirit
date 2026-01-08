@@ -4,9 +4,14 @@ namespace CodeSpirit.ConfigCenter.Tests.Services;
 
 /// <summary>
 /// RabbitMQ 配置变更通知器测试
+/// 注意：RabbitMQConfigChangeNotifier 类已不存在，此测试类暂时禁用
 /// </summary>
 public class RabbitMQConfigChangeNotifierTests
 {
+    // RabbitMQConfigChangeNotifier 类已不存在，所有测试暂时禁用
+    // 如果将来重新实现该类，可以取消注释以下测试
+
+    /*
     private readonly Mock<IEventBus> _eventBusMock;
     private readonly Mock<ILogger<RabbitMQConfigChangeNotifier>> _loggerMock;
     private readonly RabbitMQConfigChangeNotifier _notifier;
@@ -175,5 +180,5 @@ public class RabbitMQConfigChangeNotifierTests
         publishedEvent!.Timestamp.Should().BeOnOrAfter(beforeCall);
         publishedEvent.Timestamp.Should().BeOnOrBefore(afterCall);
     }
+    */
 }
-

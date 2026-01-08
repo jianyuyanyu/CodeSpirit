@@ -43,20 +43,23 @@ public class ConfigEventsController : ControllerBase
             return;
         }
 
-        // 设置SSE响应头
-        Response.Headers.Add("Content-Type", "text/event-stream");
-        Response.Headers.Add("Cache-Control", "no-cache");
-        Response.Headers.Add("Connection", "keep-alive");
-        Response.Headers.Add("X-Accel-Buffering", "no"); // 禁用Nginx缓冲
+        // 设置SSE响应头（使用 Append 确保兼容性）
+        Response.Headers.ContentType = "text/event-stream";
+        Response.Headers.CacheControl = "no-cache";
+        Response.Headers.Connection = "keep-alive";
+        Response.Headers.Append("X-Accel-Buffering", "no"); // 禁用Nginx缓冲
 
         try
         {
             // 发送初始连接成功消息
             var connectedMessage = $"data: {{\"type\":\"Connected\",\"appId\":\"{appId}\"}}\n\n";
+            
+            _logger.LogDebug("正在发送SSE Connected消息: AppId={AppId}, Message={Message}", appId, connectedMessage.Replace("\n", "\\n"));
+            
             await Response.WriteAsync(connectedMessage, cancellationToken);
             await Response.Body.FlushAsync(cancellationToken);
 
-            _logger.LogInformation("SSE连接已建立: AppId={AppId}", appId);
+            _logger.LogInformation("SSE连接已建立并发送Connected消息: AppId={AppId}", appId);
 
             // 注册连接（异步更新健康状态）
             await _connectionManager.AddConnectionAsync(appId, Response);
@@ -70,6 +73,7 @@ public class ConfigEventsController : ControllerBase
                 // 检查是否需要发送心跳
                 if (DateTime.UtcNow - lastHeartbeat >= heartbeatInterval)
                 {
+                    _logger.LogDebug("发送SSE心跳: AppId={AppId}", appId);
                     await Response.WriteAsync(": heartbeat\n\n", cancellationToken);
                     await Response.Body.FlushAsync(cancellationToken);
                     lastHeartbeat = DateTime.UtcNow;

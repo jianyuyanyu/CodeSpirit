@@ -96,7 +96,7 @@ public class ConfigItemsController : ApiControllerBase
     /// <param name="id">配置项ID</param>
     /// <returns>操作结果</returns>
     [HttpDelete("{id}")]
-    [Operation("删除", "ajax", null, "确定要删除此配置项吗？")]
+    [Operation("删除", "ajax", null, "确定要删除此配置项吗？",visibleOn: "status != 2")]
     public async Task<ActionResult<ApiResponse>> DeleteConfig(int id)
     {
         await _configItemService.DeleteAsync(id);
@@ -161,7 +161,7 @@ public class ConfigItemsController : ApiControllerBase
     /// <param name="publishDto">批量发布请求数据</param>
     /// <returns>发布结果</returns>
     [HttpPost("batch/publish")]
-    [Operation("批量发布", "ajax", null, "确定要发布选中的配置项吗？", isBulkOperation: true)]
+    [Operation("批量发布", "ajax", null, "确定要发布选中的配置项吗？", isBulkOperation: true,Icon = "fa-solid fa-rocket")]
     public async Task<ActionResult<ApiResponse>> BatchPublishConfigs([FromBody] ConfigItemsBatchPublishDto publishDto)
     {
         ArgumentNullException.ThrowIfNull(publishDto);
@@ -179,5 +179,17 @@ public class ConfigItemsController : ApiControllerBase
         }
 
         return SuccessResponse($"成功发布 {successCount} 个配置！");
+    }
+
+    /// <summary>
+    /// 获取Tab数量统计
+    /// </summary>
+    /// <returns>各Tab的数量统计</returns>
+    [HttpGet("tab-counts")]
+    [DisplayName("获取Tab数量统计")]
+    public async Task<ActionResult<ApiResponse<Dictionary<string, int>>>> GetTabCounts()
+    {
+        Dictionary<string, int> counts = await _configItemService.GetTabCountsAsync();
+        return SuccessResponse(counts);
     }
 }

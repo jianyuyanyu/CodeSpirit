@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace CodeSpirit.ConfigCenter.Sdk.Configuration;
 
@@ -30,6 +31,7 @@ public class ConfigCenterConfigurationSource : IConfigurationSource
             serviceProvider.GetRequiredService<Cache.ConfigCacheService>(),
             serviceProvider.GetRequiredService<ConfigCenterClient>(),
             serviceProvider.GetRequiredService<Registration.AppRegistrationService>(),
+            serviceProvider.GetRequiredService<IOptions<ConfigCenterOptions>>(),
             serviceProvider.GetRequiredService<ILogger<ConfigCenterConfigurationProvider>>());
     }
 }

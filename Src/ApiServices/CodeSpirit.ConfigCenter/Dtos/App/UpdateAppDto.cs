@@ -48,4 +48,12 @@ public class UpdateAppDto
     [DisplayName("自动发布")]
     [Description("开启后，配置变更将自动发布")]
     public bool? AutoPublish { get; set; }
+
+    /// <summary>
+    /// 应用标签
+    /// </summary>
+    [DisplayName("应用标签")]
+    [StringLength(50)]
+    [Description("用于分组和筛选应用，如：系统、业务、前端等")]
+    public string Tag { get; set; }
 }

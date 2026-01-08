@@ -1,4 +1,6 @@
+using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.ConfigCenter.Configuration;
 using CodeSpirit.Core.Dtos;
 
 namespace CodeSpirit.ConfigCenter.Dtos.Config;
@@ -6,6 +8,7 @@ namespace CodeSpirit.ConfigCenter.Dtos.Config;
 /// <summary>
 /// 配置项查询 DTO
 /// </summary>
+[PageTabs<ConfigItemTabsConfig>]
 public class ConfigItemQueryDto : QueryDtoBase
 {
     /// <summary>

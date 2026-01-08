@@ -43,7 +43,7 @@ public class CreateConfigDto
     [StringLength(4000)]
     [DisplayName("配置值")]
     [Description("根据配置键提供合适的配置值")]
-    [AmisTextareaField(MinRows = 3, MaxRows = 6, ShowCounter = true, MaxLength = 500)]
+    [AmisFormField(Type = "json-editor", Placeholder = "请输入配置值（支持JSON格式）")]
     [AiFieldFill(Weight = 3, Priority = 1)]
     public required string Value { get; set; }
 

@@ -19,13 +19,16 @@ namespace CodeSpirit.ConfigCenter.Controllers.ClientApi;
 public class ClientConfigController : ControllerBase
 {
     private readonly IConfigItemService _configItemService;
+    private readonly IConfigPublishHistoryService _publishHistoryService;
     private readonly ILogger<ClientConfigController> _logger;
 
     public ClientConfigController(
         IConfigItemService configItemService,
+        IConfigPublishHistoryService publishHistoryService,
         ILogger<ClientConfigController> logger)
     {
         _configItemService = configItemService;
+        _publishHistoryService = publishHistoryService;
         _logger = logger;
     }
 
@@ -58,6 +61,41 @@ public class ClientConfigController : ControllerBase
             {
                 Status = 500,
                 Msg = $"获取配置失败: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 获取应用配置版本（轻量级API，用于轮询检测变更）
+    /// </summary>
+    /// <param name="appId">应用ID</param>
+    /// <returns>应用当前版本号</returns>
+    [HttpGet("{appId}/version")]
+    [DisplayName("获取配置版本")]
+    public async Task<ActionResult<ApiResponse<ConfigVersionDto>>> GetAppConfigVersion(string appId)
+    {
+        try
+        {
+            var version = await _publishHistoryService.GetLatestVersionAsync(appId);
+            
+            return new ApiResponse<ConfigVersionDto>
+            {
+                Status = 200,
+                Msg = "Success",
+                Data = new ConfigVersionDto
+                {
+                    AppId = appId,
+                    Version = version
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取应用配置版本失败: {AppId}", appId);
+            return new ApiResponse<ConfigVersionDto>
+            {
+                Status = 500,
+                Msg = $"获取版本失败: {ex.Message}"
             };
         }
     }

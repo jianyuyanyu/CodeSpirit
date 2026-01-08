@@ -82,9 +82,11 @@ public class ConfigItemService : BaseCRUDIService<ConfigItem, ConfigItemDto, int
                 throw new AppServiceException(404, "配置不存在");
             }
 
+            var dto = Mapper.Map<ConfigItemDto>(config);
+
             // 缓存配置
-            await _cacheService.SetAsync(cacheKey, JsonConvert.SerializeObject(config));
-            return Mapper.Map<ConfigItemDto>(config);
+            await _cacheService.SetAsync(cacheKey, JsonConvert.SerializeObject(dto));
+            return dto;
         }
         catch (Exception ex) when (ex is not AppServiceException)
         {
@@ -99,7 +101,9 @@ public class ConfigItemService : BaseCRUDIService<ConfigItem, ConfigItemDto, int
     public async Task<PageList<ConfigItemDto>> GetConfigsAsync(ConfigItemQueryDto queryDto)
     {
         var predicate = BuildQueryPredicate(queryDto);
-        return await GetPagedListAsync(queryDto, predicate, "App");
+        var result = await GetPagedListAsync(queryDto, predicate, "App");
+        
+        return result;
     }
 
     /// <summary>
@@ -151,11 +155,15 @@ public class ConfigItemService : BaseCRUDIService<ConfigItem, ConfigItemDto, int
             await MergeParentConfigs(configs, app.InheritancedAppId);
         }
 
+        // 获取应用的最新发布版本号
+        var latestVersion = await _publishHistoryService.GetLatestVersionAsync(appId);
+
         return new ConfigItemsExportDto
         {
             AppId = appId,
             Configs = configs,
-            IncludesInheritedConfig = !string.IsNullOrEmpty(app.InheritancedAppId)
+            IncludesInheritedConfig = !string.IsNullOrEmpty(app.InheritancedAppId),
+            Version = latestVersion
         };
     }
 
@@ -259,6 +267,33 @@ public class ConfigItemService : BaseCRUDIService<ConfigItem, ConfigItemDto, int
             logger.LogError(ex, "批量更新配置失败: {AppId}",
                 updateDto.AppId);
             throw new AppServiceException(500, "批量更新配置失败");
+        }
+    }
+
+    /// <summary>
+    /// 发布单个配置项
+    /// </summary>
+    /// <param name="id">配置项ID</param>
+    /// <param name="description">发布说明</param>
+    /// <returns>发布结果</returns>
+    public async Task PublishAsync(int id, string description = null)
+    {
+        var publishDto = new ConfigItemsBatchPublishDto
+        {
+            Ids = new List<int> { id },
+            Description = description
+        };
+
+        (int successCount, List<int> failedIds) = await BatchPublishAsync(publishDto);
+
+        if (failedIds.Any())
+        {
+            throw new AppServiceException(500, $"发布配置项失败，ID: {id}");
+        }
+
+        if (successCount == 0)
+        {
+            throw new AppServiceException(500, $"发布配置项失败，ID: {id}");
         }
     }
 
@@ -593,39 +628,67 @@ public class ConfigItemService : BaseCRUDIService<ConfigItem, ConfigItemDto, int
         ConfigValueType inferredType)
     {
         // 检查配置项是否已发布
-        // 对于已发布的配置项则创建新版本，处于编辑状态的配置项可以直接修改
+        // 对于已发布的配置项则创建草稿，处于编辑状态的配置项可以直接修改
         if (existingConfig.Status == ConfigStatus.Released)
         {
-            // 创建新版本的配置项
-            var newConfig = new ConfigItem
-            {
-                AppId = existingConfig.AppId,
-                Key = existingConfig.Key,
-                Value = value,
-                ValueType = inferredType,
-                Group = existingConfig.Group,
-                Description = existingConfig.Description,
-                Version = existingConfig.Version + 1,
-                Status = ConfigStatus.Editing,
-            };
+            // 检查是否已存在草稿
+            var existingDraft = await repository.Find(x =>
+                x.AppId == existingConfig.AppId &&
+                x.Key == existingConfig.Key &&
+                x.Status == ConfigStatus.Editing &&
+                x.Id != existingConfig.Id)
+                .FirstOrDefaultAsync();
 
-            // 验证新配置项的值类型
-            if (newConfig.ValueType != ConfigValueType.String && !ValidateValueForType(value, newConfig.ValueType))
+            if (existingDraft != null)
             {
-                throw new AppServiceException(400, $"配置值类型不匹配，期望类型: {newConfig.ValueType}");
+                // 更新现有草稿
+                existingDraft.Value = value;
+                existingDraft.ValueType = inferredType;
+                existingDraft.Status = ConfigStatus.Editing;
+                
+                // 验证新配置项的值类型
+                if (existingDraft.ValueType != ConfigValueType.String && !ValidateValueForType(value, existingDraft.ValueType))
+                {
+                    throw new AppServiceException(400, $"配置值类型不匹配，期望类型: {existingDraft.ValueType}");
+                }
+
+                await repository.UpdateAsync(existingDraft);
+                
+                logger.LogInformation("已更新配置草稿: {AppId}/{Key}, 草稿ID: {DraftId}, 版本: {Version}",
+                    existingConfig.AppId, existingConfig.Key, existingDraft.Id, existingDraft.Version);
             }
+            else
+            {
+                // 创建新草稿记录（版本号保持不变，发布时才增加）
+                var newConfig = new ConfigItem
+                {
+                    AppId = existingConfig.AppId,
+                    Key = existingConfig.Key,
+                    Value = value,
+                    ValueType = inferredType,
+                    Group = existingConfig.Group,
+                    Description = existingConfig.Description,
+                    Version = existingConfig.Version, // 版本号保持不变
+                    Status = ConfigStatus.Editing,
+                };
 
-            // 添加新配置项
-            await repository.AddAsync(newConfig);
+                // 验证新配置项的值类型
+                if (newConfig.ValueType != ConfigValueType.String && !ValidateValueForType(value, newConfig.ValueType))
+                {
+                    throw new AppServiceException(400, $"配置值类型不匹配，期望类型: {newConfig.ValueType}");
+                }
 
-            logger.LogInformation("已创建配置项新版本: {AppId}/{Key}, 原版本: {OldVersion}, 新版本: {NewVersion}",
-                existingConfig.AppId, existingConfig.Key, existingConfig.Version, newConfig.Version);
+                // 添加新配置项
+                await repository.AddAsync(newConfig);
+
+                logger.LogInformation("已创建配置草稿: {AppId}/{Key}, 原配置ID: {OriginalId}, 草稿ID: {DraftId}, 版本: {Version}",
+                    existingConfig.AppId, existingConfig.Key, existingConfig.Id, newConfig.Id, newConfig.Version);
+            }
         }
         else
         {
-            // 配置项未发布，可以直接修改
+            // 配置项未发布，可以直接修改（版本号保持不变）
             existingConfig.Value = value;
-            existingConfig.Version++;
             existingConfig.Status = ConfigStatus.Editing;
 
             // 如果现有配置类型是String，则可以根据值推断更新类型
@@ -640,6 +703,9 @@ public class ConfigItemService : BaseCRUDIService<ConfigItem, ConfigItemDto, int
             }
 
             await repository.UpdateAsync(existingConfig);
+            
+            logger.LogInformation("已更新配置: {AppId}/{Key}, ID: {Id}, 版本: {Version}",
+                existingConfig.AppId, existingConfig.Key, existingConfig.Id, existingConfig.Version);
         }
     }
 
@@ -726,34 +792,58 @@ public class ConfigItemService : BaseCRUDIService<ConfigItem, ConfigItemDto, int
 
                             if (existingPublishedConfig.Id != config.Id)
                             {
-                                // 更新已发布配置的值并保留其ID
+                                // 更新已发布配置的值并保留其ID，版本号 +1
                                 existingPublishedConfig.Value = config.Value;
                                 existingPublishedConfig.ValueType = config.ValueType;
                                 existingPublishedConfig.Description = config.Description;
                                 existingPublishedConfig.Group = config.Group;
-                                existingPublishedConfig.Version = config.Version;
+                                existingPublishedConfig.Version = existingPublishedConfig.Version + 1; // 发布时版本号 +1
                                 await repository.UpdateAsync(existingPublishedConfig);
 
-                                // 删除当前配置项(如果不是同一个ID)
+                                // 删除当前草稿配置项
                                 await repository.DeleteAsync(config);
+                                
+                                // 删除同一应用和键的其他草稿（如果有多个）
+                                var otherDrafts = await repository.Find(x =>
+                                    x.AppId == config.AppId &&
+                                    x.Key == config.Key &&
+                                    x.Status == ConfigStatus.Editing &&
+                                    x.Id != config.Id &&
+                                    x.Id != existingPublishedConfig.Id)
+                                    .ToListAsync();
+                                
+                                foreach (var draft in otherDrafts)
+                                {
+                                    await repository.DeleteAsync(draft);
+                                    logger.LogInformation("删除多余的草稿配置: {AppId}/{Key}, 草稿ID: {DraftId}",
+                                        draft.AppId, draft.Key, draft.Id);
+                                }
 
                                 // 记录成功发布的配置(使用已发布的配置ID)
                                 successfullyPublishedConfigs.Add((existingPublishedConfig, oldValue));
-                                logger.LogInformation("更新已发布配置: {AppId}/{Key}, ID从{OldId}到{NewId}",
-                                    config.AppId, config.Key, config.Id, existingPublishedConfig.Id);
+                                logger.LogInformation("更新已发布配置: {AppId}/{Key}, ID从{OldId}到{NewId}, 版本: {Version}",
+                                    config.AppId, config.Key, config.Id, existingPublishedConfig.Id, existingPublishedConfig.Version);
                             }
                             else
                             {
-                                // 如果是同一个ID，简单更新即可
+                                // 如果是同一个ID，更新版本号并标记为已发布
+                                config.Version = config.Version + 1; // 发布时版本号 +1
+                                config.Status = ConfigStatus.Released;
+                                await repository.UpdateAsync(config);
                                 successfullyPublishedConfigs.Add((config, oldValue));
+                                logger.LogInformation("发布配置: {AppId}/{Key}, ID: {Id}, 版本: {Version}",
+                                    config.AppId, config.Key, config.Id, config.Version);
                             }
                         }
                         else
                         {
-                            // 没有已发布配置，直接发布当前配置
+                            // 没有已发布配置，直接发布当前配置，版本号 +1
+                            config.Version = config.Version + 1; // 发布时版本号 +1
                             config.Status = ConfigStatus.Released;
                             await repository.UpdateAsync(config);
                             successfullyPublishedConfigs.Add((config, null));
+                            logger.LogInformation("首次发布配置: {AppId}/{Key}, ID: {Id}, 版本: {Version}",
+                                config.AppId, config.Key, config.Id, config.Version);
                         }
 
                         successCount++;
@@ -921,8 +1011,90 @@ public class ConfigItemService : BaseCRUDIService<ConfigItem, ConfigItemDto, int
         await _notificationService.NotifyConfigChangedAsync(entity.AppId, entity.Version);
     }
 
+    /// <summary>
+    /// 更新配置项 - 实现草稿机制
+    /// </summary>
+    /// <param name="id">配置项ID</param>
+    /// <param name="updateDto">更新DTO</param>
+    public override async Task UpdateAsync(int id, UpdateConfigDto updateDto)
+    {
+        ArgumentNullException.ThrowIfNull(updateDto);
+
+        await ValidateUpdateDto(id, updateDto);
+
+        var entity = await Repository.GetByIdAsync(id);
+        ArgumentNullException.ThrowIfNull(entity);
+
+        // 如果配置已发布，创建草稿记录
+        if (entity.Status == ConfigStatus.Released)
+        {
+            // 检查是否已存在草稿（同一应用和键的编辑状态配置）
+            var existingDraft = await repository.Find(x =>
+                x.AppId == entity.AppId &&
+                x.Key == entity.Key &&
+                x.Status == ConfigStatus.Editing &&
+                x.Id != id)
+                .FirstOrDefaultAsync();
+
+            if (existingDraft != null)
+            {
+                // 更新现有草稿
+                Mapper.Map(updateDto, existingDraft);
+                existingDraft.Status = ConfigStatus.Editing;
+                await repository.UpdateAsync(existingDraft);
+                
+                // 清除缓存
+                await _cacheService.RemoveAsync($"config:{existingDraft.AppId}:{existingDraft.Key}");
+                
+                logger.LogInformation("已更新草稿配置: {AppId}/{Key}, 草稿ID: {DraftId}",
+                    existingDraft.AppId, existingDraft.Key, existingDraft.Id);
+            }
+            else
+            {
+                // 创建新草稿记录（版本号保持不变，发布时才增加）
+                var draftConfig = new ConfigItem
+                {
+                    AppId = entity.AppId,
+                    Key = entity.Key,
+                    Value = updateDto.Value,
+                    ValueType = updateDto.ValueType,
+                    Group = updateDto.Group,
+                    Description = updateDto.Description,
+                    Version = entity.Version, // 版本号保持不变
+                    Status = ConfigStatus.Editing
+                };
+
+                await repository.AddAsync(draftConfig);
+                
+                // 清除缓存
+                await _cacheService.RemoveAsync($"config:{draftConfig.AppId}:{draftConfig.Key}");
+                
+                logger.LogInformation("已创建配置草稿: {AppId}/{Key}, 原配置ID: {OriginalId}, 草稿ID: {DraftId}, 版本: {Version}",
+                    entity.AppId, entity.Key, id, draftConfig.Id, draftConfig.Version);
+            }
+        }
+        else
+        {
+            // 草稿或初始状态：直接更新（版本号保持不变）
+            Mapper.Map(updateDto, entity);
+            entity.Status = ConfigStatus.Editing;
+            await Repository.UpdateAsync(entity);
+            
+            // 清除缓存
+            await _cacheService.RemoveAsync($"config:{entity.AppId}:{entity.Key}");
+            
+            // 发送配置变更通知
+            await _notificationService.NotifyConfigChangedAsync(entity.AppId, entity.Version);
+            
+            logger.LogInformation("已更新配置: {AppId}/{Key}, ID: {Id}, 版本: {Version}",
+                entity.AppId, entity.Key, entity.Id, entity.Version);
+        }
+    }
+
     protected override Task OnUpdating(ConfigItem entity, UpdateConfigDto updateDto)
     {
+        // 这个方法现在不会被调用，因为我们覆盖了 UpdateAsync
+        // 但保留它以防其他地方调用
         entity.Status = ConfigStatus.Editing;
         return base.OnUpdating(entity, updateDto);
     }
@@ -953,6 +1125,20 @@ public class ConfigItemService : BaseCRUDIService<ConfigItem, ConfigItemDto, int
     protected override string GetImportItemId(ConfigItemBatchImportDto importDto)
     {
         return importDto.AppId;
+    }
+
+    /// <summary>
+    /// 获取Tab统计数量
+    /// </summary>
+    /// <returns>各Tab的数量字典</returns>
+    public async Task<Dictionary<string, int>> GetTabCountsAsync()
+    {
+        var baseQuery = repository.CreateQuery();
+
+        // 使用强类型配置自动生成统计
+        return await CodeSpirit.Amis.Tabs.TabsCountGenerator.GenerateCountsAsync<ConfigItemQueryDto, ConfigItem>(
+            baseQuery,
+            typeof(Configuration.ConfigItemTabsConfig));
     }
     #endregion
 }

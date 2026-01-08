@@ -31,9 +31,6 @@ public class ConfigSeederService : IScopedDependency
             // 临时设置一个系统用户ID用于审计字段
             _dbContext.UserId = -1;  // 使用-1作为系统用户ID
 
-            // 应用迁移
-            await _dbContext.Database.MigrateAsync();
-
             // 初始化系统应用
             await SeedSystemAppsAsync();
 
@@ -78,18 +75,6 @@ public class ConfigSeederService : IScopedDependency
         // 定义所有系统服务
         var systemApps = new List<App>
         {
-            new App
-            {
-                Id = "config",
-                Name = "配置中心",
-                Secret = Guid.NewGuid().ToString("N"),
-                Description = "系统配置中心服务",
-                Enabled = true,
-                AutoPublish = true,
-                Tag = "系统",
-                IsAutoRegistered = true,
-                InheritancedAppId = publicApp.Id
-            },
             new App
             {
                 Id = "identity",

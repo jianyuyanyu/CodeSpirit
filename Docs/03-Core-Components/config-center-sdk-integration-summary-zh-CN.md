@@ -3,7 +3,7 @@
 ## 实施时间
 
 **日期：** 2026-01-07  
-**最后更新：** 2026-01-08（架构优化：采用 SSE 实时推送）
+**最后更新：** 2026-01-08 v2.1（新增轮询回退机制）
 
 ## 实施方案
 
@@ -154,18 +154,25 @@ sequenceDiagram
 
 ## 技术亮点
 
-### 1. SSE 实时推送架构
+### 1. 双模式架构：SSE 实时推送 + 轮询回退
 
-**特点：**
+**SSE 模式（优先）：**
 - **低延迟**：配置变更秒级推送到客户端
 - **轻量级**：基于 HTTP 长连接，无需额外中间件
 - **自动重连**：连接断开后自动重新建立
 - **双向心跳**：服务端定期发送心跳，客户端检测连接状态
 
+**轮询模式（智能回退）：**
+- **自动降级**：SSE 连续失败达到阈值（默认3次）后自动切换
+- **轻量级检查**：仅传输版本号（~50字节），而非完整配置
+- **按需拉取**：仅当版本变化时才获取完整配置
+- **可配置**：支持自定义轮询间隔和失败阈值
+
 **架构优势：**
-- 相比 WebSocket 更简单，单向推送即可满足需求
-- 相比轮询更实时，资源消耗更低
-- 基于标准 HTTP，穿透防火墙和代理更容易
+- 优先使用 SSE，相比 WebSocket 更简单，相比传统轮询更实时
+- 自动适配环境：在 Aspire 等 SSE 不可用的环境中自动降级
+- 轮询优化：相比直接轮询完整配置，网络开销降低 99%+
+- 高可用：两种模式互为备份，确保配置更新可靠性
 
 ### 2. 基于连接状态的健康检查
 
@@ -266,10 +273,21 @@ dotnet run --project Src/ApiServices/CodeSpirit.IdentityApi
   "ConfigCenter": {
     "AppId": "identity",
     "CacheExpirationMinutes": 60,
-    "AutoRegister": true
+    "AutoRegister": true,
+    "UsePollingMode": false,
+    "PollingIntervalSeconds": 30,
+    "SseFailureThresholdBeforePolling": 3
   }
 }
 ```
+
+**轮询相关配置说明：**
+
+| 配置项 | 说明 | 默认值 | 推荐场景 |
+|--------|------|--------|----------|
+| `UsePollingMode` | 是否直接使用轮询模式 | `false` | Aspire 环境可设为 `true` |
+| `PollingIntervalSeconds` | 轮询间隔（秒） | `30` | 根据配置变更频率调整 |
+| `SseFailureThresholdBeforePolling` | SSE 失败多少次后切换轮询 | `3` | 网络不稳定时可降低 |
 
 ## 注意事项
 
@@ -297,7 +315,8 @@ dotnet run --project Src/ApiServices/CodeSpirit.IdentityApi
 | 启动慢 | API 不可用 | 检查配置中心 API 连接，或使用本地配置 |
 | 配置未生效 | 本地配置覆盖 | 检查 appsettings.json，确保配置键名正确 |
 | 配置中心也集成了 | 排除逻辑失败 | 检查 ServiceName 是否为 "config" |
-| 配置不自动更新 | SSE 连接断开 | 检查日志，验证 SSE 连接状态 |
+| 配置更新延迟 30 秒 | 已切换到轮询模式 | SSE 不可用时正常现象，可调整 `PollingIntervalSeconds` |
+| SSE 一直失败 | Aspire 代理缓冲 | 设置 `UsePollingMode=true` 直接使用轮询 |
 | 健康状态不准确 | SSE 连接异常 | 检查网络连接和防火墙设置 |
 
 ## 后续计划
@@ -342,7 +361,13 @@ dotnet run --project Src/ApiServices/CodeSpirit.IdentityApi
 
 ## 更新日志
 
-- **2026-01-08**: 架构优化 - 采用 SSE 实时推送替代 Redis+MQ 方案
+- **2026-01-08 v2.1**: 新增轮询回退机制
+  - 新增轻量级版本检查 API
+  - SDK 支持 SSE 失败自动降级到轮询模式
+  - 轮询优化：仅传输版本号，按需拉取完整配置
+  - 父应用发布时级联更新子应用版本号
+  - 添加轮询相关配置选项
+- **2026-01-08 v2.0**: 架构优化 - 采用 SSE 实时推送替代 Redis+MQ 方案
   - 移除 SDK 对 Redis 和 RabbitMQ 的依赖
   - 改用内存缓存 + SSE 推送
   - 基于 SSE 连接状态的健康检查

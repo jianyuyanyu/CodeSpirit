@@ -24,5 +24,25 @@ public class ConfigCenterOptions
     /// 配置中心服务地址（从 Aspire 服务发现自动获取）
     /// </summary>
     public string? ServiceUrl { get; set; }
+
+    /// <summary>
+    /// 是否启用详细日志（开发环境建议启用，以便确认配置变更）
+    /// </summary>
+    public bool EnableDetailedLogging { get; set; } = false;
+
+    /// <summary>
+    /// 是否使用轮询模式代替SSE（在Aspire环境中SSE可能不可用）
+    /// </summary>
+    public bool UsePollingMode { get; set; } = false;
+
+    /// <summary>
+    /// 轮询间隔（秒），仅在轮询模式下生效
+    /// </summary>
+    public int PollingIntervalSeconds { get; set; } = 30;
+
+    /// <summary>
+    /// SSE连续失败多少次后自动切换到轮询模式
+    /// </summary>
+    public int SseFailureThresholdBeforePolling { get; set; } = 3;
 }
 

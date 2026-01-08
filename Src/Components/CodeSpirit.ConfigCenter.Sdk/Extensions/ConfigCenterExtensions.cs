@@ -28,6 +28,20 @@ public static class ConfigCenterExtensions
         var optionsSection = configuration.GetSection("ConfigCenter");
         services.Configure<ConfigCenterOptions>(optionsSection);
         
+        // 开发环境下自动启用详细日志
+        if (builder.Environment.IsDevelopment())
+        {
+            services.Configure<ConfigCenterOptions>(options =>
+            {
+                // 如果没有显式设置，开发环境下默认启用详细日志
+                if (!configuration.GetSection("ConfigCenter:EnableDetailedLogging").Exists())
+                {
+                    options.EnableDetailedLogging = true;
+                    Console.WriteLine("[ConfigCenter SDK] 开发环境已自动启用详细日志");
+                }
+            });
+        }
+        
         if (configureOptions != null)
         {
             services.Configure(configureOptions);

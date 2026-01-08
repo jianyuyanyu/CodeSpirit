@@ -15,7 +15,7 @@ public class UpdateConfigDto
     [Required]
     [StringLength(4000)]
     [DisplayName("配置值")]
-    [AmisTextareaField(MinRows = 3, MaxRows = 6, ShowCounter = true, MaxLength = 500)]
+    [AmisFormField(Type = "json-editor", Placeholder = "请输入配置值（支持JSON格式）")]
     public required string Value { get; set; }
 
     /// <summary>

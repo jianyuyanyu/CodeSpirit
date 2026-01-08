@@ -72,6 +72,27 @@ public class ConfigCenterClient
                 
                 _logger.LogInformation("成功获取配置，包含 {Count} 个配置项", 
                     result.Data.Configs?.Count ?? 0);
+
+                // 开发环境下打印详细的配置项
+                if (_options.EnableDetailedLogging && result.Data.Configs != null)
+                {
+                    _logger.LogInformation("==== 配置中心拉取详情 [AppId: {AppId}] ====", appId);
+                    _logger.LogInformation("配置版本: {Version}", result.Data.Version);
+                    _logger.LogInformation("配置项数量: {Count}", result.Data.Configs.Count);
+                    _logger.LogInformation("配置项列表:");
+                    
+                    foreach (var config in result.Data.Configs.OrderBy(c => c.Key))
+                    {
+                        var valueStr = config.Value?.ToString() ?? "(null)";
+                        // 截断过长的值
+                        if (valueStr.Length > 200)
+                        {
+                            valueStr = valueStr.Substring(0, 200) + "... (已截断)";
+                        }
+                        _logger.LogInformation("  [{Key}] = {Value}", config.Key, valueStr);
+                    }
+                    _logger.LogInformation("==== 配置拉取完成 ====");
+                }
                 
                 return result.Data;
             }
@@ -92,6 +113,39 @@ public class ConfigCenterClient
                 _logger.LogError(ex, "获取应用配置失败，已达到最大重试次数");
                 throw;
             }
+        }
+    }
+
+    /// <summary>
+    /// 获取应用配置版本（轻量级API，用于轮询检测变更）
+    /// </summary>
+    /// <param name="appId">应用ID</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>当前配置版本号</returns>
+    public async Task<long> GetConfigVersionAsync(string appId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var requestUrl = $"api/config/client/config/{appId}/version";
+            var response = await _httpClient.GetAsync(requestUrl, cancellationToken);
+            
+            response.EnsureSuccessStatusCode();
+            
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            var result = JsonConvert.DeserializeObject<ApiResponse<ConfigVersionDto>>(responseBody);
+            
+            if (result?.Data == null)
+            {
+                _logger.LogWarning("获取配置版本失败：响应数据为空，返回版本0");
+                return 0;
+            }
+            
+            return result.Data.Version;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "获取配置版本失败: AppId={AppId}", appId);
+            return -1; // 返回-1表示获取失败，调用方可选择拉取完整配置
         }
     }
 }

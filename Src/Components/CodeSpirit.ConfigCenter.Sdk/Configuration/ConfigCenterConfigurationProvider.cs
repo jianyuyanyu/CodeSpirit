@@ -3,6 +3,7 @@ using CodeSpirit.ConfigCenter.Sdk.Models;
 using CodeSpirit.ConfigCenter.Sdk.Registration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace CodeSpirit.ConfigCenter.Sdk.Configuration;
 
@@ -15,6 +16,7 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider
     private readonly ConfigCacheService _redisCacheService;
     private readonly ConfigCenterClient _client;
     private readonly AppRegistrationService _registrationService;
+    private readonly ConfigCenterOptions _options;
     private readonly ILogger<ConfigCenterConfigurationProvider> _logger;
 
     /// <summary>
@@ -25,12 +27,14 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider
         ConfigCacheService redisCacheService,
         ConfigCenterClient client,
         AppRegistrationService registrationService,
+        IOptions<ConfigCenterOptions> options,
         ILogger<ConfigCenterConfigurationProvider> logger)
     {
         _memoryCache = memoryCache;
         _redisCacheService = redisCacheService;
         _client = client;
         _registrationService = registrationService;
+        _options = options.Value;
         _logger = logger;
     }
 
@@ -102,6 +106,17 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider
             return;
         }
 
+        if (_options.EnableDetailedLogging)
+        {
+            _logger.LogInformation("==== 配置加载到 IConfiguration ====");
+            _logger.LogInformation("配置版本: {Version}", configs.Version);
+            _logger.LogInformation("原始配置项数量: {Count}", configs.Configs.Count);
+        }
+
+        int loadedCount = 0;
+        int skippedCount = 0;
+        var loadedKeys = new List<string>();
+
         foreach (var kvp in configs.Configs)
         {
             var key = kvp.Key;
@@ -110,7 +125,15 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider
             // 支持嵌套配置（如果值是 JSON）
             if (kvp.Value is Newtonsoft.Json.Linq.JObject jsonObject)
             {
+                var beforeCount = Data.Count;
                 FlattenJsonObject(jsonObject, key, Data);
+                var addedCount = Data.Count - beforeCount;
+                loadedCount += addedCount;
+                
+                if (_options.EnableDetailedLogging && addedCount > 0)
+                {
+                    _logger.LogInformation("  [JSON] {Key} 展开为 {Count} 个子配置项", key, addedCount);
+                }
             }
             else
             {
@@ -118,12 +141,41 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider
                 if (!IsProtectedConfig(key))
                 {
                     Data[key] = value;
+                    loadedCount++;
+                    
+                    if (_options.EnableDetailedLogging)
+                    {
+                        loadedKeys.Add(key);
+                    }
                 }
                 else
                 {
+                    skippedCount++;
                     _logger.LogDebug("跳过受保护的配置（由 Aspire 服务发现提供）: {Key}", key);
                 }
             }
+        }
+
+        if (_options.EnableDetailedLogging)
+        {
+            _logger.LogInformation("加载成功: {LoadedCount} 个配置项", loadedCount);
+            _logger.LogInformation("跳过保护: {SkippedCount} 个配置项", skippedCount);
+            
+            if (loadedKeys.Any())
+            {
+                _logger.LogInformation("已加载的配置键:");
+                foreach (var key in loadedKeys.OrderBy(k => k))
+                {
+                    var valueStr = Data.TryGetValue(key, out var val) ? val : "(null)";
+                    if (valueStr != null && valueStr.Length > 100)
+                    {
+                        valueStr = valueStr.Substring(0, 100) + "... (已截断)";
+                    }
+                    _logger.LogInformation("  {Key} = {Value}", key, valueStr);
+                }
+            }
+            
+            _logger.LogInformation("==== 配置加载完成 ====");
         }
 
         OnReload();
@@ -147,7 +199,7 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider
     /// <summary>
     /// 展平 JSON 对象为配置键值对
     /// </summary>
-    private void FlattenJsonObject(Newtonsoft.Json.Linq.JObject jsonObject, string prefix, IDictionary<string, string> data)
+    private void FlattenJsonObject(Newtonsoft.Json.Linq.JObject jsonObject, string prefix, IDictionary<string, string?> data)
     {
         foreach (var property in jsonObject.Properties())
         {

@@ -77,6 +77,10 @@ public class ConfigItemDto
     /// 配置状态
     /// </summary>
     [DisplayName("配置状态")]
+    [AmisStatusColumn(
+        CustomStatusMap = @"{""0"": ""default"", ""1"": ""processing"", ""2"": ""success""}",
+        StatusLabelMap = @"{""0"": ""初始状态"", ""1"": ""编辑中"", ""2"": ""已发布""}"
+    )]
     public ConfigStatus Status { get; set; }
 
     /// <summary>

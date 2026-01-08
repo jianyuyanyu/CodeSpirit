@@ -1,6 +1,7 @@
 using CodeSpirit.ConfigCenter.Sdk.Models;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace CodeSpirit.ConfigCenter.Sdk.Cache;
 
@@ -10,6 +11,7 @@ namespace CodeSpirit.ConfigCenter.Sdk.Cache;
 public class InMemoryConfigCache
 {
     private readonly IMemoryCache _memoryCache;
+    private readonly ConfigCenterOptions _options;
     private readonly ILogger<InMemoryConfigCache> _logger;
     private const string CacheKeyPrefix = "configcenter:memory:";
 
@@ -18,9 +20,11 @@ public class InMemoryConfigCache
     /// </summary>
     public InMemoryConfigCache(
         IMemoryCache memoryCache,
+        IOptions<ConfigCenterOptions> options,
         ILogger<InMemoryConfigCache> logger)
     {
         _memoryCache = memoryCache;
+        _options = options.Value;
         _logger = logger;
     }
 
@@ -37,7 +41,15 @@ public class InMemoryConfigCache
         var cacheKey = GetCacheKey(appId);
         if (_memoryCache.TryGetValue(cacheKey, out ConfigItemsExportDto? cached))
         {
-            _logger.LogDebug("从内存缓存获取配置: {AppId}", appId);
+            if (_options.EnableDetailedLogging)
+            {
+                _logger.LogInformation("从内存缓存获取配置: AppId={AppId}, Version={Version}, ConfigCount={Count}", 
+                    appId, cached?.Version, cached?.Configs?.Count ?? 0);
+            }
+            else
+            {
+                _logger.LogDebug("从内存缓存获取配置: {AppId}", appId);
+            }
             return cached;
         }
         return null;
@@ -56,7 +68,16 @@ public class InMemoryConfigCache
         };
 
         _memoryCache.Set(cacheKey, configs, options);
-        _logger.LogDebug("已保存配置到内存缓存: {AppId}", appId);
+        
+        if (_options.EnableDetailedLogging)
+        {
+            _logger.LogInformation("已保存配置到内存缓存: AppId={AppId}, Version={Version}, ConfigCount={Count}, Expiration={Expiration}分钟", 
+                appId, configs.Version, configs.Configs?.Count ?? 0, (expiration ?? TimeSpan.FromMinutes(60)).TotalMinutes);
+        }
+        else
+        {
+            _logger.LogDebug("已保存配置到内存缓存: {AppId}", appId);
+        }
     }
 
     /// <summary>
@@ -66,7 +87,15 @@ public class InMemoryConfigCache
     {
         var cacheKey = GetCacheKey(appId);
         _memoryCache.Remove(cacheKey);
-        _logger.LogDebug("已清除内存缓存: {AppId}", appId);
+        
+        if (_options.EnableDetailedLogging)
+        {
+            _logger.LogInformation("已清除内存缓存: AppId={AppId}", appId);
+        }
+        else
+        {
+            _logger.LogDebug("已清除内存缓存: {AppId}", appId);
+        }
     }
 }
 

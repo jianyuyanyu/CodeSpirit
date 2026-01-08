@@ -21,4 +21,10 @@ public class ConfigItemsExportDto
     /// </summary>
     [DisplayName("包含继承配置")]
     public bool IncludesInheritedConfig { get; set; }
+
+    /// <summary>
+    /// 配置版本号
+    /// </summary>
+    [DisplayName("配置版本")]
+    public long Version { get; set; }
 }

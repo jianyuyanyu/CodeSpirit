@@ -42,6 +42,14 @@ public interface IConfigItemService : IBaseCRUDIService<ConfigItem, ConfigItemDt
     Task<(int successCount, List<string> failedKeys)> UpdateConfigCollectionAsync(ConfigItemsUpdateDto updateDto);
 
     /// <summary>
+    /// 发布单个配置项
+    /// </summary>
+    /// <param name="id">配置项ID</param>
+    /// <param name="description">发布说明</param>
+    /// <returns>发布结果</returns>
+    Task PublishAsync(int id, string description = null);
+
+    /// <summary>
     /// 批量发布配置项
     /// </summary>
     /// <param name="publishDto">批量发布请求数据</param>
@@ -54,4 +62,10 @@ public interface IConfigItemService : IBaseCRUDIService<ConfigItem, ConfigItemDt
     /// <param name="appId">应用ID</param>
     /// <returns>配置集合（包含继承的配置）</returns>
     Task<ConfigItemsExportDto> GetAppConfigsWithInheritanceAsync(string appId);
+
+    /// <summary>
+    /// 获取Tab统计数量
+    /// </summary>
+    /// <returns>各Tab的数量字典</returns>
+    Task<Dictionary<string, int>> GetTabCountsAsync();
 }

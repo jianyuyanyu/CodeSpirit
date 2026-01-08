@@ -2,13 +2,15 @@
 
 ## 1. 组件介绍
 
-CodeSpirit.Settings是码灵框架中的设置管理组件，提供了一套完整的应用配置管理解决方案。该组件支持全局设置和用户个性化设置管理，可以方便地对应用程序的各种配置进行集中管理，同时保留配置历史记录以便审计和回滚。
+CodeSpirit.Settings 是码灵框架中的**业务级设置管理组件**，提供了一套完整的多级设置管理解决方案。该组件支持全局设置、用户个性化设置、租户设置、组织设置等多种设置范围，可以方便地对应用程序的业务配置进行集中管理，同时保留配置历史记录以便审计和回滚。
+
+> **💡 组件定位**：Settings 组件专注于**业务级、多级设置**（用户偏好、租户配置等），与专注于**框架级、应用级配置**（JWT、LLM 等）的 [配置中心](./config-center-architecture-overview-zh-CN.md) 互补。详见 [Settings 组件 vs 配置中心](#9-settings-组件-vs-配置中心)。
 
 ![ScreenShot_2026-01-06_205544_708](../../Res/ScreenShot_2026-01-06_205544_708.png)
 
 ### 1.1 主要功能
 
-- **多级设置管理**：支持全局设置、用户设置、模块设置、组织设置和角色设置
+- **多级设置管理**：支持全局设置、用户设置、租户设置、模块设置、组织设置和角色设置，不同级别的设置可以继承和覆盖
 
 - **设置项类型丰富**：支持字符串、数值、布尔值、日期时间、JSON、单选、多选等多种数据类型
 
@@ -16,11 +18,22 @@ CodeSpirit.Settings是码灵框架中的设置管理组件，提供了一套完�
 
 - **批量操作**：支持批量设置导入导出，便于环境迁移和备份
 
-- **类型化访问**：提供泛型方法和扩展方法，方便进行类型转换
+- **类型化访问**：提供 `[SettingsDto]` 特性和泛型方法，实现类型安全的设置访问
 
-- **易于集成**：提供简单的扩展方法快速集成到现有应用
+- **灵活继承**：租户设置可继承全局设置，用户设置可继承租户设置，支持多级继承和覆盖
+
+- **易于集成**：提供简单的 API 设计，通过 `ISettingsService` 快速集成到现有应用
 
   ![image-20260106224425135](../../Res/image-20260106224425135.png)
+
+### 1.2 与配置中心的区别
+
+Settings 组件与配置中心（ConfigCenter）**互补而非重复**：
+
+- **Settings 组件**：管理**业务级、多级设置**，如用户偏好、租户配置、模块参数等，不同用户/租户有不同的值
+- **配置中心**：管理**框架级、应用级配置**，如 JWT、LLM、数据库连接等，所有服务实例共享相同的值
+
+> 详细对比请参考 [Settings 组件 vs 配置中心](#8-settings-组件-vs-配置中心) 章节
 
 ## 2. 快速入门
 
@@ -346,9 +359,9 @@ public IActionResult GetSettingsForm()
 }
 ```
 
-## 7. 设置管理API参考
+## 7. 设置管理 API 参考
 
-组件提供了全面的API支持各种设置管理操作：
+组件提供了全面的 API 支持各种设置管理操作：
 
 ### 全局设置管理
 - `GetGlobalSettingAsync(string module, string key)` - 获取全局设置
@@ -393,6 +406,131 @@ public IActionResult GetSettingsForm()
 - `ExportSettingsAsync(string module)` - 导出设置
 - `ImportSettingsAsync(string module, string settingsJson)` - 导入设置
 
-## 8. 总结
+## 8. Settings 组件 vs 配置中心
 
-CodeSpirit.Settings组件提供了一套完整的设置管理解决方案，支持多级设置、类型化访问、版本历史等功能，可以满足各种应用场景下的配置管理需求。通过本组件，开发人员可以方便地实现集中化配置管理，提高应用的可配置性和用户体验。 
+CodeSpirit 提供了两套配置管理方案，分别服务于不同的场景。理解它们的区别对于正确使用至关重要。
+
+### 核心区别
+
+| 维度 | **Settings 组件（本组件）** | **配置中心（ConfigCenter）** |
+|------|---------------------------|----------------------------|
+| **定位** | 业务级设置管理 | 框架级配置管理 |
+| **配置类型** | 动态业务设置 | 静态基础配置 |
+| **典型配置** | • 用户主题偏好<br>• 租户功能开关<br>• 模块参数配置<br>• 组织规则设置<br>• 角色权限配置 | • JWT 认证参数<br>• LLM API 密钥<br>• 数据库连接<br>• 审计日志配置<br>• 日志级别 |
+| **配置粒度** | 多级（全局/用户/租户/组织/角色/模块） | 应用级（按 AppId） |
+| **变更频率** | 高（用户/租户可自行配置） | 低（管理员操作） |
+| **推送机制** | ❌ 按需读取，无推送 | ✅ SSE 实时推送到所有实例 |
+| **集成方式** | 通过 `ISettingsService` 调用 | 集成到 `IConfiguration` |
+| **自动热更新** | ❌ 需主动重新读取 | ✅ 配置变更自动生效 |
+| **访问权限** | 用户/租户可自行配置 | 仅管理员（系统平台） |
+| **作用范围** | 影响用户体验和业务逻辑 | 影响整个应用运行 |
+
+### 如何选择
+
+#### ✅ 使用 Settings 组件（本组件）：
+**业务级动态设置**，不同用户/租户有不同的设置值
+
+**典型场景**：
+- 用户个性化设置：主题、语言、时区
+- 租户自定义配置：Logo、品牌色、公司信息、功能开关
+- 模块参数配置：每页显示数、审批流程配置
+- 组织规则设置：考勤规则、报销标准
+- 角色权限配置：默认权限、数据权限
+
+**代码示例**：
+```csharp
+// 获取租户的微信登录配置（不同租户不同配置）
+[SettingsDto("ThirdPartyLogin", "WeChat")]
+public class WeChatLoginSettingsDto
+{
+    public string AppId { get; set; } = string.Empty;
+    public string AppSecret { get; set; } = string.Empty;
+    public bool Enabled { get; set; } = false;
+}
+
+var wechatConfig = await _settingsService.GetTenantSettingAsync<WeChatLoginSettingsDto>(tenantId);
+```
+
+#### ✅ 使用配置中心：
+**框架级基础配置**，影响应用启动和运行，需要实时推送到所有服务实例
+
+**典型场景**：
+- JWT 认证配置（SecretKey、Issuer、Audience）
+- LLM API 配置（ApiKey、ModelName、Temperature）
+- 数据库连接字符串
+- 审计日志配置（GreptimeDB 连接）
+- 缓存配置（Redis 连接）
+- 消息队列配置（RabbitMQ 连接）
+
+**代码示例**：
+```csharp
+// 从配置中心读取（已自动加载到 IConfiguration）
+var apiKey = _configuration["LLM:ApiKey"];
+```
+
+### 协同使用示例
+
+在实际项目中，两者通常协同使用：
+
+```csharp
+// 场景：AI 功能的使用
+
+// 1. 配置中心：LLM 全局配置（所有租户共享同一个 LLM 服务）
+var llmApiKey = _configuration["LLM:ApiKey"];  // 从配置中心读取
+var llmModelName = _configuration["LLM:ModelName"];
+
+// 2. Settings 组件：租户级 AI 功能开关（租户可以选择启用/禁用 AI 功能）
+[SettingsDto("AI", "Features")]
+public class AiFeaturesSettingsDto
+{
+    public bool EnableAiFormFill { get; set; } = true;      // 启用 AI 表单填充
+    public bool EnableSmartApproval { get; set; } = true;   // 启用智能审批
+    public bool EnableAiCards { get; set; } = false;        // 启用 AI 卡片
+}
+
+var aiFeaturesConfig = await _settingsService.GetTenantSettingAsync<AiFeaturesSettingsDto>(tenantId);
+
+// 3. 使用：先检查租户是否启用 AI 功能，再使用配置中心的 LLM 配置调用 API
+if (aiFeaturesConfig.EnableAiFormFill)
+{
+    // 调用 LLM API（使用配置中心的全局配置）
+    var llmClient = new LLMClient(llmApiKey, llmModelName);
+    // ...
+}
+```
+
+### 快速判断
+
+**一个简单的判断标准**：
+
+- 📌 **所有服务实例都使用相同的值** → 使用配置中心
+- 📌 **不同用户/租户/组织有不同的值** → 使用 Settings 组件
+
+**另一个判断标准**：
+
+- 📌 **配置变更需要实时推送到所有实例** → 使用配置中心
+- 📌 **配置变更只影响当前用户/租户** → 使用 Settings 组件
+
+> **💡 详细对比**：完整的对比说明请参考 [配置中心架构概览 - 配置中心 vs Settings 组件](./config-center-architecture-overview-zh-CN.md#配置中心-vs-settings-组件)
+
+---
+
+## 9. 总结
+
+CodeSpirit.Settings 组件提供了一套完整的**业务级、多级设置**管理解决方案，支持多级设置、类型化访问、版本历史等功能，可以满足各种应用场景下的业务配置管理需求。
+
+**核心特点**：
+- ✅ **多级设置**：支持全局、用户、租户、组织、角色、模块等多种设置范围
+- ✅ **类型化访问**：通过 `[SettingsDto]` 特性提供类型安全的设置访问
+- ✅ **灵活继承**：租户/用户设置可继承全局默认值
+- ✅ **历史追踪**：完整的设置变更历史记录
+- ✅ **易于集成**：简单的 API 设计，方便业务代码调用
+
+**适用场景**：
+- 用户个性化设置
+- 租户自定义配置
+- 模块参数配置
+- 组织规则设置
+- 角色权限配置
+
+通过 Settings 组件与配置中心的协同使用，CodeSpirit 提供了完整的配置管理体系，既满足框架级配置的实时推送需求，又满足业务级设置的灵活配置需求。 

@@ -2,6 +2,7 @@
 using AutoMapper;
 using CodeSpirit.ConfigCenter.Dtos.App;
 using CodeSpirit.ConfigCenter.Models;
+using CodeSpirit.ConfigCenter.Models.Enums;
 using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
@@ -48,6 +49,7 @@ namespace CodeSpirit.ConfigCenter.Services;
         if (appDto != null)
         {
             await FillHealthStatusAsync(appDto);
+            await FillConfigCountAsync(appDto);
         }
         return appDto;
     }
@@ -73,19 +75,25 @@ namespace CodeSpirit.ConfigCenter.Services;
         {
             predicate = predicate.And(x => x.Enabled == queryDto.Enabled.Value);
         }
+        if (!string.IsNullOrEmpty(queryDto.Tag))
+        {
+            predicate = predicate.And(x => x.Tag == queryDto.Tag);
+        }
 
         var result = await GetPagedListAsync(
             queryDto,
             predicate,
-            "InheritancedApp"
+            "InheritancedApp",
+            "ConfigItems"
         );
 
-        // 填充健康状态
+        // 填充健康状态和配置数
         if (result != null && result.Items != null)
         {
             foreach (var appDto in result.Items)
             {
                 await FillHealthStatusAsync(appDto);
+                await FillConfigCountAsync(appDto);
             }
         }
 
@@ -218,14 +226,20 @@ namespace CodeSpirit.ConfigCenter.Services;
     /// </summary>
     /// <param name="id">应用ID</param>
     /// <param name="updateDto">更新DTO</param>
-    /// <exception cref="AppServiceException">当应用选择自己作为继承源时抛出异常</exception>
-    protected override Task ValidateUpdateDto(string id, UpdateAppDto updateDto)
+    /// <exception cref="AppServiceException">当应用选择自己作为继承源或应用是自动注册时抛出异常</exception>
+    protected override async Task ValidateUpdateDto(string id, UpdateAppDto updateDto)
     {
         if (updateDto.InheritancedAppId == id)
         {
             throw new AppServiceException(400, "应用不能选择自己作为继承源！");
         }
-        return Task.CompletedTask;
+
+        // 检查应用是否是自动注册的
+        var app = await Repository.GetByIdAsync(id);
+        if (app != null && app.IsAutoRegistered)
+        {
+            throw new AppServiceException(400, "自动注册的应用不允许编辑！");
+        }
     }
 
     /// <summary>
@@ -284,6 +298,17 @@ namespace CodeSpirit.ConfigCenter.Services;
         {
             throw new AppServiceException(400, "无法删除存在配置项的应用，请先删除所有配置项！");
         }
+
+        // Check for published config items
+        bool hasPublishedConfigItems = await Repository.CreateQuery()
+            .Where(x => x.Id == entity.Id)
+            .SelectMany(x => x.ConfigItems)
+            .AnyAsync(x => x.Status == ConfigStatus.Released);
+
+        if (hasPublishedConfigItems)
+        {
+            throw new AppServiceException(400, "无法删除存在已发布配置项的应用，请先取消发布或删除所有已发布的配置项！");
+        }
     }
 
     #endregion
@@ -318,6 +343,36 @@ namespace CodeSpirit.ConfigCenter.Services;
         {
             // 记录错误但不影响主流程
             // 健康状态保持为 null（未知状态）
+        }
+    }
+
+    /// <summary>
+    /// 填充配置数量
+    /// </summary>
+    /// <param name="appDto">应用DTO</param>
+    private async Task FillConfigCountAsync(AppDto appDto)
+    {
+        if (string.IsNullOrEmpty(appDto.Id))
+        {
+            return;
+        }
+
+        try
+        {
+            // 如果映射时已经填充了配置数（ConfigItems 已加载），则不需要再次查询
+            // 注意：ConfigCount 为 0 也可能是真的没有配置项，所以不能简单地判断 > 0
+            // 这里我们总是查询一次，确保数据准确
+            var configCount = await Repository.CreateQuery()
+                .Where(x => x.Id == appDto.Id)
+                .SelectMany(x => x.ConfigItems)
+                .CountAsync();
+
+            appDto.ConfigCount = configCount;
+        }
+        catch (Exception)
+        {
+            // 记录错误但不影响主流程
+            // 配置数保持为映射时的值或 0
         }
     }
 }

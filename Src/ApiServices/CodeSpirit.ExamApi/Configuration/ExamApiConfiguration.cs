@@ -304,12 +304,12 @@ public class ExamApiConfiguration : BaseApiConfiguration
     /// </summary>
     /// <param name="services">服务集合</param>
     /// <param name="configuration">配置对象</param>
-    private static void AddScheduledTasksServices(IServiceCollection services, IConfiguration configuration)
+    private void AddScheduledTasksServices(IServiceCollection services, IConfiguration configuration)
     {
         try
         {
             // 注册定时任务组件
-            services.AddCodeSpiritScheduledTasks(configuration, "ExamApi");
+            services.AddCodeSpiritScheduledTasks(configuration, ServiceName);
             
             // 注册考试缓存预热任务处理器
             services.AddTaskHandler<ExamCacheWarmupTaskHandler>();

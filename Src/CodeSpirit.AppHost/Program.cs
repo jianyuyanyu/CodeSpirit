@@ -35,9 +35,9 @@ var cache = builder.AddRedis("cache")
                    .WithRedisCommander((op) =>
                    {
                        op
-                         .WithLifetime (ContainerLifetime.Persistent)
-                         //.WithHttpEndpoint(port: 8082, targetPort: 8081, name: "commander-ui")
-                         .WithUrlForEndpoint("commander-ui", url =>
+                         .WithLifetime(ContainerLifetime.Persistent)
+                         .WithHostPort(8082)
+                         .WithUrlForEndpoint("http", url =>
                              url.DisplayLocation = UrlDisplayLocation.SummaryAndDetails);
                    });
 
@@ -51,8 +51,8 @@ var seqService = builder.AddSeq("seq", port: 5341)  // 在AddSeq时直接指定�
                  .WithEnvironment("ACCEPT_EULA", "Y");
 
 // 添加 RabbitMQ 服务
-var rabbitmqService = builder.AddRabbitMQ("rabbitmq", parameters.RabbitMq.Username, parameters.RabbitMq.Password)
-                     .WithManagementPlugin()
+var rabbitmqService = builder.AddRabbitMQ("rabbitmq", parameters.RabbitMq.Username, parameters.RabbitMq.Password, port: 5672)
+                     .WithManagementPlugin(port: 15672)
                      .WithLifetime(ContainerLifetime.Persistent)
                      // .WithDeploymentImageTag(_ => $"rabbitmq-3.13-management") // Aspire 9.5 实验性功能
                      .WithUrlForEndpoint("management", url =>

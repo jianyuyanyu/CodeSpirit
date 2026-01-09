@@ -74,5 +74,14 @@ namespace CodeSpirit.Amis.Attributes.Columns
             Trigger = trigger;
             EnableClickPopOver = trigger == "click";
         }
+
+        /// <summary>
+        /// 初始化长文本列特性并指定显示长度
+        /// </summary>
+        /// <param name="displayLength">自定义显示长度</param>
+        public LongTextColumnAttribute(int displayLength)
+        {
+            CustomDisplayLength = displayLength;
+        }
     }
 }

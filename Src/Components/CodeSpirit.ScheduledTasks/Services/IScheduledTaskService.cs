@@ -1,5 +1,6 @@
 using CodeSpirit.Core;
 using CodeSpirit.Core.Dtos;
+using CodeSpirit.ScheduledTasks.Dto;
 using CodeSpirit.ScheduledTasks.Models;
 
 namespace CodeSpirit.ScheduledTasks.Services;
@@ -146,142 +147,12 @@ public interface IScheduledTaskQueryService
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>执行中的任务</returns>
     Task<List<TaskExecution>> GetRunningExecutionsAsync(CancellationToken cancellationToken = default);
-}
-
-/// <summary>
-/// 任务查询DTO
-/// </summary>
-public class TaskQueryDto : QueryDtoBase
-{
-    /// <summary>
-    /// 任务名称
-    /// </summary>
-    [DisplayName("任务名称")]
-    public string? Name { get; set; }
 
     /// <summary>
-    /// 任务状态
+    /// 获取仪表板数据
     /// </summary>
-    [DisplayName("任务状态")]
-    public Models.TaskStatus? Status { get; set; }
-
-    /// <summary>
-    /// 任务类型
-    /// </summary>
-    [DisplayName("任务类型")]
-    public TaskType? Type { get; set; }
-
-    /// <summary>
-    /// 任务分组
-    /// </summary>
-    [DisplayName("任务分组")]
-    public string? Group { get; set; }
-
-    /// <summary>
-    /// 是否来自配置文件
-    /// </summary>
-    [DisplayName("来自配置文件")]
-    public bool? IsFromConfiguration { get; set; }
-}
-
-/// <summary>
-/// 执行历史查询DTO
-/// </summary>
-public class ExecutionQueryDto : QueryDtoBase
-{
-    /// <summary>
-    /// 任务ID
-    /// </summary>
-    [DisplayName("任务ID")]
-    public string? TaskId { get; set; }
-
-    /// <summary>
-    /// 执行状态
-    /// </summary>
-    [DisplayName("执行状态")]
-    public Models.TaskStatus? Status { get; set; }
-
-    /// <summary>
-    /// 开始时间范围
-    /// </summary>
-    [DisplayName("开始时间")]
-    public DateTime? StartTimeFrom { get; set; }
-
-    /// <summary>
-    /// 结束时间范围
-    /// </summary>
-    [DisplayName("结束时间")]
-    public DateTime? StartTimeTo { get; set; }
-
-    /// <summary>
-    /// 执行节点
-    /// </summary>
-    [DisplayName("执行节点")]
-    public string? ExecutionNode { get; set; }
-}
-
-/// <summary>
-/// 任务统计信息
-/// </summary>
-public class TaskStatistics
-{
-    /// <summary>
-    /// 总任务数
-    /// </summary>
-    [DisplayName("总任务数")]
-    public int TotalTasks { get; set; }
-
-    /// <summary>
-    /// 启用任务数
-    /// </summary>
-    [DisplayName("启用任务数")]
-    public int EnabledTasks { get; set; }
-
-    /// <summary>
-    /// 禁用任务数
-    /// </summary>
-    [DisplayName("禁用任务数")]
-    public int DisabledTasks { get; set; }
-
-    /// <summary>
-    /// 正在执行任务数
-    /// </summary>
-    [DisplayName("正在执行任务数")]
-    public int RunningTasks { get; set; }
-
-    /// <summary>
-    /// 今日执行次数
-    /// </summary>
-    [DisplayName("今日执行次数")]
-    public int TodayExecutions { get; set; }
-
-    /// <summary>
-    /// 今日成功次数
-    /// </summary>
-    [DisplayName("今日成功次数")]
-    public int TodaySuccessExecutions { get; set; }
-
-    /// <summary>
-    /// 今日失败次数
-    /// </summary>
-    [DisplayName("今日失败次数")]
-    public int TodayFailedExecutions { get; set; }
-
-    /// <summary>
-    /// 成功率
-    /// </summary>
-    [DisplayName("成功率")]
-    public double SuccessRate { get; set; }
-
-    /// <summary>
-    /// 按状态分组统计
-    /// </summary>
-    [DisplayName("状态统计")]
-    public Dictionary<Models.TaskStatus, int> StatusStatistics { get; set; } = new();
-
-    /// <summary>
-    /// 按类型分组统计
-    /// </summary>
-    [DisplayName("类型统计")]
-    public Dictionary<TaskType, int> TypeStatistics { get; set; } = new();
+    /// <param name="days">趋势数据天数（默认7天）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>仪表板数据</returns>
+    Task<DashboardData> GetDashboardDataAsync(int days = 7, CancellationToken cancellationToken = default);
 }

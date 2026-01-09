@@ -1,3 +1,4 @@
+using CodeSpirit.Caching.Abstractions;
 using CodeSpirit.ScheduledTasks.Configuration;
 using CodeSpirit.ScheduledTasks.Models;
 using CodeSpirit.ScheduledTasks.Services;
@@ -350,10 +351,12 @@ public class ScheduledTaskBackgroundService : BackgroundService
     {
         try
         {
-            // 清理已完成的一次性任务
+            // 1. 清理已完成的一次性任务
             await CleanupCompletedOneTimeTasksAsync(serviceProvider, cancellationToken);
 
-            // 这里可以添加更多清理逻辑
+            // 2. 清理过期的执行记录
+            await CleanupExpiredExecutionRecordsAsync(serviceProvider, cancellationToken);
+
             _logger.LogDebug("定时任务清理完成");
         }
         catch (Exception ex)
@@ -398,6 +401,117 @@ public class ScheduledTaskBackgroundService : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "清理一次性任务时发生异常");
+        }
+    }
+
+    /// <summary>
+    /// 清理过期的执行记录
+    /// </summary>
+    /// <param name="serviceProvider">服务提供者</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    private async Task CleanupExpiredExecutionRecordsAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var taskService = serviceProvider.GetRequiredService<IScheduledTaskService>();
+            var cacheService = serviceProvider.GetRequiredService<ICacheService>();
+            var allTasks = await taskService.GetAllTasksAsync(cancellationToken);
+
+            var expirationThreshold = DateTime.UtcNow - _options.ExecutionHistoryRetention;
+            var totalCleanedCount = 0;
+            const int maxExecutionsPerTask = 500; // 每个任务最多保留500条执行记录
+
+            foreach (var task in allTasks)
+            {
+                try
+                {
+                    var indexKey = $"{_options.CacheKeyPrefix}Index:Executions:{task.Id}";
+                    var executionIds = await cacheService.GetAsync<List<string>>(indexKey, cancellationToken) ?? new List<string>();
+
+                    if (!executionIds.Any())
+                    {
+                        continue;
+                    }
+
+                    var validExecutionIds = new List<string>();
+                    var expiredExecutionIds = new List<string>();
+
+                    // 检查每个执行记录是否过期
+                    foreach (var executionId in executionIds)
+                    {
+                        var cacheKey = $"{_options.CacheKeyPrefix}Executions:{executionId}";
+                        var execution = await cacheService.GetAsync<TaskExecution>(cacheKey, cancellationToken);
+
+                        if (execution == null)
+                        {
+                            // 执行记录已不存在，从索引中移除
+                            expiredExecutionIds.Add(executionId);
+                        }
+                        else if (execution.StartTime < expirationThreshold)
+                        {
+                            // 执行记录已过期
+                            expiredExecutionIds.Add(executionId);
+                            await cacheService.RemoveAsync(cacheKey, cancellationToken);
+                        }
+                        else
+                        {
+                            validExecutionIds.Add(executionId);
+                        }
+                    }
+
+                    // 如果有效记录超过限制，删除最早的
+                    if (validExecutionIds.Count > maxExecutionsPerTask)
+                    {
+                        // 获取执行记录并按时间排序
+                        var executionsToCheck = new List<(string Id, DateTime StartTime)>();
+                        foreach (var id in validExecutionIds)
+                        {
+                            var cacheKey = $"{_options.CacheKeyPrefix}Executions:{id}";
+                            var execution = await cacheService.GetAsync<TaskExecution>(cacheKey, cancellationToken);
+                            if (execution != null)
+                            {
+                                executionsToCheck.Add((id, execution.StartTime));
+                            }
+                        }
+
+                        // 按时间排序，删除最早的记录
+                        var orderedExecutions = executionsToCheck.OrderBy(e => e.StartTime).ToList();
+                        var countToRemove = validExecutionIds.Count - maxExecutionsPerTask;
+                        
+                        for (int i = 0; i < countToRemove && i < orderedExecutions.Count; i++)
+                        {
+                            var idToRemove = orderedExecutions[i].Id;
+                            var cacheKey = $"{_options.CacheKeyPrefix}Executions:{idToRemove}";
+                            await cacheService.RemoveAsync(cacheKey, cancellationToken);
+                            validExecutionIds.Remove(idToRemove);
+                            totalCleanedCount++;
+                        }
+                    }
+
+                    totalCleanedCount += expiredExecutionIds.Count;
+
+                    // 更新索引
+                    if (expiredExecutionIds.Any() || validExecutionIds.Count != executionIds.Count)
+                    {
+                        await cacheService.SetAsync(indexKey, validExecutionIds, 
+                            CodeSpirit.Caching.Models.CacheOptions.L2NeverExpires(), 
+                            cancellationToken);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "清理任务执行记录失败 - TaskId: {TaskId}", task.Id);
+                }
+            }
+
+            if (totalCleanedCount > 0)
+            {
+                _logger.LogInformation("清理过期执行记录完成 - 清理数量: {Count}", totalCleanedCount);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "清理过期执行记录时发生异常");
         }
     }
 

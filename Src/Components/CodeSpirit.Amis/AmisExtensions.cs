@@ -45,6 +45,7 @@ namespace CodeSpirit.Amis
             services.AddScoped<AsideHelper>();
             services.AddScoped<TabsHelper>();
             services.AddScoped<CardHelper>();
+            services.AddScoped<StatisticsCardsHelper>();
             services.AddScoped<AmisCRUDConfigBuilder>();
             services.AddScoped<StatisticsConfigBuilder>();
             services.AddScoped<SettingsPageConfigBuilder>();

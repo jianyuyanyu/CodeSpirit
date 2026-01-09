@@ -228,12 +228,12 @@ public class PathfinderApiConfiguration : BaseApiConfiguration
     /// </summary>
     /// <param name="services">服务集合</param>
     /// <param name="configuration">配置对象</param>
-    private static void AddScheduledTasksServices(IServiceCollection services, IConfiguration configuration)
+    private void AddScheduledTasksServices(IServiceCollection services, IConfiguration configuration)
     {
         try
         {
             // 注册定时任务组件
-            services.AddCodeSpiritScheduledTasks(configuration, "PathfinderApi");
+            services.AddCodeSpiritScheduledTasks(configuration, ServiceName);
             
             Console.WriteLine("Pathfinder定时任务服务配置完成");
         }

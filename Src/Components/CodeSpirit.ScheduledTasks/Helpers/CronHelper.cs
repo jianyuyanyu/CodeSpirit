@@ -1,3 +1,4 @@
+using CronExpressionDescriptor;
 using Cronos;
 
 namespace CodeSpirit.ScheduledTasks.Helpers;
@@ -103,8 +104,9 @@ public static class CronHelper
     /// 获取Cron表达式描述
     /// </summary>
     /// <param name="cronExpression">Cron表达式</param>
+    /// <param name="locale">语言区域（默认中文）</param>
     /// <returns>描述文本</returns>
-    public static string GetDescription(string cronExpression)
+    public static string GetDescription(string cronExpression, string locale = "zh-Hans")
     {
         if (!IsValidCronExpression(cronExpression))
         {
@@ -113,13 +115,50 @@ public static class CronHelper
 
         try
         {
-            // 这里可以集成Cron表达式描述库，如CronExpressionDescriptor
-            // 暂时返回简单描述
+            // 使用 CronExpressionDescriptor 生成人性化描述
+            var options = new CronExpressionDescriptor.Options
+            {
+                Locale = locale,
+                Use24HourTimeFormat = true,
+                Verbose = false
+            };
+            
+            return ExpressionDescriptor.GetDescription(cronExpression, options);
+        }
+        catch (Exception)
+        {
+            // 如果描述失败，返回原始表达式
             return $"Cron表达式: {cronExpression}";
         }
-        catch
+    }
+
+    /// <summary>
+    /// 获取Cron表达式的详细描述
+    /// </summary>
+    /// <param name="cronExpression">Cron表达式</param>
+    /// <param name="locale">语言区域（默认中文）</param>
+    /// <returns>详细描述文本</returns>
+    public static string GetVerboseDescription(string cronExpression, string locale = "zh-Hans")
+    {
+        if (!IsValidCronExpression(cronExpression))
         {
-            return "无法解析Cron表达式";
+            return "无效的Cron表达式";
+        }
+
+        try
+        {
+            var options = new CronExpressionDescriptor.Options
+            {
+                Locale = locale,
+                Use24HourTimeFormat = true,
+                Verbose = true
+            };
+            
+            return ExpressionDescriptor.GetDescription(cronExpression, options);
+        }
+        catch (Exception)
+        {
+            return $"Cron表达式: {cronExpression}";
         }
     }
 

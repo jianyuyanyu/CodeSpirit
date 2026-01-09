@@ -107,6 +107,7 @@ public class TaskExecution
     /// 性能指标
     /// </summary>
     [DisplayName("性能指标")]
+    [AmisColumn(Type = "json")]
     public Dictionary<string, object> Metrics { get; set; } = new();
 
     /// <summary>

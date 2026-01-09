@@ -1,8 +1,10 @@
 using CodeSpirit.Caching.Abstractions;
 using CodeSpirit.Caching.DistributedLock;
 using CodeSpirit.ScheduledTasks.Configuration;
+using CodeSpirit.ScheduledTasks.Dto;
 using CodeSpirit.ScheduledTasks.Helpers;
 using CodeSpirit.ScheduledTasks.Models;
+using Newtonsoft.Json;
 using System.Collections.Concurrent;
 using System.Reflection;
 using TaskStatus = CodeSpirit.ScheduledTasks.Models.TaskStatus;
@@ -110,6 +112,9 @@ public class TaskExecutor : ITaskExecutor
         {
             _runningTasks.TryRemove(executionId, out _);
             await SaveExecutionAsync(execution);
+            
+            // ✅ 发送任务执行通知
+            await SendNotificationAsync(task, execution);
         }
 
         return execution;
@@ -159,16 +164,18 @@ public class TaskExecutor : ITaskExecutor
     {
         var execution = context.Execution;
         var timeout = task.Timeout ?? _options.DefaultTimeout;
+        var maxRetryCount = task.MaxRetryCount;
+        var retryInterval = task.RetryInterval ?? _options.DefaultRetryInterval;
 
         execution.AddLog($"开始执行任务处理器: {task.HandlerType}");
         execution.AddLog($"任务超时时间: {timeout}");
+        if (maxRetryCount > 0)
+        {
+            execution.AddLog($"最大重试次数: {maxRetryCount}, 重试间隔: {retryInterval}");
+        }
 
         try
         {
-            // 创建超时控制
-            using var timeoutCts = TaskTimeoutHelper.CreateTimeoutToken(timeout, context.CancellationTokenSource.Token);
-            context.TimeoutCancellationTokenSource = timeoutCts;
-
             // ✅ 从当前作用域的服务提供者获取任务处理器
             execution.AddLog($"开始获取任务处理器: {task.HandlerType}");
             var handler = GetTaskHandler(task.HandlerType, serviceProvider);
@@ -186,31 +193,108 @@ public class TaskExecutor : ITaskExecutor
             _logger.LogInformation("成功获取任务处理器 - TaskId: {TaskId}, HandlerType: {HandlerType}", 
                 task.Id, task.HandlerType);
 
-            // 执行任务
-            var result = await TaskTimeoutHelper.ExecuteWithTimeoutAsync(
-                async (ct) => await handler.ExecuteAsync(task.Parameters, ct),
-                timeout,
-                context.CancellationTokenSource.Token);
+            // ✅ 执行任务（支持重试机制）
+            string? result = null;
+            Exception? lastException = null;
+            var currentAttempt = 0;
 
-            execution.MarkCompleted(result);
-            execution.AddLog("任务执行完成");
+            while (currentAttempt <= maxRetryCount)
+            {
+                try
+                {
+                    if (currentAttempt > 0)
+                    {
+                        execution.RetryCount = currentAttempt;
+                        execution.AddLog($"第 {currentAttempt} 次重试开始");
+                        _logger.LogInformation("任务重试 - TaskId: {TaskId}, ExecutionId: {ExecutionId}, Attempt: {Attempt}/{MaxRetry}",
+                            task.Id, execution.Id, currentAttempt, maxRetryCount);
+                        
+                        // 保存重试状态
+                        await SaveExecutionAsync(execution);
+                    }
 
-            _logger.LogInformation("任务执行成功 - TaskId: {TaskId}, ExecutionId: {ExecutionId}, Duration: {Duration}",
-                task.Id, execution.Id, execution.Duration);
-        }
-        catch (TimeoutException)
-        {
-            execution.MarkTimeout();
-            execution.AddLog("任务执行超时");
-            _logger.LogWarning("任务执行超时 - TaskId: {TaskId}, ExecutionId: {ExecutionId}, Timeout: {Timeout}",
-                task.Id, execution.Id, timeout);
-        }
-        catch (OperationCanceledException) when (context.CancellationTokenSource.Token.IsCancellationRequested)
-        {
-            execution.MarkCancelled();
-            execution.AddLog("任务执行被取消");
-            _logger.LogInformation("任务执行被取消 - TaskId: {TaskId}, ExecutionId: {ExecutionId}",
-                task.Id, execution.Id);
+                    // 创建超时控制
+                    using var timeoutCts = TaskTimeoutHelper.CreateTimeoutToken(timeout, context.CancellationTokenSource.Token);
+                    context.TimeoutCancellationTokenSource = timeoutCts;
+
+                    result = await TaskTimeoutHelper.ExecuteWithTimeoutAsync(
+                        async (ct) => await handler.ExecuteAsync(task.Parameters, ct),
+                        timeout,
+                        context.CancellationTokenSource.Token);
+
+                    // 执行成功，跳出重试循环
+                    execution.MarkCompleted(result);
+                    if (currentAttempt > 0)
+                    {
+                        execution.AddLog($"任务在第 {currentAttempt} 次重试后执行成功");
+                    }
+                    else
+                    {
+                        execution.AddLog("任务执行完成");
+                    }
+
+                    _logger.LogInformation("任务执行成功 - TaskId: {TaskId}, ExecutionId: {ExecutionId}, Duration: {Duration}, RetryCount: {RetryCount}",
+                        task.Id, execution.Id, execution.Duration, execution.RetryCount);
+                    return;
+                }
+                catch (TimeoutException ex)
+                {
+                    lastException = ex;
+                    execution.AddLog($"第 {currentAttempt + 1} 次执行超时");
+                    _logger.LogWarning("任务执行超时 - TaskId: {TaskId}, ExecutionId: {ExecutionId}, Attempt: {Attempt}/{MaxRetry}",
+                        task.Id, execution.Id, currentAttempt + 1, maxRetryCount + 1);
+                }
+                catch (OperationCanceledException) when (context.CancellationTokenSource.Token.IsCancellationRequested)
+                {
+                    // 取消操作不应重试
+                    execution.MarkCancelled();
+                    execution.AddLog("任务执行被取消");
+                    _logger.LogInformation("任务执行被取消 - TaskId: {TaskId}, ExecutionId: {ExecutionId}",
+                        task.Id, execution.Id);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+                    execution.AddLog($"第 {currentAttempt + 1} 次执行失败: {ex.Message}");
+                    _logger.LogWarning(ex, "任务执行失败 - TaskId: {TaskId}, ExecutionId: {ExecutionId}, Attempt: {Attempt}/{MaxRetry}",
+                        task.Id, execution.Id, currentAttempt + 1, maxRetryCount + 1);
+                }
+
+                currentAttempt++;
+
+                // 如果还有重试机会，等待重试间隔
+                if (currentAttempt <= maxRetryCount)
+                {
+                    execution.AddLog($"等待 {retryInterval} 后进行第 {currentAttempt} 次重试");
+                    try
+                    {
+                        await Task.Delay(retryInterval, context.CancellationTokenSource.Token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        execution.MarkCancelled();
+                        execution.AddLog("任务在等待重试期间被取消");
+                        return;
+                    }
+                }
+            }
+
+            // 所有重试都失败了
+            if (lastException is TimeoutException)
+            {
+                execution.MarkTimeout();
+                execution.AddLog($"任务在 {maxRetryCount + 1} 次尝试后仍超时");
+                _logger.LogWarning("任务执行超时（已用尽重试） - TaskId: {TaskId}, ExecutionId: {ExecutionId}, Timeout: {Timeout}, RetryCount: {RetryCount}",
+                    task.Id, execution.Id, timeout, execution.RetryCount);
+            }
+            else
+            {
+                execution.MarkFailed(lastException?.Message ?? "未知错误", lastException?.StackTrace);
+                execution.AddLog($"任务在 {maxRetryCount + 1} 次尝试后仍失败");
+                _logger.LogError(lastException, "任务执行失败（已用尽重试） - TaskId: {TaskId}, ExecutionId: {ExecutionId}, RetryCount: {RetryCount}",
+                    task.Id, execution.Id, execution.RetryCount);
+            }
         }
         catch (Exception ex)
         {
@@ -411,25 +495,72 @@ public class TaskExecutor : ITaskExecutor
             _logger.LogError(ex, "更新执行记录索引失败 - TaskId: {TaskId}, ExecutionId: {ExecutionId}", taskId, executionId);
         }
     }
-}
-
-/// <summary>
-/// 任务执行上下文
-/// </summary>
-internal class TaskExecutionContext
-{
-    /// <summary>
-    /// 执行记录
-    /// </summary>
-    public TaskExecution Execution { get; set; } = null!;
 
     /// <summary>
-    /// 取消令牌源
+    /// 发送任务执行通知
     /// </summary>
-    public CancellationTokenSource CancellationTokenSource { get; set; } = null!;
+    /// <param name="task">任务信息</param>
+    /// <param name="execution">执行记录</param>
+    private async Task SendNotificationAsync(ScheduledTask task, TaskExecution execution)
+    {
+        try
+        {
+            // 解析通知配置
+            NotificationConfig? config = null;
+            if (!string.IsNullOrEmpty(task.NotificationConfig))
+            {
+                try
+                {
+                    config = JsonConvert.DeserializeObject<NotificationConfig>(task.NotificationConfig);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "解析通知配置失败 - TaskId: {TaskId}", task.Id);
+                }
+            }
 
-    /// <summary>
-    /// 超时取消令牌源
-    /// </summary>
-    public CancellationTokenSource? TimeoutCancellationTokenSource { get; set; }
+            // 如果没有配置或未启用，跳过通知
+            if (config == null || !config.Enabled)
+            {
+                return;
+            }
+
+            // 创建新作用域来获取通知器
+            using var scope = _serviceScopeFactory.CreateScope();
+            var notifier = scope.ServiceProvider.GetService<ITaskExecutionNotifier>();
+            
+            if (notifier == null)
+            {
+                _logger.LogDebug("未注册任务执行通知器，跳过通知");
+                return;
+            }
+
+            var isSuccess = execution.Status == TaskStatus.Completed;
+            
+            var notification = new TaskExecutionNotification
+            {
+                TaskId = task.Id,
+                TaskName = task.Name,
+                ExecutionId = execution.Id,
+                Status = execution.Status.ToString(),
+                IsSuccess = isSuccess,
+                StartTime = execution.StartTime,
+                EndTime = execution.EndTime,
+                Duration = execution.Duration,
+                Result = execution.Result,
+                ErrorMessage = execution.ErrorMessage,
+                ExecutionNode = execution.ExecutionNode,
+                RetryCount = execution.RetryCount,
+                Config = config
+            };
+
+            await notifier.NotifyAsync(notification);
+        }
+        catch (Exception ex)
+        {
+            // 通知失败不应影响任务执行结果
+            _logger.LogError(ex, "发送任务执行通知失败 - TaskId: {TaskId}, ExecutionId: {ExecutionId}", 
+                task.Id, execution.Id);
+        }
+    }
 }

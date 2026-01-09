@@ -35,6 +35,7 @@
     <PackageReference Include="Aspire.Seq" Version="13.0.2" />
     <PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" Version="13.0.2" />
     <PackageReference Include="Aspire.StackExchange.Redis.OutputCaching" Version="13.0.2" />
+    <PackageReference Include="AutoMapper" Version="13.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
     

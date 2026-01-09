@@ -40,6 +40,16 @@ public static class ServiceCollectionExtensions
         // 配置选项
         services.Configure<ScheduledTasksOptions>(configurationSection);
         
+        // 设置服务名称（配置文件优先，传入参数作为默认值）
+        services.PostConfigure<ScheduledTasksOptions>(options =>
+        {
+            // 如果配置文件未设置 ServiceName，使用传入的参数作为默认值
+            if (string.IsNullOrEmpty(options.ServiceName) && !string.IsNullOrEmpty(serviceName))
+            {
+                options.ServiceName = serviceName;
+            }
+        });
+        
         // 验证配置
         services.AddSingleton<IValidateOptions<ScheduledTasksOptions>, ScheduledTasksOptionsValidator>();
 
@@ -52,6 +62,9 @@ public static class ServiceCollectionExtensions
         
         // 注册任务处理器注册表
         services.AddSingleton<ITaskHandlerRegistry, TaskHandlerRegistry>();
+        
+        // 注册任务执行通知器（默认使用 Webhook 通知）
+        services.AddScoped<ITaskExecutionNotifier, WebhookTaskExecutionNotifier>();
 
         // 注册后台服务
         services.AddHostedService<TaskHandlerRegistrationService>();
@@ -92,6 +105,9 @@ public static class ServiceCollectionExtensions
         
         // 注册任务处理器注册表
         services.AddSingleton<ITaskHandlerRegistry, TaskHandlerRegistry>();
+        
+        // 注册任务执行通知器（默认使用 Webhook 通知）
+        services.AddScoped<ITaskExecutionNotifier, WebhookTaskExecutionNotifier>();
 
         // 注册后台服务
         services.AddHostedService<TaskHandlerRegistrationService>();

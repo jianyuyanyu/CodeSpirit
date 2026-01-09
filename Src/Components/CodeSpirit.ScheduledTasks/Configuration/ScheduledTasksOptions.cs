@@ -41,7 +41,7 @@ public class ScheduledTasksOptions
     /// <summary>
     /// 缓存键前缀
     /// </summary>
-    public string CacheKeyPrefix { get; set; } = "CodeSpirit:ScheduledTasks:";
+    public string CacheKeyPrefix { get; set; } = "ScheduledTasks:";
 
     /// <summary>
     /// 服务名称（用于标识当前服务，只执行属于当前服务的任务处理器）

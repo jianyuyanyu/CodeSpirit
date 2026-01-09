@@ -26,12 +26,13 @@ namespace CodeSpirit.Amis
         private readonly AsideHelper _asideHelper;
         private readonly CardHelper _cardHelper;
         private readonly TabsHelper _tabsHelper;
+        private readonly StatisticsCardsHelper _statisticsCardsHelper;
 
         /// <summary>
         /// 构造函数，初始化所需的助手类。
         /// </summary>
         public AmisCRUDConfigBuilder(ApiRouteHelper apiRouteHelper, ColumnHelper columnHelper, ButtonHelper buttonHelper,
-                                 SearchFieldHelper searchFieldHelper, AmisContext amisContext, UtilityHelper utilityHelper, AmisApiHelper amisApiHelper, AsideHelper asideHelper, CardHelper cardHelper, TabsHelper tabsHelper)
+                                 SearchFieldHelper searchFieldHelper, AmisContext amisContext, UtilityHelper utilityHelper, AmisApiHelper amisApiHelper, AsideHelper asideHelper, CardHelper cardHelper, TabsHelper tabsHelper, StatisticsCardsHelper statisticsCardsHelper)
         {
             _apiRouteHelper = apiRouteHelper;
             _columnHelper = columnHelper;
@@ -43,6 +44,7 @@ namespace CodeSpirit.Amis
             _asideHelper = asideHelper;
             _cardHelper = cardHelper;
             _tabsHelper = tabsHelper;
+            _statisticsCardsHelper = statisticsCardsHelper;
         }
 
         /// <summary>
@@ -165,7 +167,20 @@ namespace CodeSpirit.Amis
                 }
             };
 
-            // 如果有Tabs配置，将Tabs作为body；否则直接使用CRUD
+            // 构建 Page body 数组
+            JArray pageBody = new JArray();
+            
+            // 检查并添加统计卡片（作为第一个元素）
+            var statisticsCards = _statisticsCardsHelper.GenerateStatisticsCardsConfig(
+                controllerType, 
+                baseRoute);
+            
+            if (statisticsCards != null)
+            {
+                pageBody.Add(statisticsCards);
+            }
+
+            // 如果有Tabs配置，将Tabs添加到body；否则直接使用CRUD
             if (tabsConfig != null)
             {
                 // 如果有CountApi配置，用Service组件包裹Tabs以支持reload刷新Count
@@ -178,20 +193,19 @@ namespace CodeSpirit.Amis
                         ["api"] = countApiConfig,
                         ["body"] = tabsConfig
                     };
-                    pageConfig["body"] = serviceConfig;
+                    pageBody.Add(serviceConfig);
                 }
                 else
                 {
-                    pageConfig["body"] = tabsConfig;
+                    pageBody.Add(tabsConfig);
                 }
             }
             else
             {
-                pageConfig["body"] = new JArray()
-                {
-                    crudConfig
-                };
+                pageBody.Add(crudConfig);
             }
+            
+            pageConfig["body"] = pageBody;
 
             // 如果有aside配置，添加到页面中
             if (asideConfig != null)

@@ -1,5 +1,6 @@
 using CodeSpirit.Caching.Abstractions;
 using CodeSpirit.ScheduledTasks.Configuration;
+using CodeSpirit.ScheduledTasks.Models;
 using CodeSpirit.ScheduledTasks.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -249,5 +250,171 @@ public class TaskHandlerRegistryTests
         // Assert
         Assert.Empty(result);
     }
+
+    #region IsTaskOwnedByServiceAsync - TargetService 字段支持测试
+
+    [Fact]
+    public async Task IsTaskOwnedByServiceAsync_NoRegistration_TaskHasMatchingTargetService_ShouldReturnTrue()
+    {
+        // Arrange
+        var taskId = "test-task-id";
+        var serviceName = "target-service";
+        var task = new ScheduledTask
+        {
+            Id = taskId,
+            Name = "测试任务",
+            HandlerType = "TestHandler",
+            TargetService = serviceName // 任务指定了目标服务
+        };
+
+        // Redis 中没有注册信息
+        var taskServiceKey = $"{_options.CacheKeyPrefix}ScheduledTasks:TaskService:{taskId}";
+        _mockCacheService.Setup(x => x.GetAsync<string>(taskServiceKey, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+
+        // 从任务缓存中获取任务
+        var taskCacheKey = $"{_options.CacheKeyPrefix}Tasks:{taskId}";
+        _mockCacheService.Setup(x => x.GetAsync<ScheduledTask>(taskCacheKey, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(task);
+
+        // Act
+        var result = await _registry.IsTaskOwnedByServiceAsync(taskId, serviceName);
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task IsTaskOwnedByServiceAsync_NoRegistration_TaskHasDifferentTargetService_ShouldReturnFalse()
+    {
+        // Arrange
+        var taskId = "test-task-id";
+        var serviceName = "current-service";
+        var task = new ScheduledTask
+        {
+            Id = taskId,
+            Name = "测试任务",
+            HandlerType = "TestHandler",
+            TargetService = "other-service" // 任务指定了其他目标服务
+        };
+
+        // Redis 中没有注册信息
+        var taskServiceKey = $"{_options.CacheKeyPrefix}ScheduledTasks:TaskService:{taskId}";
+        _mockCacheService.Setup(x => x.GetAsync<string>(taskServiceKey, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+
+        // 从任务缓存中获取任务
+        var taskCacheKey = $"{_options.CacheKeyPrefix}Tasks:{taskId}";
+        _mockCacheService.Setup(x => x.GetAsync<ScheduledTask>(taskCacheKey, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(task);
+
+        // Act
+        var result = await _registry.IsTaskOwnedByServiceAsync(taskId, serviceName);
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task IsTaskOwnedByServiceAsync_NoRegistration_TaskHasNoTargetService_ShouldAutoRegisterAndReturnTrue()
+    {
+        // Arrange
+        var taskId = "test-task-id";
+        var serviceName = "current-service";
+        var task = new ScheduledTask
+        {
+            Id = taskId,
+            Name = "测试任务",
+            HandlerType = "TestHandler",
+            TargetService = null // 任务没有指定目标服务
+        };
+
+        // Redis 中没有注册信息
+        var taskServiceKey = $"{_options.CacheKeyPrefix}ScheduledTasks:TaskService:{taskId}";
+        _mockCacheService.Setup(x => x.GetAsync<string>(taskServiceKey, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+
+        // 从任务缓存中获取任务
+        var taskCacheKey = $"{_options.CacheKeyPrefix}Tasks:{taskId}";
+        _mockCacheService.Setup(x => x.GetAsync<ScheduledTask>(taskCacheKey, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(task);
+
+        // 设置自动注册的 mock
+        _mockCacheService.Setup(x => x.SetAsync(
+            taskServiceKey,
+            serviceName,
+            It.IsAny<CodeSpirit.Caching.Models.CacheOptions>(),
+            It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _registry.IsTaskOwnedByServiceAsync(taskId, serviceName);
+
+        // Assert
+        Assert.True(result);
+        
+        // 验证自动注册被调用
+        _mockCacheService.Verify(x => x.SetAsync(
+            taskServiceKey,
+            serviceName,
+            It.IsAny<CodeSpirit.Caching.Models.CacheOptions>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task IsTaskOwnedByServiceAsync_NoRegistration_TaskNotInCache_ShouldReturnFalse()
+    {
+        // Arrange
+        var taskId = "non-existing-task";
+        var serviceName = "current-service";
+
+        // Redis 中没有注册信息
+        var taskServiceKey = $"{_options.CacheKeyPrefix}ScheduledTasks:TaskService:{taskId}";
+        _mockCacheService.Setup(x => x.GetAsync<string>(taskServiceKey, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+
+        // 任务不在缓存中
+        var taskCacheKey = $"{_options.CacheKeyPrefix}Tasks:{taskId}";
+        _mockCacheService.Setup(x => x.GetAsync<ScheduledTask>(taskCacheKey, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ScheduledTask?)null);
+
+        // Act
+        var result = await _registry.IsTaskOwnedByServiceAsync(taskId, serviceName);
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task IsTaskOwnedByServiceAsync_HasRegistration_ShouldUseRegistrationNotTargetService()
+    {
+        // Arrange
+        var taskId = "test-task-id";
+        var serviceName = "registered-service";
+        var task = new ScheduledTask
+        {
+            Id = taskId,
+            Name = "测试任务",
+            HandlerType = "TestHandler",
+            TargetService = "different-service" // 任务的 TargetService 与注册的不同
+        };
+
+        // Redis 中有注册信息，应该使用注册信息而不是 TargetService
+        var taskServiceKey = $"{_options.CacheKeyPrefix}ScheduledTasks:TaskService:{taskId}";
+        _mockCacheService.Setup(x => x.GetAsync<string>(taskServiceKey, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(serviceName);
+
+        // Act
+        var result = await _registry.IsTaskOwnedByServiceAsync(taskId, serviceName);
+
+        // Assert
+        Assert.True(result);
+        
+        // 验证没有访问任务缓存（因为已经从注册信息中获取到了）
+        var taskCacheKey = $"{_options.CacheKeyPrefix}Tasks:{taskId}";
+        _mockCacheService.Verify(x => x.GetAsync<ScheduledTask>(taskCacheKey, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    #endregion
 }
 

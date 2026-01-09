@@ -1,5 +1,6 @@
 using CodeSpirit.Caching.Abstractions;
 using CodeSpirit.ScheduledTasks.Configuration;
+using CodeSpirit.ScheduledTasks.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
@@ -153,13 +154,57 @@ public class TaskHandlerRegistry : ITaskHandlerRegistry
     {
         try
         {
-            var taskService = await GetTaskServiceNameAsync(taskId, cancellationToken);
-            return taskService == serviceName;
+            // 首先检查 Redis 中的注册信息
+            var registeredService = await GetTaskServiceNameAsync(taskId, cancellationToken);
+            if (!string.IsNullOrEmpty(registeredService))
+            {
+                return registeredService == serviceName;
+            }
+
+            // 如果 Redis 中没有注册信息，尝试从任务模型中获取 TargetService
+            // 这是一个备选方案，用于处理任务创建后但尚未注册的情况
+            var task = await GetTaskFromCacheAsync(taskId, cancellationToken);
+            if (task != null)
+            {
+                // 如果任务指定了 TargetService，检查是否匹配
+                if (!string.IsNullOrEmpty(task.TargetService))
+                {
+                    return task.TargetService == serviceName;
+                }
+
+                // 如果任务没有指定 TargetService，则任何服务都可以执行
+                // 但为了避免重复执行，我们自动注册到当前服务
+                await RegisterTaskServiceAsync(taskId, serviceName, cancellationToken);
+                _logger.LogInformation("任务未注册服务映射，自动注册到当前服务 - TaskId: {TaskId}, ServiceName: {ServiceName}", taskId, serviceName);
+                return true;
+            }
+
+            return false;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "检查任务所属服务失败 - TaskId: {TaskId}, ServiceName: {ServiceName}", taskId, serviceName);
             return false;
+        }
+    }
+
+    /// <summary>
+    /// 从缓存获取任务信息
+    /// </summary>
+    private async Task<ScheduledTask?> GetTaskFromCacheAsync(string taskId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var cacheKey = $"{_options.CacheKeyPrefix}Tasks:{taskId}";
+            return await ExecuteWithCacheServiceAsync(async cacheService =>
+            {
+                return await cacheService.GetAsync<ScheduledTask>(cacheKey, cancellationToken);
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "从缓存获取任务失败 - TaskId: {TaskId}", taskId);
+            return null;
         }
     }
     

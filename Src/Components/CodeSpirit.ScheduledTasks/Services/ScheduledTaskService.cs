@@ -1,7 +1,9 @@
 using CodeSpirit.Caching.Abstractions;
+using CodeSpirit.Caching.Extensions;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.ScheduledTasks.Configuration;
+using CodeSpirit.ScheduledTasks.Dto;
 using CodeSpirit.ScheduledTasks.Helpers;
 using CodeSpirit.ScheduledTasks.Models;
 using TaskStatus = CodeSpirit.ScheduledTasks.Models.TaskStatus;
@@ -57,6 +59,12 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
         // 验证任务配置
         ValidateTask(task);
 
+        // 如果未指定目标服务，使用当前服务名称
+        if (string.IsNullOrEmpty(task.TargetService) && !string.IsNullOrEmpty(_options.ServiceName))
+        {
+            task.TargetService = _options.ServiceName;
+        }
+
         // 计算下次执行时间
         await UpdateNextExecuteTimeInternalAsync(task);
 
@@ -66,7 +74,11 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
         // 更新任务索引
         await UpdateTaskIndexAsync();
 
-        _logger.LogInformation("创建定时任务成功 - TaskId: {TaskId}, Name: {Name}", task.Id, task.Name);
+        // 注册任务所属服务映射
+        await RegisterTaskServiceMappingAsync(task, cancellationToken);
+
+        _logger.LogInformation("创建定时任务成功 - TaskId: {TaskId}, Name: {Name}, TargetService: {TargetService}", 
+            task.Id, task.Name, task.TargetService);
 
         return task;
     }
@@ -105,6 +117,12 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
 
         // 更新任务索引
         await UpdateTaskIndexAsync();
+
+        // 更新任务所属服务映射（如果 TargetService 发生变化）
+        if (existingTask.TargetService != task.TargetService)
+        {
+            await RegisterTaskServiceMappingAsync(task, cancellationToken);
+        }
 
         _logger.LogInformation("更新定时任务成功 - TaskId: {TaskId}, Name: {Name}", task.Id, task.Name);
 
@@ -225,17 +243,22 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
         var indexKey = $"{_options.CacheKeyPrefix}Index:All";
         var taskIds = await _cacheService.GetAsync<List<string>>(indexKey, cancellationToken) ?? new List<string>();
 
-        var tasks = new List<ScheduledTask>();
-        foreach (var taskId in taskIds)
+        if (!taskIds.Any())
         {
-            var task = await GetTaskAsync(taskId, cancellationToken);
-            if (task != null)
-            {
-                tasks.Add(task);
-            }
+            return new List<ScheduledTask>();
         }
 
-        return tasks.OrderBy(t => t.Name).ToList();
+        // ✅ 使用批量获取优化性能，减少 Redis 调用次数
+        var cacheKeys = taskIds.Select(id => $"{_options.CacheKeyPrefix}Tasks:{id}").ToList();
+        var taskDict = await _cacheService.GetManyAsync<ScheduledTask>(cacheKeys, cancellationToken);
+
+        var tasks = taskDict.Values
+            .Where(t => t != null)
+            .Select(t => t!)
+            .OrderBy(t => t.Name)
+            .ToList();
+
+        return tasks;
     }
 
     /// <summary>
@@ -332,16 +355,33 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
         {
             try
             {
+                // 从配置文件创建任务对象（包含最新配置）
                 var task = taskDefinition.ToScheduledTask();
+                
+                // 如果未指定目标服务，使用当前服务名称
+                if (string.IsNullOrEmpty(task.TargetService) && !string.IsNullOrEmpty(_options.ServiceName))
+                {
+                    task.TargetService = _options.ServiceName;
+                }
                 
                 // 检查任务是否已存在
                 var existingTask = await GetTaskAsync(task.Id, cancellationToken);
                 if (existingTask != null)
                 {
-                    // 更新现有任务（保留运行时状态）
-                    task.Status = existingTask.Status;
-                    task.ExecutionCount = existingTask.ExecutionCount;
-                    task.LastExecuteTime = existingTask.LastExecuteTime;
+                    // ✅ 配置文件任务启动时覆盖：用配置文件的最新值覆盖所有配置项
+                    // 但保留以下运行时状态：
+                    task.Status = existingTask.Status;              // 保留用户手动启用/禁用的状态
+                    task.ExecutionCount = existingTask.ExecutionCount; // 保留执行次数统计
+                    task.LastExecuteTime = existingTask.LastExecuteTime; // 保留上次执行时间
+                    task.CreatedAt = existingTask.CreatedAt;        // 保留原始创建时间
+                    task.CreatedBy = existingTask.CreatedBy;        // 保留原始创建者
+                    task.UpdatedAt = DateTime.UtcNow;               // 更新修改时间
+                    
+                    _logger.LogDebug("覆盖配置文件任务 - TaskId: {TaskId}, Name: {Name}", task.Id, task.Name);
+                }
+                else
+                {
+                    _logger.LogDebug("新增配置文件任务 - TaskId: {TaskId}, Name: {Name}", task.Id, task.Name);
                 }
 
                 await UpdateNextExecuteTimeInternalAsync(task);
@@ -354,8 +394,6 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
                 }
                 
                 loadedCount++;
-                
-                _logger.LogDebug("从配置加载任务 - TaskId: {TaskId}, Name: {Name}", task.Id, task.Name);
             }
             catch (Exception ex)
             {
@@ -473,36 +511,33 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
             var indexKey = $"{_options.CacheKeyPrefix}Index:Executions:{queryDto.TaskId}";
             var executionIds = await _cacheService.GetAsync<List<string>>(indexKey, cancellationToken) ?? new List<string>();
             
-            // 批量获取执行记录
-            foreach (var executionId in executionIds)
+            // ✅ 使用批量获取优化性能
+            if (executionIds.Any())
             {
-                var cacheKey = $"{_options.CacheKeyPrefix}Executions:{executionId}";
-                var execution = await _cacheService.GetAsync<TaskExecution>(cacheKey, cancellationToken);
-                if (execution != null)
-                {
-                    allExecutions.Add(execution);
-                }
+                var cacheKeys = executionIds.Select(id => $"{_options.CacheKeyPrefix}Executions:{id}").ToList();
+                var executionDict = await _cacheService.GetManyAsync<TaskExecution>(cacheKeys, cancellationToken);
+                allExecutions.AddRange(executionDict.Values.Where(e => e != null).Select(e => e!));
             }
         }
         else
         {
             // 如果没有指定 TaskId，获取所有任务的执行记录
-            // 先获取所有任务ID
             var allTasks = await GetAllTasksAsync(cancellationToken);
+            
+            // ✅ 先收集所有执行记录ID，然后批量获取
+            var allExecutionIds = new List<string>();
             foreach (var task in allTasks)
             {
                 var indexKey = $"{_options.CacheKeyPrefix}Index:Executions:{task.Id}";
                 var executionIds = await _cacheService.GetAsync<List<string>>(indexKey, cancellationToken) ?? new List<string>();
-                
-                foreach (var executionId in executionIds)
-                {
-                    var cacheKey = $"{_options.CacheKeyPrefix}Executions:{executionId}";
-                    var execution = await _cacheService.GetAsync<TaskExecution>(cacheKey, cancellationToken);
-                    if (execution != null)
-                    {
-                        allExecutions.Add(execution);
-                    }
-                }
+                allExecutionIds.AddRange(executionIds.Select(id => $"{_options.CacheKeyPrefix}Executions:{id}"));
+            }
+            
+            // 批量获取所有执行记录
+            if (allExecutionIds.Any())
+            {
+                var executionDict = await _cacheService.GetManyAsync<TaskExecution>(allExecutionIds, cancellationToken);
+                allExecutions.AddRange(executionDict.Values.Where(e => e != null).Select(e => e!));
             }
         }
         
@@ -579,7 +614,76 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
             statistics.TypeStatistics[type] = allTasks.Count(t => t.Type == type);
         }
 
+        // ✅ 计算今日执行统计
+        await CalculateTodayExecutionStatisticsAsync(statistics, allTasks, cancellationToken);
+
         return statistics;
+    }
+
+    /// <summary>
+    /// 计算今日执行统计
+    /// </summary>
+    /// <param name="statistics">统计对象</param>
+    /// <param name="allTasks">所有任务</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    private async Task CalculateTodayExecutionStatisticsAsync(
+        TaskStatistics statistics, 
+        List<ScheduledTask> allTasks, 
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var todayStart = DateTime.UtcNow.Date;
+
+            // ✅ 先收集所有执行记录ID，然后批量获取
+            var allExecutionCacheKeys = new List<string>();
+            foreach (var task in allTasks)
+            {
+                var indexKey = $"{_options.CacheKeyPrefix}Index:Executions:{task.Id}";
+                var executionIds = await _cacheService.GetAsync<List<string>>(indexKey, cancellationToken) ?? new List<string>();
+                allExecutionCacheKeys.AddRange(executionIds.Select(id => $"{_options.CacheKeyPrefix}Executions:{id}"));
+            }
+
+            // 批量获取所有执行记录
+            var todayExecutions = new List<TaskExecution>();
+            if (allExecutionCacheKeys.Any())
+            {
+                var executionDict = await _cacheService.GetManyAsync<TaskExecution>(allExecutionCacheKeys, cancellationToken);
+                
+                // 只统计今日的执行记录
+                todayExecutions = executionDict.Values
+                    .Where(e => e != null && e.StartTime >= todayStart)
+                    .Select(e => e!)
+                    .ToList();
+            }
+
+            // 计算今日统计数据
+            statistics.TodayExecutions = todayExecutions.Count;
+            statistics.TodaySuccessExecutions = todayExecutions.Count(e => e.Status == TaskStatus.Completed);
+            statistics.TodayFailedExecutions = todayExecutions.Count(e => 
+                e.Status == TaskStatus.Failed || 
+                e.Status == TaskStatus.Timeout);
+
+            // 计算成功率
+            if (statistics.TodayExecutions > 0)
+            {
+                statistics.SuccessRate = Math.Round(
+                    (double)statistics.TodaySuccessExecutions / statistics.TodayExecutions * 100, 2);
+            }
+            else
+            {
+                statistics.SuccessRate = 0;
+            }
+
+            _logger.LogDebug("今日执行统计 - 总执行: {Total}, 成功: {Success}, 失败: {Failed}, 成功率: {Rate}%",
+                statistics.TodayExecutions, statistics.TodaySuccessExecutions, 
+                statistics.TodayFailedExecutions, statistics.SuccessRate);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "计算今日执行统计失败");
+            // 发生错误时保持默认值0
+        }
     }
 
     /// <summary>
@@ -592,9 +696,150 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
         return await _taskExecutor.GetRunningExecutionsAsync();
     }
 
+    /// <summary>
+    /// 获取仪表板数据
+    /// </summary>
+    /// <param name="days">趋势数据天数（默认7天）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>仪表板数据</returns>
+    public async Task<DashboardData> GetDashboardDataAsync(int days = 7, CancellationToken cancellationToken = default)
+    {
+        var dashboard = new DashboardData();
+
+        // 获取统计信息
+        dashboard.Statistics = await GetTaskStatisticsAsync(cancellationToken);
+
+        // 获取执行趋势数据
+        dashboard.ExecutionTrend = await GetExecutionTrendAsync(days, cancellationToken);
+
+        // 状态分布（用于饼图）
+        dashboard.StatusDistribution = new List<ChartDataItem>
+        {
+            new ChartDataItem { Name = "成功", Value = dashboard.Statistics.TodaySuccessExecutions },
+            new ChartDataItem { Name = "失败", Value = dashboard.Statistics.TodayFailedExecutions },
+            new ChartDataItem { Name = "运行中", Value = dashboard.Statistics.RunningTasks }
+        };
+
+        // 任务类型分布
+        foreach (var kvp in dashboard.Statistics.TypeStatistics)
+        {
+            dashboard.TypeDistribution.Add(new ChartDataItem
+            {
+                Name = GetTaskTypeName(kvp.Key),
+                Value = kvp.Value
+            });
+        }
+
+        // 获取最近执行记录（最近10条）
+        var executionQuery = new ExecutionQueryDto { Page = 1, PerPage = 10 };
+        var recentResult = await GetAllExecutionHistoryAsync(executionQuery, cancellationToken);
+        dashboard.RecentExecutions = recentResult.Items.ToList();
+
+        return dashboard;
+    }
+
+    /// <summary>
+    /// 获取执行趋势数据
+    /// </summary>
+    /// <param name="days">天数</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>趋势数据</returns>
+    private async Task<List<ExecutionTrendItem>> GetExecutionTrendAsync(int days, CancellationToken cancellationToken)
+    {
+        var trend = new List<ExecutionTrendItem>();
+        var allTasks = await GetAllTasksAsync(cancellationToken);
+
+        // ✅ 先收集所有执行记录ID，然后批量获取
+        var allExecutionCacheKeys = new List<string>();
+        foreach (var task in allTasks)
+        {
+            var indexKey = $"{_options.CacheKeyPrefix}Index:Executions:{task.Id}";
+            var executionIds = await _cacheService.GetAsync<List<string>>(indexKey, cancellationToken) ?? new List<string>();
+            allExecutionCacheKeys.AddRange(executionIds.Select(id => $"{_options.CacheKeyPrefix}Executions:{id}"));
+        }
+
+        // 批量获取所有执行记录
+        var allExecutions = new List<TaskExecution>();
+        if (allExecutionCacheKeys.Any())
+        {
+            var executionDict = await _cacheService.GetManyAsync<TaskExecution>(allExecutionCacheKeys, cancellationToken);
+            allExecutions = executionDict.Values.Where(e => e != null).Select(e => e!).ToList();
+        }
+
+        // 按日期分组统计
+        var startDate = DateTime.UtcNow.Date.AddDays(-days + 1);
+        for (int i = 0; i < days; i++)
+        {
+            var date = startDate.AddDays(i);
+            var dayExecutions = allExecutions.Where(e => e.StartTime.Date == date).ToList();
+
+            trend.Add(new ExecutionTrendItem
+            {
+                Date = date.ToString("MM-dd"),
+                Total = dayExecutions.Count,
+                Success = dayExecutions.Count(e => e.Status == TaskStatus.Completed),
+                Failed = dayExecutions.Count(e => e.Status == TaskStatus.Failed || e.Status == TaskStatus.Timeout)
+            });
+        }
+
+        return trend;
+    }
+
+    /// <summary>
+    /// 获取任务类型名称
+    /// </summary>
+    /// <param name="type">任务类型</param>
+    /// <returns>类型名称</returns>
+    private static string GetTaskTypeName(TaskType type)
+    {
+        return type switch
+        {
+            TaskType.Cron => "Cron定时任务",
+            TaskType.Delay => "延迟任务",
+            TaskType.OneTime => "一次性任务",
+            _ => type.ToString()
+        };
+    }
+
     #endregion
 
     #region 私有方法
+
+    /// <summary>
+    /// 注册任务所属服务映射
+    /// </summary>
+    /// <param name="task">任务信息</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    private async Task RegisterTaskServiceMappingAsync(ScheduledTask task, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var registry = _serviceProvider.GetService<ITaskHandlerRegistry>();
+            if (registry == null)
+            {
+                _logger.LogWarning("任务注册表服务不可用，跳过注册任务服务映射 - TaskId: {TaskId}", task.Id);
+                return;
+            }
+
+            // 优先使用任务指定的 TargetService，否则使用当前服务的 ServiceName
+            var targetService = !string.IsNullOrEmpty(task.TargetService) 
+                ? task.TargetService 
+                : _options.ServiceName;
+
+            if (string.IsNullOrEmpty(targetService))
+            {
+                _logger.LogWarning("无法确定任务所属服务（TargetService 和 ServiceName 均为空）- TaskId: {TaskId}", task.Id);
+                return;
+            }
+
+            await registry.RegisterTaskServiceAsync(task.Id, targetService, cancellationToken);
+            _logger.LogDebug("注册任务服务映射成功 - TaskId: {TaskId}, TargetService: {TargetService}", task.Id, targetService);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "注册任务服务映射失败 - TaskId: {TaskId}", task.Id);
+        }
+    }
 
     /// <summary>
     /// 验证任务配置

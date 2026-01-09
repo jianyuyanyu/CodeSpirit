@@ -162,6 +162,12 @@ public class ScheduledTask
     public string? TargetService { get; set; }
 
     /// <summary>
+    /// 通知配置（JSON格式）
+    /// </summary>
+    [DisplayName("通知配置")]
+    public string? NotificationConfig { get; set; }
+
+    /// <summary>
     /// 是否启用
     /// </summary>
     [DisplayName("是否启用")]

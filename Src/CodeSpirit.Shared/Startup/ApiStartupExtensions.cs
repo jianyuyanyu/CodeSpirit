@@ -28,6 +28,9 @@ public static class ApiStartupExtensions
     {
         var config = configuration ?? new TConfig();
         
+        // 设置ServiceName到配置中，确保配置中心SDK能够读取到正确的应用ID
+        builder.Configuration["ServiceName"] = config.ServiceName;
+        
         // 基础服务注册
         builder.AddServiceDefaults(config.ServiceName);
         

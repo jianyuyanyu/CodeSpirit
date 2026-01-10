@@ -421,8 +421,20 @@ namespace CodeSpirit.Amis.Helpers
         // 创建"新增"按钮
         public JObject CreateHeaderButton(string title = "新增", ApiRouteInfo route = null, IEnumerable<ParameterInfo> formParameters = null, string size = null, DialogSize dialogSize = DialogSize.MD, string customActions = null, MethodInfo method = null)
         {
+            // 根据 title 参数选择对应的本地化资源键
+            string resourceKey = title switch
+            {
+                "新增" or "添加" => "Common.Add",
+                "导入" => null, // 没有对应的资源键，直接使用 title
+                "编辑" => "Common.Edit",
+                "删除" => "Common.Delete",
+                _ => null // 其他情况直接使用 title
+            };
+
             // 尝试本地化标题
-            string localizedTitle = GetLocalizedText("Common.Add", GetSharedResourcesType(), title);
+            string localizedTitle = resourceKey != null 
+                ? GetLocalizedText(resourceKey, GetSharedResourcesType(), title)
+                : title; // 没有资源键时直接使用 title 的值
             
             // 如果没有指定size，则使用dialogSize参数
             string dialogSizeString = size ?? ConvertDialogSizeToString(dialogSize);

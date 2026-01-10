@@ -4,6 +4,7 @@ using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.Helpers.Dtos;
 using CodeSpirit.Amis.Attributes;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel;
 using System.Reflection;
@@ -27,12 +28,14 @@ namespace CodeSpirit.Amis
         private readonly CardHelper _cardHelper;
         private readonly TabsHelper _tabsHelper;
         private readonly StatisticsCardsHelper _statisticsCardsHelper;
+        private readonly ILogger<AmisCRUDConfigBuilder> _logger;
 
         /// <summary>
         /// 构造函数，初始化所需的助手类。
         /// </summary>
         public AmisCRUDConfigBuilder(ApiRouteHelper apiRouteHelper, ColumnHelper columnHelper, ButtonHelper buttonHelper,
-                                 SearchFieldHelper searchFieldHelper, AmisContext amisContext, UtilityHelper utilityHelper, AmisApiHelper amisApiHelper, AsideHelper asideHelper, CardHelper cardHelper, TabsHelper tabsHelper, StatisticsCardsHelper statisticsCardsHelper)
+                                 SearchFieldHelper searchFieldHelper, AmisContext amisContext, UtilityHelper utilityHelper, AmisApiHelper amisApiHelper, AsideHelper asideHelper, CardHelper cardHelper, TabsHelper tabsHelper, StatisticsCardsHelper statisticsCardsHelper,
+                                 ILogger<AmisCRUDConfigBuilder> logger)
         {
             _apiRouteHelper = apiRouteHelper;
             _columnHelper = columnHelper;
@@ -45,6 +48,7 @@ namespace CodeSpirit.Amis
             _cardHelper = cardHelper;
             _tabsHelper = tabsHelper;
             _statisticsCardsHelper = statisticsCardsHelper;
+            _logger = logger;
         }
 
         /// <summary>
@@ -296,19 +300,57 @@ namespace CodeSpirit.Amis
         /// <param name="isCardMode">是否为卡片模式</param>
         private JArray BuildHeaderToolbar(bool isCardMode = false)
         {
+            _logger.LogInformation("[BuildHeaderToolbar] 开始构建头部工具栏 - 控制器: {ControllerName}, 卡片模式: {IsCardMode}", 
+                _amisContext.ControllerName, isCardMode);
+
             JArray buttons = ["bulkActions"];
             
             // 获取所有自定义头部按钮，用于检查是否有重复的标准操作
             var headerCustomButtons = _buttonHelper.GetHeaderOperationButtons();
+            _logger.LogInformation("[BuildHeaderToolbar] 自定义头部按钮数量: {Count}, 按钮: {Buttons}", 
+                headerCustomButtons?.Count ?? 0, 
+                string.Join(", ", headerCustomButtons?.Select(b => b["label"]?.ToString()) ?? Array.Empty<string>()));
             
             // 检查是否有自定义的新增操作
             bool hasCustomCreateOperation = HasCustomHeaderOperationWithLabel(headerCustomButtons, "新增") ||
                                            HasCustomHeaderOperationWithLabel(headerCustomButtons, "添加") ||
-                                           HasCustomHeaderOperationWithLabel(headerCustomButtons, "创建");
-            
+                                           HasCustomHeaderOperationWithLabel(headerCustomButtons, "创建") ||
+                                           HasCustomHeaderOperationWithLabel(headerCustomButtons, "快速创建") ||
+                                           HasCustomHeaderOperationWithLabel(headerCustomButtons, "Add") ||
+                                           HasCustomHeaderOperationWithLabel(headerCustomButtons, "Create") ||
+                                           HasCustomHeaderOperationWithLabel(headerCustomButtons, "Quick Create") ||
+                                           (_amisContext.Actions.Create?.GetCustomAttribute<HeaderOperationAttribute>() != null);
+
             // 检查是否有自定义的导入操作
             bool hasCustomImportOperation = HasCustomHeaderOperationWithLabel(headerCustomButtons, "导入") ||
-                                           HasCustomHeaderOperationWithLabel(headerCustomButtons, "批量导入");
+                                           HasCustomHeaderOperationWithLabel(headerCustomButtons, "批量导入") ||
+                                           HasCustomHeaderOperationWithLabel(headerCustomButtons, "Import") ||
+                                           (_amisContext.Actions.Import?.GetCustomAttribute<HeaderOperationAttribute>() != null);
+
+            _logger.LogInformation("[BuildHeaderToolbar] hasCustomCreateOperation: {HasCustomCreate}, hasCustomImportOperation: {HasCustomImport}", 
+                hasCustomCreateOperation, hasCustomImportOperation);
+
+            // 记录 Create 方法的特性检查
+            if (_amisContext.Actions.Create != null)
+            {
+                var createOpAttr = _amisContext.Actions.Create.GetCustomAttribute<OperationAttribute>();
+                var createHeaderOpAttr = _amisContext.Actions.Create.GetCustomAttribute<HeaderOperationAttribute>();
+                _logger.LogInformation("[BuildHeaderToolbar] Create方法特性检查 - 方法名: {MethodName}, OperationAttribute: {HasOpAttr}, HeaderOperationAttribute: {HasHeaderOpAttr}", 
+                    _amisContext.Actions.Create.Name, 
+                    createOpAttr != null, 
+                    createHeaderOpAttr != null);
+            }
+
+            // 记录 Import 方法的特性检查
+            if (_amisContext.Actions.Import != null)
+            {
+                var importOpAttr = _amisContext.Actions.Import.GetCustomAttribute<OperationAttribute>();
+                var importHeaderOpAttr = _amisContext.Actions.Import.GetCustomAttribute<HeaderOperationAttribute>();
+                _logger.LogInformation("[BuildHeaderToolbar] Import方法特性检查 - 方法名: {MethodName}, OperationAttribute: {HasOpAttr}, HeaderOperationAttribute: {HasHeaderOpAttr}", 
+                    _amisContext.Actions.Import.Name, 
+                    importOpAttr != null, 
+                    importHeaderOpAttr != null);
+            }
 
             // 添加新增按钮（如果没有自定义的新增操作）
             if (_amisContext.ApiRoutes.Create != null && _amisContext.Actions.Create != null && !hasCustomCreateOperation)
@@ -316,12 +358,33 @@ namespace CodeSpirit.Amis
                 // 检查Create方法是否有Operation特性（如果有，说明它是自定义操作，不应该作为标准新增按钮）
                 var hasOperationAttribute = _amisContext.Actions.Create.GetCustomAttribute<OperationAttribute>() != null;
                 var hasHeaderOperationAttribute = _amisContext.Actions.Create.GetCustomAttribute<HeaderOperationAttribute>() != null;
-                
+
+                _logger.LogInformation("[BuildHeaderToolbar] 标准新增按钮决策 - ApiRoutes.Create存在: {HasRoute}, Actions.Create存在: {HasAction}, hasCustomCreateOperation: {HasCustom}, hasOperationAttribute: {HasOpAttr}, hasHeaderOperationAttribute: {HasHeaderOpAttr}",
+                    _amisContext.ApiRoutes.Create != null,
+                    _amisContext.Actions.Create != null,
+                    hasCustomCreateOperation,
+                    hasOperationAttribute,
+                    hasHeaderOperationAttribute);
+
                 // 只有当Create方法没有Operation特性且没有HeaderOperation特性时，才添加标准新增按钮
                 if (!hasOperationAttribute && !hasHeaderOperationAttribute)
                 {
-                    buttons.Add(_buttonHelper.CreateHeaderButton("新增", _amisContext.ApiRoutes.Create, _amisContext.Actions.Create?.GetParameters(), method: _amisContext.Actions.Create));
+                    var createButton = _buttonHelper.CreateHeaderButton("新增", _amisContext.ApiRoutes.Create, _amisContext.Actions.Create?.GetParameters(), method: _amisContext.Actions.Create);
+                    _logger.LogInformation("[BuildHeaderToolbar] ✓ 添加标准'新增'按钮 - 标签: {Label}", createButton["label"]?.ToString());
+                    buttons.Add(createButton);
                 }
+                else
+                {
+                    _logger.LogWarning("[BuildHeaderToolbar] ✗ 跳过标准'新增'按钮 - hasOperationAttribute: {HasOpAttr}, hasHeaderOperationAttribute: {HasHeaderOpAttr}",
+                        hasOperationAttribute, hasHeaderOperationAttribute);
+                }
+            }
+            else
+            {
+                _logger.LogInformation("[BuildHeaderToolbar] 跳过新增按钮 - ApiRoutes.Create: {HasRoute}, Actions.Create: {HasAction}, hasCustomCreateOperation: {HasCustom}",
+                    _amisContext.ApiRoutes.Create != null,
+                    _amisContext.Actions.Create != null,
+                    hasCustomCreateOperation);
             }
 
             // 卡片模式不支持导出按钮
@@ -329,6 +392,7 @@ namespace CodeSpirit.Amis
             {
                 // 获取本地化的导出标签
                 string exportCurrentPageLabel = _buttonHelper.GetLocalizedText("Common.ExportCurrentPage", ButtonHelper.GetSharedResourcesType(), "导出当前页");
+                _logger.LogInformation("[BuildHeaderToolbar] 添加'导出当前页'按钮 - 标签: {Label}", exportCurrentPageLabel);
                 
                 buttons.Add(new JObject()
                 {
@@ -341,6 +405,7 @@ namespace CodeSpirit.Amis
                 {
                     // 获取本地化的导出全部标签
                     string exportAllLabel = _buttonHelper.GetLocalizedText("Common.ExportAll", ButtonHelper.GetSharedResourcesType(), "导出全部");
+                    _logger.LogInformation("[BuildHeaderToolbar] 添加'导出全部'按钮 - 标签: {Label}", exportAllLabel);
                     
                     buttons.Add(new JObject()
                     {
@@ -358,17 +423,57 @@ namespace CodeSpirit.Amis
             // 添加导入按钮（如果没有自定义的导入操作）
             if (_amisContext.ApiRoutes.Import != null && _amisContext.Actions.Import != null && !hasCustomImportOperation)
             {
-                buttons.Add(_buttonHelper.CreateHeaderButton("导入", _amisContext.ApiRoutes.Import, _amisContext.Actions.Import?.GetParameters(), size: "lg", method: _amisContext.Actions.Import));
+                var importButton = _buttonHelper.CreateHeaderButton("导入", _amisContext.ApiRoutes.Import, _amisContext.Actions.Import?.GetParameters(), size: "lg", method: _amisContext.Actions.Import);
+                _logger.LogInformation("[BuildHeaderToolbar] ✓ 添加标准'导入'按钮 - 标签: {Label}", importButton["label"]?.ToString());
+                buttons.Add(importButton);
+            }
+            else
+            {
+                _logger.LogInformation("[BuildHeaderToolbar] 跳过导入按钮 - ApiRoutes.Import: {HasRoute}, Actions.Import: {HasAction}, hasCustomImportOperation: {HasCustom}",
+                    _amisContext.ApiRoutes.Import != null,
+                    _amisContext.Actions.Import != null,
+                    hasCustomImportOperation);
             }
 
             // 添加自定义顶部按钮
             if (headerCustomButtons != null && headerCustomButtons.Any())
             {
+                _logger.LogInformation("[BuildHeaderToolbar] 添加 {Count} 个自定义按钮", headerCustomButtons.Count);
                 foreach (var button in headerCustomButtons)
                 {
+                    _logger.LogInformation("[BuildHeaderToolbar]  - 添加自定义按钮: {Label}", button["label"]?.ToString());
                     buttons.Add(button);
                 }
             }
+            else
+            {
+                _logger.LogInformation("[BuildHeaderToolbar] 没有自定义按钮需要添加");
+            }
+
+            // 详细输出所有按钮信息
+            for (int i = 0; i < buttons.Count; i++)
+            {
+                var btn = buttons[i];
+                if (btn.Type == JTokenType.Object)
+                {
+                    _logger.LogInformation("[BuildHeaderToolbar] 按钮[{Index}] - 类型: {Type}, 标签: {Label}",
+                        i,
+                        btn["type"]?.ToString(),
+                        btn["label"]?.ToString());
+                }
+                else
+                {
+                    _logger.LogInformation("[BuildHeaderToolbar] 按钮[{Index}] - 类型: {Type}, 值: {Value}",
+                        i,
+                        btn.Type,
+                        btn.ToString());
+                }
+            }
+
+            _logger.LogInformation("[BuildHeaderToolbar] ✓ 构建完成 - 总按钮数量: {TotalCount}, 按钮列表: [{Labels}]",
+                buttons.Count,
+                string.Join(", ", buttons.Where(b => b.Type == JTokenType.Object && b["label"] != null).Select(b => b["label"].ToString())));
+
             return buttons;
         }
 

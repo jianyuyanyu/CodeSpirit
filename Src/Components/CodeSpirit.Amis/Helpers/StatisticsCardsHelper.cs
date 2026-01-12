@@ -42,7 +42,10 @@ public class StatisticsCardsHelper
     /// </summary>
     private JObject GenerateServiceComponent(StatisticsCardsConfiguration config, string baseRoute)
     {
-        var apiUrl = $"{baseRoute.TrimEnd('/')}/{config.Api.TrimStart('/')}";
+        // 使用 BASE_API 模板变量构建 API 路径，BASE_API 已在页面数据中定义
+        // BASE_API 格式：${ROOT_API}/${baseRoute}，例如：https://localhost:5075/api/exam/ExamRecords
+        var apiPath = config.Api.TrimStart('/');
+        var apiUrl = $"${{BASE_API}}/{apiPath}";
         
         var serviceConfig = new JObject
         {

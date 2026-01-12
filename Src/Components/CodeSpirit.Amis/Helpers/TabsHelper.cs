@@ -513,19 +513,27 @@ public class TabsHelper
             return null;
         }
 
-        // 如果CountApi是相对路径，需要转换为完整路径
+        // 如果CountApi是相对路径，使用BASE_API模板变量
         string apiPath = countApi;
         if (!apiPath.StartsWith("http://") && !apiPath.StartsWith("https://"))
         {
-            // 如果以 / 开头，说明是绝对路径（相对于根路径），直接使用
-            // 否则是相对路径，需要拼接基础路径
-            if (!apiPath.StartsWith("/"))
+            // 如果以 / 或 api/ 开头，说明是绝对路径（相对于根路径），使用ROOT_API模板变量
+            if (apiPath.StartsWith("/") || apiPath.StartsWith("api/", StringComparison.OrdinalIgnoreCase))
             {
-                string baseApi = _apiRouteHelper.GetRootApi();
-                if (!string.IsNullOrEmpty(baseApi))
+                // 如果以 / 开头，直接拼接；如果以 api/ 开头，需要添加 /
+                if (apiPath.StartsWith("/"))
                 {
-                    apiPath = $"{baseApi}/{apiPath}";
+                    apiPath = $"${{ROOT_API}}{apiPath}";
                 }
+                else
+                {
+                    apiPath = $"${{ROOT_API}}/{apiPath}";
+                }
+            }
+            else
+            {
+                // 相对路径，使用BASE_API模板变量（BASE_API已包含控制器路由）
+                apiPath = $"${{BASE_API}}/{apiPath}";
             }
         }
 

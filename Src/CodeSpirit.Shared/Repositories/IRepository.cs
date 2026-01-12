@@ -1,4 +1,4 @@
-﻿using CodeSpirit.Core;
+using CodeSpirit.Core;
 using System.Linq.Expressions;
 
 namespace CodeSpirit.Shared.Repositories
@@ -54,6 +54,27 @@ namespace CodeSpirit.Shared.Repositories
         /// <param name="entities">要更新的实体集合</param>
         /// <returns>异步任务</returns>
         Task DeleteRangeAsync(IEnumerable<TEntity> entities);
+
+        /// <summary>
+        /// 硬删除实体（永久删除，不受软删除机制影响）
+        /// </summary>
+        /// <param name="entity">要删除的实体</param>
+        /// <param name="saveChanges">是否立即保存更改</param>
+        Task HardDeleteAsync(TEntity entity, bool saveChanges = true);
+
+        /// <summary>
+        /// 硬删除实体（永久删除，不受软删除机制影响）
+        /// </summary>
+        /// <param name="id">实体ID</param>
+        /// <param name="saveChanges">是否立即保存更改</param>
+        Task HardDeleteAsync(object id, bool saveChanges = true);
+
+        /// <summary>
+        /// 批量硬删除实体（永久删除，不受软删除机制影响）
+        /// </summary>
+        /// <param name="entities">要删除的实体集合</param>
+        /// <param name="saveChanges">是否立即保存更改</param>
+        Task HardDeleteRangeAsync(IEnumerable<TEntity> entities, bool saveChanges = true);
 
     }
 }

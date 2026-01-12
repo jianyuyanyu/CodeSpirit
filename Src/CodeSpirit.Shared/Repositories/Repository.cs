@@ -1,4 +1,4 @@
-﻿using CodeSpirit.Core;
+using CodeSpirit.Core;
 using CodeSpirit.Shared.Entities.Interfaces;
 using CodeSpirit.Shared.Extensions;
 using Microsoft.EntityFrameworkCore;
@@ -267,6 +267,48 @@ namespace CodeSpirit.Shared.Repositories
 
             await _context.SaveChangesAsync();
 
+        }
+
+        /// <summary>
+        /// 硬删除实体（永久删除，不受软删除机制影响）
+        /// </summary>
+        /// <param name="entity">要删除的实体</param>
+        /// <param name="saveChanges">是否立即保存更改</param>
+        public async Task HardDeleteAsync(TEntity entity, bool saveChanges = true)
+        {
+            _dbSet.Remove(entity);
+            if (saveChanges)
+            {
+                await SaveChangesAsync();
+            }
+        }
+
+        /// <summary>
+        /// 硬删除实体（永久删除，不受软删除机制影响）
+        /// </summary>
+        /// <param name="id">实体ID</param>
+        /// <param name="saveChanges">是否立即保存更改</param>
+        public async Task HardDeleteAsync(object id, bool saveChanges = true)
+        {
+            TEntity entity = await GetByIdAsync(id);
+            if (entity != null)
+            {
+                await HardDeleteAsync(entity, saveChanges);
+            }
+        }
+
+        /// <summary>
+        /// 批量硬删除实体（永久删除，不受软删除机制影响）
+        /// </summary>
+        /// <param name="entities">要删除的实体集合</param>
+        /// <param name="saveChanges">是否立即保存更改</param>
+        public async Task HardDeleteRangeAsync(IEnumerable<TEntity> entities, bool saveChanges = true)
+        {
+            _context.RemoveRange(entities);
+            if (saveChanges)
+            {
+                await SaveChangesAsync();
+            }
         }
     }
 }

@@ -45,16 +45,16 @@ namespace CodeSpirit.IdentityApi.EventHandlers
                     _logger.LogWarning("事件缺少租户ID，拒绝处理: 事件ID={EventId}", @event.EventId);
                     return Task.FromResult(false);
                 }
-                
+
                 // 简化验证 - 只要有租户ID就可以处理
-                _logger.LogDebug("用户删除事件权限验证通过: 租户={TenantId}, 事件ID={EventId}", 
+                _logger.LogDebug("用户删除事件权限验证通过: 租户={TenantId}, 事件ID={EventId}",
                     @event.TenantId, @event.EventId);
-                
+
                 return Task.FromResult(true);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "验证用户删除事件处理权限时发生异常: 租户={TenantId}, 事件ID={EventId}", 
+                _logger.LogError(ex, "验证用户删除事件处理权限时发生异常: 租户={TenantId}, 事件ID={EventId}",
                     @event.TenantId, @event.EventId);
                 return Task.FromResult(false);
             }
@@ -70,19 +70,19 @@ namespace CodeSpirit.IdentityApi.EventHandlers
             // 验证处理权限
             if (!await CanHandleEventAsync(@event))
             {
-                _logger.LogWarning("无权限处理用户删除事件，跳过处理: 租户={TenantId}, 事件ID={EventId}", 
+                _logger.LogWarning("无权限处理用户删除事件，跳过处理: 租户={TenantId}, 事件ID={EventId}",
                     @event.TenantId, @event.EventId);
                 return;
             }
-            
+
             // 创建作用域和租户上下文
             using var scope = _serviceProvider.CreateScope();
             var currentUser = scope.ServiceProvider.GetService<ICurrentUser>();
             var logger = scope.ServiceProvider.GetRequiredService<ILogger<TenantEventContext>>();
-            
+
             using var tenantContext = new TenantEventContext(
                 scope.ServiceProvider, currentUser, @event.TenantId, logger);
-                
+
             await HandleWithTenantContextAsync(@event, tenantContext);
         }
 
@@ -96,9 +96,9 @@ namespace CodeSpirit.IdentityApi.EventHandlers
         {
             try
             {
-                _logger.LogInformation("开始处理租户用户删除事件: 租户={TenantId}, 用户ID={UserId}, 事件ID={EventId}", 
+                _logger.LogInformation("开始处理租户用户删除事件: 租户={TenantId}, 用户ID={UserId}, 事件ID={EventId}",
                     tenantContext.TenantId, @event.UserId, @event.EventId);
-                
+
                 if (@event == null)
                 {
                     _logger.LogError("收到的事件为空");
@@ -114,15 +114,30 @@ namespace CodeSpirit.IdentityApi.EventHandlers
                 // 在租户上下文中获取用户服务
                 var userService = tenantContext.GetTenantService<IUserService>();
 
-                _logger.LogInformation("正在删除用户: 租户={TenantId}, 用户ID={UserId}", 
+                _logger.LogInformation("正在删除用户: 租户={TenantId}, 用户ID={UserId}",
                     tenantContext.TenantId, @event.UserId);
-                await userService.DeleteAsync(@event.UserId);
-                _logger.LogInformation("用户删除成功: 租户={TenantId}, 用户ID={UserId}", 
-                    tenantContext.TenantId, @event.UserId);
+
+                var user = await userService.GetAsync(@event.UserId);
+                if (user == null)
+                {
+                    _logger.LogWarning("用户不存在，跳过删除: 租户={TenantId}, 用户ID={UserId}",
+                        tenantContext.TenantId, @event.UserId);
+                }
+                else if (user.Roles.Any())
+                {
+                    _logger.LogWarning("用户具有角色，跳过删除: 租户={TenantId}, 用户ID={UserId}",
+                         tenantContext.TenantId, @event.UserId);
+                }
+                else
+                {
+                    await userService.DeleteAsync(@event.UserId, hardDelete: true);
+                    _logger.LogInformation("用户删除成功: 租户={TenantId}, 用户ID={UserId}",
+                        tenantContext.TenantId, @event.UserId);
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "处理租户用户删除事件失败: 租户={TenantId}, 事件={@Event}", 
+                _logger.LogError(ex, "处理租户用户删除事件失败: 租户={TenantId}, 事件={@Event}",
                     tenantContext.TenantId, @event);
                 throw new AppServiceException(500, $"处理用户删除事件失败: {ex.Message}");
             }

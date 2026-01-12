@@ -128,9 +128,20 @@ public abstract class BaseCRUDService<TEntity, TDto, TKey, TCreateDto, TUpdateDt
     }
 
     /// <summary>
+    /// 删除实体（软删除）
+    /// </summary>
+    /// <param name="id">实体ID</param>
+    public virtual async Task DeleteAsync(TKey id)
+    {
+        await DeleteAsync(id, hardDelete: false);
+    }
+
+    /// <summary>
     /// 删除实体
     /// </summary>
-    public virtual async Task DeleteAsync(TKey id)
+    /// <param name="id">实体ID</param>
+    /// <param name="hardDelete">是否硬删除（永久删除）</param>
+    public virtual async Task DeleteAsync(TKey id, bool hardDelete)
     {
         TEntity entity = await Repository.GetByIdAsync(id);
         if (entity == null)
@@ -139,14 +150,34 @@ public abstract class BaseCRUDService<TEntity, TDto, TKey, TCreateDto, TUpdateDt
         }
 
         await OnDeleting(entity);
-        await Repository.DeleteAsync(id);
+        
+        if (hardDelete)
+        {
+            await Repository.HardDeleteAsync(id);
+        }
+        else
+        {
+            await Repository.DeleteAsync(id);
+        }
+        
         await OnDeleted(entity);
+    }
+
+    /// <summary>
+    /// 批量删除（软删除）
+    /// </summary>
+    /// <param name="ids">实体ID集合</param>
+    public virtual async Task<(int successCount, List<TKey> failedIds)> BatchDeleteAsync(IEnumerable<TKey> ids)
+    {
+        return await BatchDeleteAsync(ids, hardDelete: false);
     }
 
     /// <summary>
     /// 批量删除
     /// </summary>
-    public virtual async Task<(int successCount, List<TKey> failedIds)> BatchDeleteAsync(IEnumerable<TKey> ids)
+    /// <param name="ids">实体ID集合</param>
+    /// <param name="hardDelete">是否硬删除（永久删除）</param>
+    public virtual async Task<(int successCount, List<TKey> failedIds)> BatchDeleteAsync(IEnumerable<TKey> ids, bool hardDelete)
     {
         ArgumentNullException.ThrowIfNull(ids);
 
@@ -170,7 +201,16 @@ public abstract class BaseCRUDService<TEntity, TDto, TKey, TCreateDto, TUpdateDt
                 }
 
                 await OnDeleting(entity);
-                await Repository.DeleteAsync(id);
+                
+                if (hardDelete)
+                {
+                    await Repository.HardDeleteAsync(id);
+                }
+                else
+                {
+                    await Repository.DeleteAsync(id);
+                }
+                
                 await OnDeleted(entity);
                 successCount++;
             }

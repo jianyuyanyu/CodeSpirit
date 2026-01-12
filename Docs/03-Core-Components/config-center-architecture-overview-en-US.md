@@ -21,7 +21,7 @@ CodeSpirit Configuration Center is a **distributed configuration management syst
 
 **Last Updated:** 2026-01-08 (v2.1 - Added polling fallback mechanism)
 
-![image-20260108141514042](../../Res/image-20260108141514042.png)
+![image-20260112192444710](../../Res/image-20260112192444710.png)
 
 ![image-20260108141631603](../../Res/image-20260108141631603.png)
 

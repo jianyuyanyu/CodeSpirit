@@ -82,15 +82,30 @@ public class MultiLevelCacheService : ICacheService
     /// <returns>缓存值，如果不存在则返回默认值</returns>
     public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
+        // 默认使用 Both 级别，允许 L1 缓存回填
+        return await GetAsync<T>(key, CacheOptions.Default, cancellationToken);
+    }
+
+    /// <summary>
+    /// 异步获取缓存值（带缓存选项）
+    /// </summary>
+    /// <typeparam name="T">缓存值类型</typeparam>
+    /// <param name="key">缓存键</param>
+    /// <param name="options">缓存选项，用于控制缓存级别（如 L2Only 时不回填 L1 缓存）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>缓存值，如果不存在则返回默认值</returns>
+    public async Task<T?> GetAsync<T>(string key, CacheOptions options, CancellationToken cancellationToken = default)
+    {
         if (string.IsNullOrEmpty(key))
             throw new ArgumentNullException(nameof(key));
 
+        options ??= CacheOptions.Default;
         var fullKey = _keyGenerator.GenerateKey("data", key);
 
         try
         {
-            // 尝试从L1缓存获取
-            if (_options.EnableL1Cache && _memoryCache != null)
+            // ✅ 只有当缓存级别允许 L1 时才尝试从 L1 缓存获取
+            if (ShouldUseL1Cache(options) && _memoryCache != null)
             {
                 if (_memoryCache.TryGetValue(fullKey, out var l1Value))
                 {
@@ -100,7 +115,7 @@ public class MultiLevelCacheService : ICacheService
             }
 
             // 尝试从L2缓存获取
-            if (_options.EnableL2Cache && _distributedCache != null)
+            if (ShouldUseL2Cache(options) && _distributedCache != null)
             {
                 var l2Data = await _distributedCache.GetAsync(fullKey, cancellationToken);
                 if (l2Data != null)
@@ -109,8 +124,9 @@ public class MultiLevelCacheService : ICacheService
                     
                     var l2Value = DeserializeValue<T>(l2Data);
                     
-                    // 回填到L1缓存
-                    if (_options.EnableL1Cache && _memoryCache != null && l2Value != null)
+                    // ✅ 只有当缓存级别允许 L1 时才回填到 L1 缓存
+                    // L2Only 模式下不回填 L1，确保数据一致性
+                    if (ShouldUseL1Cache(options) && _memoryCache != null && l2Value != null)
                     {
                         var l1Options = CreateMemoryCacheOptions(CacheOptions.L1Only(_options.DefaultL1Expiration));
                         _memoryCache.Set(fullKey, l2Value, l1Options);
@@ -137,14 +153,15 @@ public class MultiLevelCacheService : ICacheService
     /// </summary>
     /// <typeparam name="T">缓存值类型</typeparam>
     /// <param name="fullKey">已生成的完整缓存键</param>
+    /// <param name="options">缓存选项，用于控制缓存级别</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>缓存值，如果不存在则返回默认值</returns>
-    private async Task<T?> GetAsyncInternal<T>(string fullKey, CancellationToken cancellationToken = default)
+    private async Task<T?> GetAsyncInternal<T>(string fullKey, CacheOptions options, CancellationToken cancellationToken = default)
     {
         try
         {
-            // 尝试从L1缓存获取
-            if (_options.EnableL1Cache && _memoryCache != null)
+            // ✅ 只有当缓存级别允许 L1 时才尝试从 L1 缓存获取
+            if (ShouldUseL1Cache(options) && _memoryCache != null)
             {
                 if (_memoryCache.TryGetValue(fullKey, out var l1Value))
                 {
@@ -154,7 +171,7 @@ public class MultiLevelCacheService : ICacheService
             }
 
             // 尝试从L2缓存获取
-            if (_options.EnableL2Cache && _distributedCache != null)
+            if (ShouldUseL2Cache(options) && _distributedCache != null)
             {
                 var l2Data = await _distributedCache.GetAsync(fullKey, cancellationToken);
                 if (l2Data != null)
@@ -163,8 +180,9 @@ public class MultiLevelCacheService : ICacheService
                     
                     var l2Value = DeserializeValue<T>(l2Data);
                     
-                    // 回填到L1缓存
-                    if (_options.EnableL1Cache && _memoryCache != null && l2Value != null)
+                    // ✅ 只有当缓存级别允许 L1 时才回填到 L1 缓存
+                    // L2Only 模式下不回填 L1，确保数据一致性
+                    if (ShouldUseL1Cache(options) && _memoryCache != null && l2Value != null)
                     {
                         var l1Options = CreateMemoryCacheOptions(CacheOptions.L1Only(_options.DefaultL1Expiration));
                         _memoryCache.Set(fullKey, l2Value, l1Options);
@@ -205,8 +223,8 @@ public class MultiLevelCacheService : ICacheService
         options ??= CacheOptions.Default;
         var fullKey = _keyGenerator.GenerateKey("data", key);
 
-        // 先尝试获取现有值（直接使用已生成的完整键）
-        var existingValue = await GetAsyncInternal<T>(fullKey, cancellationToken);
+        // 先尝试获取现有值（直接使用已生成的完整键，传递 options 以尊重缓存级别设置）
+        var existingValue = await GetAsyncInternal<T>(fullKey, options, cancellationToken);
         if (existingValue != null)
         {
             return existingValue;
@@ -222,7 +240,7 @@ public class MultiLevelCacheService : ICacheService
                 using var lockHandle = await _lockProvider.AcquireLockAsync(lockKey, options.LockTimeout);
                 
                 // 再次检查缓存（双重检查锁定模式）
-                existingValue = await GetAsyncInternal<T>(fullKey, cancellationToken);
+                existingValue = await GetAsyncInternal<T>(fullKey, options, cancellationToken);
                 if (existingValue != null)
                 {
                     return existingValue;

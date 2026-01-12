@@ -151,8 +151,22 @@ public static class CacheExtensions
     /// <returns>键值对字典</returns>
     public static async Task<Dictionary<string, T?>> GetManyAsync<T>(this ICacheService cacheService, IEnumerable<string> keys, CancellationToken cancellationToken = default)
     {
+        return await GetManyAsync<T>(cacheService, keys, CacheOptions.Default, cancellationToken);
+    }
+
+    /// <summary>
+    /// 批量获取缓存值（带缓存选项）
+    /// </summary>
+    /// <typeparam name="T">缓存值类型</typeparam>
+    /// <param name="cacheService">缓存服务</param>
+    /// <param name="keys">缓存键集合</param>
+    /// <param name="options">缓存选项，用于控制缓存级别（如 L2Only 时不回填 L1 缓存）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>键值对字典</returns>
+    public static async Task<Dictionary<string, T?>> GetManyAsync<T>(this ICacheService cacheService, IEnumerable<string> keys, CacheOptions options, CancellationToken cancellationToken = default)
+    {
         var keyList = keys.ToList();
-        var tasks = keyList.Select(key => cacheService.GetAsync<T>(key, cancellationToken)).ToArray();
+        var tasks = keyList.Select(key => cacheService.GetAsync<T>(key, options, cancellationToken)).ToArray();
         var results = await Task.WhenAll(tasks);
 
         var dictionary = new Dictionary<string, T?>();

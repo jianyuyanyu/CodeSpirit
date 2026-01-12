@@ -1,4 +1,5 @@
 using CodeSpirit.Caching.Abstractions;
+using CodeSpirit.Caching.Models;
 using CodeSpirit.ScheduledTasks.Configuration;
 using CodeSpirit.ScheduledTasks.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +17,11 @@ public class TaskHandlerRegistry : ITaskHandlerRegistry
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly ScheduledTasksOptions _options;
     private readonly ILogger<TaskHandlerRegistry> _logger;
+    
+    /// <summary>
+    /// 定时任务缓存选项 - 仅使用 L2 缓存，避免跨服务实例数据不一致
+    /// </summary>
+    private static readonly CacheOptions _l2CacheOptions = CacheOptions.L2NeverExpires();
     
     private const string RegistryKeyPrefix = "ScheduledTasks:Registry:";
     private const string TaskServiceKeyPrefix = "ScheduledTasks:TaskService:";
@@ -137,7 +143,8 @@ public class TaskHandlerRegistry : ITaskHandlerRegistry
             var taskServiceKey = $"{_options.CacheKeyPrefix}{TaskServiceKeyPrefix}{taskId}";
             return await ExecuteWithCacheServiceAsync(async cacheService =>
             {
-                return await cacheService.GetAsync<string>(taskServiceKey, cancellationToken);
+                // ✅ 使用 L2Only 缓存选项
+                return await cacheService.GetAsync<string>(taskServiceKey, _l2CacheOptions, cancellationToken);
             });
         }
         catch (Exception ex)
@@ -198,7 +205,8 @@ public class TaskHandlerRegistry : ITaskHandlerRegistry
             var cacheKey = $"{_options.CacheKeyPrefix}Tasks:{taskId}";
             return await ExecuteWithCacheServiceAsync(async cacheService =>
             {
-                return await cacheService.GetAsync<ScheduledTask>(cacheKey, cancellationToken);
+                // ✅ 使用 L2Only 缓存选项
+                return await cacheService.GetAsync<ScheduledTask>(cacheKey, _l2CacheOptions, cancellationToken);
             });
         }
         catch (Exception ex)
@@ -218,7 +226,8 @@ public class TaskHandlerRegistry : ITaskHandlerRegistry
             var registryKey = $"{_options.CacheKeyPrefix}{RegistryKeyPrefix}{serviceName}";
             var json = await ExecuteWithCacheServiceAsync(async cacheService =>
             {
-                return await cacheService.GetAsync<string>(registryKey, cancellationToken);
+                // ✅ 使用 L2Only 缓存选项
+                return await cacheService.GetAsync<string>(registryKey, _l2CacheOptions, cancellationToken);
             });
             
             if (string.IsNullOrEmpty(json))

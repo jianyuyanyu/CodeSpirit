@@ -17,6 +17,16 @@ public interface ICacheService
     Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 异步获取缓存值（带缓存选项）
+    /// </summary>
+    /// <typeparam name="T">缓存值类型</typeparam>
+    /// <param name="key">缓存键</param>
+    /// <param name="options">缓存选项，用于控制缓存级别（如 L2Only 时不回填 L1 缓存）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>缓存值，如果不存在则返回默认值</returns>
+    Task<T?> GetAsync<T>(string key, CacheOptions options, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 异步获取缓存值，如果不存在则通过工厂方法创建并缓存
     /// </summary>
     /// <typeparam name="T">缓存值类型</typeparam>

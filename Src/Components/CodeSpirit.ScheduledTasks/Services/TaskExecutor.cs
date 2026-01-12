@@ -1,5 +1,6 @@
 using CodeSpirit.Caching.Abstractions;
 using CodeSpirit.Caching.DistributedLock;
+using CodeSpirit.Caching.Models;
 using CodeSpirit.ScheduledTasks.Configuration;
 using CodeSpirit.ScheduledTasks.Dto;
 using CodeSpirit.ScheduledTasks.Helpers;
@@ -21,6 +22,11 @@ public class TaskExecutor : ITaskExecutor
     private readonly IDistributedLockProvider _lockProvider;
     private readonly ILogger<TaskExecutor> _logger;
     private readonly ScheduledTasksOptions _options;
+    
+    /// <summary>
+    /// 定时任务缓存选项 - 仅使用 L2 缓存，避免跨服务实例数据不一致
+    /// </summary>
+    private static readonly CacheOptions _l2CacheOptions = CacheOptions.L2NeverExpires();
     
     /// <summary>
     /// 正在执行的任务字典
@@ -471,7 +477,8 @@ public class TaskExecutor : ITaskExecutor
         try
         {
             var indexKey = $"{_options.CacheKeyPrefix}Index:Executions:{taskId}";
-            var executionIds = await _cacheService.GetAsync<List<string>>(indexKey) ?? new List<string>();
+            // ✅ 使用 L2Only 缓存选项
+            var executionIds = await _cacheService.GetAsync<List<string>>(indexKey, _l2CacheOptions) ?? new List<string>();
             
             // 如果执行记录ID不在索引中，添加到索引
             if (!executionIds.Contains(executionId))
@@ -483,9 +490,9 @@ public class TaskExecutor : ITaskExecutor
                     executionIds = executionIds.Skip(executionIds.Count - 1000).ToList();
                 }
                 
-                await _cacheService.SetAsync(indexKey, executionIds, new CodeSpirit.Caching.Models.CacheOptions
+                await _cacheService.SetAsync(indexKey, executionIds, new CacheOptions
                 {
-                    Level = CodeSpirit.Caching.Models.CacheLevel.L2Only,
+                    Level = CacheLevel.L2Only,
                     AbsoluteExpiration = _options.ExecutionHistoryRetention
                 });
             }

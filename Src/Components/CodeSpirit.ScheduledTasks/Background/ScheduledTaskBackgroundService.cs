@@ -1,4 +1,5 @@
 using CodeSpirit.Caching.Abstractions;
+using CodeSpirit.Caching.Models;
 using CodeSpirit.ScheduledTasks.Configuration;
 using CodeSpirit.ScheduledTasks.Models;
 using CodeSpirit.ScheduledTasks.Services;
@@ -13,6 +14,11 @@ public class ScheduledTaskBackgroundService : BackgroundService
 {
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly ILogger<ScheduledTaskBackgroundService> _logger;
+    
+    /// <summary>
+    /// 定时任务缓存选项 - 仅使用 L2 缓存，避免跨服务实例数据不一致
+    /// </summary>
+    private static readonly CacheOptions _l2CacheOptions = CacheOptions.L2NeverExpires();
     private readonly ScheduledTasksOptions _options;
 
     /// <summary>
@@ -426,7 +432,8 @@ public class ScheduledTaskBackgroundService : BackgroundService
                 try
                 {
                     var indexKey = $"{_options.CacheKeyPrefix}Index:Executions:{task.Id}";
-                    var executionIds = await cacheService.GetAsync<List<string>>(indexKey, cancellationToken) ?? new List<string>();
+                    // ✅ 使用 L2Only 缓存选项
+                    var executionIds = await cacheService.GetAsync<List<string>>(indexKey, _l2CacheOptions, cancellationToken) ?? new List<string>();
 
                     if (!executionIds.Any())
                     {
@@ -440,7 +447,8 @@ public class ScheduledTaskBackgroundService : BackgroundService
                     foreach (var executionId in executionIds)
                     {
                         var cacheKey = $"{_options.CacheKeyPrefix}Executions:{executionId}";
-                        var execution = await cacheService.GetAsync<TaskExecution>(cacheKey, cancellationToken);
+                        // ✅ 使用 L2Only 缓存选项
+                        var execution = await cacheService.GetAsync<TaskExecution>(cacheKey, _l2CacheOptions, cancellationToken);
 
                         if (execution == null)
                         {
@@ -467,7 +475,8 @@ public class ScheduledTaskBackgroundService : BackgroundService
                         foreach (var id in validExecutionIds)
                         {
                             var cacheKey = $"{_options.CacheKeyPrefix}Executions:{id}";
-                            var execution = await cacheService.GetAsync<TaskExecution>(cacheKey, cancellationToken);
+                            // ✅ 使用 L2Only 缓存选项
+                            var execution = await cacheService.GetAsync<TaskExecution>(cacheKey, _l2CacheOptions, cancellationToken);
                             if (execution != null)
                             {
                                 executionsToCheck.Add((id, execution.StartTime));

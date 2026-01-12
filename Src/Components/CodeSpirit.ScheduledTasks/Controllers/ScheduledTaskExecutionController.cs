@@ -86,8 +86,28 @@ public class ScheduledTaskExecutionController : ControllerBase
                 try
                 {
                     var execution = await _taskExecutor.ExecuteAsync(task, cancellationToken, triggerType: "Manual");
-                    _logger.LogInformation("任务执行完成 - TaskId: {TaskId}, ExecutionId: {ExecutionId}, Status: {Status}", 
-                        taskId, execution.Id, execution.Status);
+                    
+                    // ✅ 更新任务执行统计（与 TriggerTaskAsync 保持一致）
+                    task.ExecutionCount++;
+                    task.LastExecuteTime = execution.StartTime;
+                    
+                    // 如果是一次性任务，执行后自动禁用
+                    if (task.Type == TaskType.OneTime)
+                    {
+                        task.Status = TaskStatus.Disabled;
+                        task.NextExecuteTime = null;
+                    }
+                    else
+                    {
+                        // 更新下次执行时间
+                        await _taskService.UpdateNextExecuteTimeAsync(taskId, cancellationToken);
+                    }
+                    
+                    // 保存任务状态
+                    await _taskService.UpdateTaskAsync(task, cancellationToken);
+                    
+                    _logger.LogInformation("任务执行完成 - TaskId: {TaskId}, ExecutionId: {ExecutionId}, Status: {Status}, ExecutionCount: {ExecutionCount}", 
+                        taskId, execution.Id, execution.Status, task.ExecutionCount);
                 }
                 catch (Exception ex)
                 {

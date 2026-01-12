@@ -1,5 +1,6 @@
 using CodeSpirit.Caching.Abstractions;
 using CodeSpirit.Caching.Extensions;
+using CodeSpirit.Caching.Models;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.ScheduledTasks.Configuration;
@@ -20,6 +21,11 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ScheduledTaskService> _logger;
     private readonly ScheduledTasksOptions _options;
+    
+    /// <summary>
+    /// 定时任务缓存选项 - 仅使用 L2 缓存，避免跨服务实例数据不一致
+    /// </summary>
+    private static readonly CacheOptions _l2CacheOptions = CacheOptions.L2NeverExpires();
 
     /// <summary>
     /// 构造函数
@@ -230,7 +236,8 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
     public async Task<ScheduledTask?> GetTaskAsync(string taskId, CancellationToken cancellationToken = default)
     {
         var cacheKey = $"{_options.CacheKeyPrefix}Tasks:{taskId}";
-        return await _cacheService.GetAsync<ScheduledTask>(cacheKey, cancellationToken);
+        // ✅ 使用 L2Only 缓存选项，避免回填到 L1 缓存导致跨服务实例数据不一致
+        return await _cacheService.GetAsync<ScheduledTask>(cacheKey, _l2CacheOptions, cancellationToken);
     }
 
     /// <summary>
@@ -241,16 +248,17 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
     public async Task<List<ScheduledTask>> GetAllTasksAsync(CancellationToken cancellationToken = default)
     {
         var indexKey = $"{_options.CacheKeyPrefix}Index:All";
-        var taskIds = await _cacheService.GetAsync<List<string>>(indexKey, cancellationToken) ?? new List<string>();
+        // ✅ 使用 L2Only 缓存选项，避免回填到 L1 缓存导致跨服务实例数据不一致
+        var taskIds = await _cacheService.GetAsync<List<string>>(indexKey, _l2CacheOptions, cancellationToken) ?? new List<string>();
 
         if (!taskIds.Any())
         {
             return new List<ScheduledTask>();
         }
 
-        // ✅ 使用批量获取优化性能，减少 Redis 调用次数
+        // ✅ 使用批量获取优化性能，减少 Redis 调用次数，使用 L2Only 缓存选项
         var cacheKeys = taskIds.Select(id => $"{_options.CacheKeyPrefix}Tasks:{id}").ToList();
-        var taskDict = await _cacheService.GetManyAsync<ScheduledTask>(cacheKeys, cancellationToken);
+        var taskDict = await _cacheService.GetManyAsync<ScheduledTask>(cacheKeys, _l2CacheOptions, cancellationToken);
 
         var tasks = taskDict.Values
             .Where(t => t != null)
@@ -295,7 +303,27 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
         // 执行任务
         var execution = await _taskExecutor.ExecuteAsync(task, cancellationToken);
 
-        _logger.LogInformation("手动触发任务执行成功 - TaskId: {TaskId}, ExecutionId: {ExecutionId}", taskId, execution.Id);
+        // ✅ 更新任务执行统计（与自动触发保持一致）
+        task.ExecutionCount++;
+        task.LastExecuteTime = execution.StartTime;
+        
+        // ✅ 如果是一次性任务，执行后自动禁用
+        if (task.Type == TaskType.OneTime)
+        {
+            task.Status = TaskStatus.Disabled;
+            task.NextExecuteTime = null;
+        }
+        else
+        {
+            // 更新下次执行时间
+            await UpdateNextExecuteTimeAsync(taskId, cancellationToken);
+        }
+
+        // ✅ 保存任务状态
+        await UpdateTaskAsync(task, cancellationToken);
+
+        _logger.LogInformation("手动触发任务执行成功 - TaskId: {TaskId}, ExecutionId: {ExecutionId}, ExecutionCount: {ExecutionCount}", 
+            taskId, execution.Id, task.ExecutionCount);
 
         return execution.Id;
     }
@@ -509,13 +537,14 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
         if (!string.IsNullOrWhiteSpace(queryDto.TaskId))
         {
             var indexKey = $"{_options.CacheKeyPrefix}Index:Executions:{queryDto.TaskId}";
-            var executionIds = await _cacheService.GetAsync<List<string>>(indexKey, cancellationToken) ?? new List<string>();
+            // ✅ 使用 L2Only 缓存选项
+            var executionIds = await _cacheService.GetAsync<List<string>>(indexKey, _l2CacheOptions, cancellationToken) ?? new List<string>();
             
-            // ✅ 使用批量获取优化性能
+            // ✅ 使用批量获取优化性能，使用 L2Only 缓存选项
             if (executionIds.Any())
             {
                 var cacheKeys = executionIds.Select(id => $"{_options.CacheKeyPrefix}Executions:{id}").ToList();
-                var executionDict = await _cacheService.GetManyAsync<TaskExecution>(cacheKeys, cancellationToken);
+                var executionDict = await _cacheService.GetManyAsync<TaskExecution>(cacheKeys, _l2CacheOptions, cancellationToken);
                 allExecutions.AddRange(executionDict.Values.Where(e => e != null).Select(e => e!));
             }
         }
@@ -529,14 +558,15 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
             foreach (var task in allTasks)
             {
                 var indexKey = $"{_options.CacheKeyPrefix}Index:Executions:{task.Id}";
-                var executionIds = await _cacheService.GetAsync<List<string>>(indexKey, cancellationToken) ?? new List<string>();
+                // ✅ 使用 L2Only 缓存选项
+                var executionIds = await _cacheService.GetAsync<List<string>>(indexKey, _l2CacheOptions, cancellationToken) ?? new List<string>();
                 allExecutionIds.AddRange(executionIds.Select(id => $"{_options.CacheKeyPrefix}Executions:{id}"));
             }
             
-            // 批量获取所有执行记录
+            // 批量获取所有执行记录，使用 L2Only 缓存选项
             if (allExecutionIds.Any())
             {
-                var executionDict = await _cacheService.GetManyAsync<TaskExecution>(allExecutionIds, cancellationToken);
+                var executionDict = await _cacheService.GetManyAsync<TaskExecution>(allExecutionIds, _l2CacheOptions, cancellationToken);
                 allExecutions.AddRange(executionDict.Values.Where(e => e != null).Select(e => e!));
             }
         }
@@ -640,15 +670,16 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
             foreach (var task in allTasks)
             {
                 var indexKey = $"{_options.CacheKeyPrefix}Index:Executions:{task.Id}";
-                var executionIds = await _cacheService.GetAsync<List<string>>(indexKey, cancellationToken) ?? new List<string>();
+                // ✅ 使用 L2Only 缓存选项
+                var executionIds = await _cacheService.GetAsync<List<string>>(indexKey, _l2CacheOptions, cancellationToken) ?? new List<string>();
                 allExecutionCacheKeys.AddRange(executionIds.Select(id => $"{_options.CacheKeyPrefix}Executions:{id}"));
             }
 
-            // 批量获取所有执行记录
+            // 批量获取所有执行记录，使用 L2Only 缓存选项
             var todayExecutions = new List<TaskExecution>();
             if (allExecutionCacheKeys.Any())
             {
-                var executionDict = await _cacheService.GetManyAsync<TaskExecution>(allExecutionCacheKeys, cancellationToken);
+                var executionDict = await _cacheService.GetManyAsync<TaskExecution>(allExecutionCacheKeys, _l2CacheOptions, cancellationToken);
                 
                 // 只统计今日的执行记录
                 todayExecutions = executionDict.Values
@@ -754,15 +785,16 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
         foreach (var task in allTasks)
         {
             var indexKey = $"{_options.CacheKeyPrefix}Index:Executions:{task.Id}";
-            var executionIds = await _cacheService.GetAsync<List<string>>(indexKey, cancellationToken) ?? new List<string>();
+            // ✅ 使用 L2Only 缓存选项
+            var executionIds = await _cacheService.GetAsync<List<string>>(indexKey, _l2CacheOptions, cancellationToken) ?? new List<string>();
             allExecutionCacheKeys.AddRange(executionIds.Select(id => $"{_options.CacheKeyPrefix}Executions:{id}"));
         }
 
-        // 批量获取所有执行记录
+        // 批量获取所有执行记录，使用 L2Only 缓存选项
         var allExecutions = new List<TaskExecution>();
         if (allExecutionCacheKeys.Any())
         {
-            var executionDict = await _cacheService.GetManyAsync<TaskExecution>(allExecutionCacheKeys, cancellationToken);
+            var executionDict = await _cacheService.GetManyAsync<TaskExecution>(allExecutionCacheKeys, _l2CacheOptions, cancellationToken);
             allExecutions = executionDict.Values.Where(e => e != null).Select(e => e!).ToList();
         }
 
@@ -944,12 +976,13 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
         try
         {
             var indexKey = $"{_options.CacheKeyPrefix}Index:All";
-            var taskIds = await _cacheService.GetAsync<List<string>>(indexKey) ?? new List<string>();
+            // ✅ 使用 L2Only 缓存选项
+            var taskIds = await _cacheService.GetAsync<List<string>>(indexKey, _l2CacheOptions) ?? new List<string>();
             
             if (!taskIds.Contains(taskId))
             {
                 taskIds.Add(taskId);
-                await _cacheService.SetAsync(indexKey, taskIds, CodeSpirit.Caching.Models.CacheOptions.L2NeverExpires());
+                await _cacheService.SetAsync(indexKey, taskIds, _l2CacheOptions);
                 _logger.LogDebug("任务ID已添加到索引 - TaskId: {TaskId}", taskId);
             }
         }
@@ -968,14 +1001,16 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
         {
             // 获取当前索引中的所有任务ID
             var indexKey = $"{_options.CacheKeyPrefix}Index:All";
-            var currentTaskIds = await _cacheService.GetAsync<List<string>>(indexKey) ?? new List<string>();
+            // ✅ 使用 L2Only 缓存选项
+            var currentTaskIds = await _cacheService.GetAsync<List<string>>(indexKey, _l2CacheOptions) ?? new List<string>();
             
             // 验证每个任务是否仍然存在，移除不存在的任务
             var validTaskIds = new List<string>();
             foreach (var taskId in currentTaskIds)
             {
                 var taskKey = $"{_options.CacheKeyPrefix}Tasks:{taskId}";
-                var task = await _cacheService.GetAsync<ScheduledTask>(taskKey);
+                // ✅ 使用 L2Only 缓存选项
+                var task = await _cacheService.GetAsync<ScheduledTask>(taskKey, _l2CacheOptions);
                 if (task != null)
                 {
                     validTaskIds.Add(taskId);
@@ -983,7 +1018,7 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
             }
             
             // 更新索引
-            await _cacheService.SetAsync(indexKey, validTaskIds, CodeSpirit.Caching.Models.CacheOptions.L2NeverExpires());
+            await _cacheService.SetAsync(indexKey, validTaskIds, _l2CacheOptions);
             
             _logger.LogDebug("更新任务索引完成 - 任务数量: {Count}", validTaskIds.Count);
         }

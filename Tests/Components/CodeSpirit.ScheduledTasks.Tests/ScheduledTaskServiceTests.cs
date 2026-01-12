@@ -178,6 +178,7 @@ public class ScheduledTaskServiceTests
     {
         // Arrange
         var taskId = "test-task-id";
+        var initialExecutionCount = 5;
         var task = new ScheduledTask
         {
             Id = taskId,
@@ -185,18 +186,26 @@ public class ScheduledTaskServiceTests
             Type = TaskType.Cron,
             CronExpression = "0 */5 * * * *",
             HandlerType = "TestHandler",
-            Status = TaskStatus.Enabled
+            Status = TaskStatus.Enabled,
+            ExecutionCount = initialExecutionCount
         };
 
+        var executionStartTime = DateTime.UtcNow;
         var execution = new TaskExecution
         {
             Id = "execution-id",
             TaskId = taskId,
-            Status = TaskStatus.Running
+            Status = TaskStatus.Running,
+            StartTime = executionStartTime
         };
 
+        // Mock GetAsync 返回任务
         _mockCacheService.Setup(x => x.GetAsync<ScheduledTask>(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(task);
+
+        // Mock GetAsync 返回任务索引（用于 UpdateNextExecuteTimeAsync）
+        _mockCacheService.Setup(x => x.GetAsync<List<string>>(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<string> { taskId });
 
         _mockTaskExecutor.Setup(x => x.IsTaskRunningAsync(taskId))
             .ReturnsAsync(false);
@@ -204,12 +213,30 @@ public class ScheduledTaskServiceTests
         _mockTaskExecutor.Setup(x => x.ExecuteAsync(It.IsAny<ScheduledTask>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(execution);
 
+        // Mock SetAsync 用于保存任务
+        _mockCacheService.Setup(x => x.SetAsync(It.IsAny<string>(), It.IsAny<ScheduledTask>(), It.IsAny<CodeSpirit.Caching.Models.CacheOptions>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
         // Act
         var result = await _service.TriggerTaskAsync(taskId);
 
         // Assert
         Assert.Equal(execution.Id, result);
         _mockTaskExecutor.Verify(x => x.ExecuteAsync(task, It.IsAny<CancellationToken>()), Times.Once);
+        
+        // ✅ 验证执行次数增加
+        Assert.Equal(initialExecutionCount + 1, task.ExecutionCount);
+        
+        // ✅ 验证最后执行时间更新
+        Assert.Equal(executionStartTime, task.LastExecuteTime);
+        
+        // ✅ 验证任务状态被保存（UpdateTaskAsync 内部会调用 SetAsync）
+        _mockCacheService.Verify(x => x.SetAsync(
+            It.IsAny<string>(), 
+            It.Is<ScheduledTask>(t => t.ExecutionCount == initialExecutionCount + 1 && t.LastExecuteTime == executionStartTime), 
+            It.IsAny<CodeSpirit.Caching.Models.CacheOptions>(), 
+            It.IsAny<CancellationToken>()), 
+            Times.AtLeastOnce);
     }
 
     [Fact]
@@ -235,6 +262,80 @@ public class ScheduledTaskServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() => _service.TriggerTaskAsync(taskId));
+    }
+
+    [Fact]
+    public async Task TriggerTaskAsync_OneTimeTask_ShouldDisableAfterExecution()
+    {
+        // Arrange
+        var taskId = "onetime-task-id";
+        var executeAt = DateTime.UtcNow.AddMinutes(10);
+        var task = new ScheduledTask
+        {
+            Id = taskId,
+            Name = "一次性任务",
+            Type = TaskType.OneTime,
+            ExecuteAt = executeAt,
+            HandlerType = "TestHandler",
+            Status = TaskStatus.Enabled,
+            ExecutionCount = 0
+        };
+
+        var executionStartTime = DateTime.UtcNow;
+        var execution = new TaskExecution
+        {
+            Id = "execution-id",
+            TaskId = taskId,
+            Status = TaskStatus.Completed,
+            StartTime = executionStartTime
+        };
+
+        // Mock GetAsync 返回任务（会被调用多次）
+        _mockCacheService.Setup(x => x.GetAsync<ScheduledTask>(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(task);
+
+        // Mock GetAsync 返回任务索引
+        _mockCacheService.Setup(x => x.GetAsync<List<string>>(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<string> { taskId });
+
+        _mockTaskExecutor.Setup(x => x.IsTaskRunningAsync(taskId))
+            .ReturnsAsync(false);
+
+        _mockTaskExecutor.Setup(x => x.ExecuteAsync(It.IsAny<ScheduledTask>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(execution);
+
+        // Mock SetAsync 用于保存任务
+        _mockCacheService.Setup(x => x.SetAsync(It.IsAny<string>(), It.IsAny<ScheduledTask>(), It.IsAny<CodeSpirit.Caching.Models.CacheOptions>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.TriggerTaskAsync(taskId);
+
+        // Assert
+        Assert.Equal(execution.Id, result);
+        
+        // ✅ 验证执行次数增加
+        Assert.Equal(1, task.ExecutionCount);
+        
+        // ✅ 验证最后执行时间更新
+        Assert.Equal(executionStartTime, task.LastExecuteTime);
+        
+        // ✅ 验证一次性任务执行后被禁用
+        Assert.Equal(TaskStatus.Disabled, task.Status);
+        
+        // ✅ 验证下次执行时间被清空
+        Assert.Null(task.NextExecuteTime);
+        
+        // ✅ 验证任务状态被保存
+        _mockCacheService.Verify(x => x.SetAsync(
+            It.IsAny<string>(), 
+            It.Is<ScheduledTask>(t => 
+                t.ExecutionCount == 1 && 
+                t.Status == TaskStatus.Disabled && 
+                t.NextExecuteTime == null), 
+            It.IsAny<CodeSpirit.Caching.Models.CacheOptions>(), 
+            It.IsAny<CancellationToken>()), 
+            Times.AtLeastOnce);
     }
 
     [Fact]

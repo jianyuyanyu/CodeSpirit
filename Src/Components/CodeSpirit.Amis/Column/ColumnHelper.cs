@@ -1363,11 +1363,11 @@ namespace CodeSpirit.Amis.Column
             {
                 return null;
             }
-            
+
             // 获取本地化的"操作"标签
             string operationLabel = buttonHelper.GetLocalizedText("Common.Operation", ButtonHelper.GetSharedResourcesType(), "操作");
-            
-            return new JObject
+
+            var colObj = new JObject()
             {
                 ["name"] = "operation",
                 ["label"] = operationLabel,
@@ -1375,6 +1375,11 @@ namespace CodeSpirit.Amis.Column
                 ["buttons"] = buttons,
                 ["fixed"] = "right"
             };
+            if (buttons.Count > 3)
+            {
+                colObj["width"] = 80 + (buttons.Count - 3) * 50;
+            }
+            return colObj;
         }
 
         /// <summary>

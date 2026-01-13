@@ -74,6 +74,9 @@ namespace CodeSpirit.ExamApi.Migrations.MySql
                     b.Property<long>("QuestionId")
                         .HasColumnType("bigint");
 
+                    b.Property<int>("QuestionScore")
+                        .HasColumnType("int");
+
                     b.Property<long>("QuestionVersionId")
                         .HasColumnType("bigint");
 

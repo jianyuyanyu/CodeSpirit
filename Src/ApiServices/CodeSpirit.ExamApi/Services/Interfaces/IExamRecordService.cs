@@ -30,13 +30,6 @@ public interface IExamRecordService : IBaseCRUDService<ExamRecord, ExamRecordDto
     Task<bool> SubmitAnswersAsync(long examRecordId, List<ClientExamAnswerDto> answers);
     
     /// <summary>
-    /// 完成考试
-    /// </summary>
-    /// <param name="finishExamDto">完成考试参数</param>
-    /// <returns>考试结果</returns>
-    Task<ExamRecordDto> FinishExamAsync(FinishExamDto finishExamDto);
-    
-    /// <summary>
     /// 获取考试统计
     /// </summary>
     /// <param name="examSettingId">考试设置ID</param>

@@ -75,7 +75,7 @@ public class ObjectiveQuestionGrader
             }
 
             answer.IsCorrect = isCorrect;
-            answer.Score = isCorrect ? Convert.ToInt32(answer.QuestionVersion.DefaultScore) : 0;
+            answer.Score = isCorrect ? answer.QuestionScore : 0;
             totalScore += answer.Score ?? 0;
         }
 

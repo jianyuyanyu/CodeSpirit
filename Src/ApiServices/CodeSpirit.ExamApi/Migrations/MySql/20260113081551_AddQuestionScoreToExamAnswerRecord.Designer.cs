@@ -4,23 +4,26 @@ using CodeSpirit.ExamApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace CodeSpirit.ExamApi.Migrations.SqlServer
+namespace CodeSpirit.ExamApi.Migrations.MySql
 {
-    [DbContext(typeof(SqlServerExamDbContext))]
-    partial class SqlServerExamDbContextModelSnapshot : ModelSnapshot
+    [DbContext(typeof(MySqlExamDbContext))]
+    [Migration("20260113081551_AddQuestionScoreToExamAnswerRecord")]
+    partial class AddQuestionScoreToExamAnswerRecord
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.7")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+                .HasAnnotation("ProductVersion", "9.0.9")
+                .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
 
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.ExamAnswerRecord", b =>
                 {
@@ -29,20 +32,20 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
 
                     b.Property<string>("Answer")
                         .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Comments")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
@@ -54,19 +57,19 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("GradedTime")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("GraderId")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<bool?>("IsCorrect")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsMarked")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int>("OrderNumber")
                         .HasColumnType("int");
@@ -81,21 +84,21 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("bigint");
 
                     b.Property<double?>("Score")
-                        .HasColumnType("float");
+                        .HasColumnType("double");
 
                     b.Property<DateTime?>("StartTime")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTime?>("SubmitTime")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -131,26 +134,26 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("int");
 
                     b.Property<decimal?>("ConversionRatio")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(65,30)");
 
                     b.Property<int?>("ConversionTargetFullScore")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<int>("DifficultyLevel")
                         .HasColumnType("int");
@@ -159,18 +162,18 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("int");
 
                     b.Property<bool>("EnableScoreConversion")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsPreviewChecked")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<int?>("OriginalPassScore")
                         .HasColumnType("int");
@@ -187,7 +190,7 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
 
                     b.Property<string>("RandomRules")
                         .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("text");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -195,7 +198,7 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<int>("TotalScore")
                         .HasColumnType("int");
@@ -204,7 +207,7 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -232,13 +235,13 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("bigint");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
@@ -247,10 +250,10 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("bigint");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsRequired")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int>("OrderNumber")
                         .HasColumnType("int");
@@ -267,10 +270,10 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -303,34 +306,34 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
 
                     b.Property<string>("BrowserInfo")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<int>("CheatingSuspicionLevel")
                         .HasColumnType("int");
 
                     b.Property<string>("CheatingSuspicionRecord")
                         .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Comments")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
 
                     b.Property<string>("DeviceInfo")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<int?>("Duration")
                         .HasColumnType("int");
@@ -339,39 +342,52 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("GradedTime")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("GraderId")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("IpAddress")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsPassed")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsScoreConverted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<double?>("OriginalScore")
-                        .HasColumnType("float");
+                        .HasColumnType("double");
 
                     b.Property<double?>("Score")
-                        .HasColumnType("float");
+                        .HasColumnType("double");
 
                     b.Property<decimal?>("ScoreConversionRatio")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(65,30)");
+
+                    b.Property<string>("ScoreSyncFailureReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("text");
+
+                    b.Property<int>("ScoreSyncRetryCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ScoreSyncStatus")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ScoreSyncTime")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("ScreenSwitchCount")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("StartTime")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -380,15 +396,15 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("SubmitTime")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -426,44 +442,50 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<int>("Duration")
                         .HasColumnType("int");
 
                     b.Property<bool>("EnableQuestionAnalysis")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("EnableRandomOptionOrder")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("EnableRandomQuestionOrder")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("EnableViewResult")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<DateTime>("EndTime")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("EvaluationType")
+                        .HasColumnType("int");
 
                     b.Property<long>("ExamPaperId")
                         .HasColumnType("bigint");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<long?>("JobCategoryId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("MinExamTime")
                         .HasColumnType("int");
@@ -471,10 +493,16 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<long?>("OccupationId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("PlannedExamDate")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTime>("StartTime")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -485,10 +513,10 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -496,6 +524,10 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.HasKey("Id");
 
                     b.HasIndex("ExamPaperId");
+
+                    b.HasIndex("JobCategoryId");
+
+                    b.HasIndex("OccupationId");
 
                     b.HasIndex("StudentGroupId");
 
@@ -514,13 +546,13 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("bigint");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
@@ -529,7 +561,7 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("bigint");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<long>("StudentGroupId")
                         .HasColumnType("bigint");
@@ -537,10 +569,10 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -560,6 +592,149 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.ToTable("ExamSettingStudentGroups", (string)null);
                 });
 
+            modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.JobCategory", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<long>("OccupationId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("UpdatedBy")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccupationId");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("IX_JobCategories_TenantId");
+
+                    b.HasIndex("TenantId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("IX_JobCategories_TenantId_Code");
+
+                    b.HasIndex("TenantId", "Id")
+                        .HasDatabaseName("IX_JobCategories_TenantId_Id");
+
+                    b.HasIndex("TenantId", "OccupationId")
+                        .HasDatabaseName("IX_JobCategories_TenantId_OccupationId");
+
+                    b.ToTable("JobCategories", (string)null);
+                });
+
+            modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.Occupation", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("UpdatedBy")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("IX_Occupations_TenantId");
+
+                    b.HasIndex("TenantId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Occupations_TenantId_Code");
+
+                    b.HasIndex("TenantId", "Id")
+                        .HasDatabaseName("IX_Occupations_TenantId_Id");
+
+                    b.ToTable("Occupations", (string)null);
+                });
+
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.PracticeRecord", b =>
                 {
                     b.Property<long>("Id")
@@ -567,28 +742,28 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
 
                     b.Property<string>("Answer")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
 
                     b.Property<bool>("IsCorrect")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsMarked")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<long?>("MockExamId")
                         .HasColumnType("bigint");
@@ -597,7 +772,7 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("bigint");
 
                     b.Property<DateTime>("PracticeTime")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("PracticeType")
                         .HasColumnType("int");
@@ -611,13 +786,13 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<int>("TimeSpent")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -651,28 +826,28 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("EndTime")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<long>("PracticeSettingId")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime>("StartTime")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -683,13 +858,13 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<decimal>("TotalScore")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(65,30)");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -715,26 +890,26 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("bigint");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<long>("ExamPaperId")
                         .HasColumnType("bigint");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int>("MaxAttempts")
                         .HasColumnType("int");
@@ -742,16 +917,16 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<int>("PracticeMode")
                         .HasColumnType("int");
 
                     b.Property<bool>("RandomizeQuestions")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("ShowAnalysis")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -759,13 +934,13 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<int>("TimeLimit")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -790,7 +965,7 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
 
                     b.Property<string>("Analysis")
                         .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("text");
 
                     b.Property<long>("CategoryId")
                         .HasColumnType("bigint");
@@ -798,19 +973,19 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("text");
 
                     b.Property<string>("CorrectAnswer")
                         .IsRequired()
                         .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
+                        .HasColumnType("text");
 
                     b.Property<decimal>("CorrectRate")
                         .HasPrecision(5, 2)
                         .HasColumnType("decimal(5,2)");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
@@ -819,7 +994,7 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
@@ -828,31 +1003,31 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("int");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("KnowledgePoints")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.PrimitiveCollection<string>("Options")
                         .IsRequired()
                         .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("varchar(2000)");
 
                     b.Property<string>("Tags")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<int>("Type")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -885,28 +1060,28 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("bigint");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
 
                     b.Property<string>("Description")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<long?>("ParentId")
                         .HasColumnType("bigint");
@@ -914,10 +1089,10 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -942,24 +1117,24 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
 
                     b.Property<string>("Analysis")
                         .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("text");
 
                     b.Property<string>("ChangeReason")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("text");
 
                     b.Property<string>("CorrectAnswer")
                         .IsRequired()
                         .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
@@ -968,37 +1143,37 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("KnowledgePoints")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.PrimitiveCollection<string>("Options")
                         .IsRequired()
                         .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("varchar(2000)");
 
                     b.Property<long>("QuestionId")
                         .HasColumnType("bigint");
 
                     b.Property<string>("Tags")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -1028,16 +1203,16 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Property<string>("AdmissionTicket")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
@@ -1049,36 +1224,36 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Property<string>("IdNo")
                         .IsRequired()
                         .HasMaxLength(18)
-                        .HasColumnType("nvarchar(18)");
+                        .HasColumnType("varchar(18) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("StudentNumber")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -1107,36 +1282,36 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("bigint");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -1158,19 +1333,19 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("bigint");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<long>("StudentGroupId")
                         .HasColumnType("bigint");
@@ -1181,10 +1356,10 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -1210,29 +1385,29 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("bigint");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("LastWrongAnswer")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime>("LastWrongTime")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<long>("QuestionId")
                         .HasColumnType("bigint");
@@ -1241,15 +1416,15 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasColumnType("bigint");
 
                     b.Property<string>("Tags")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -1356,11 +1531,25 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("CodeSpirit.ExamApi.Data.Models.JobCategory", "JobCategory")
+                        .WithMany("ExamSettings")
+                        .HasForeignKey("JobCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CodeSpirit.ExamApi.Data.Models.Occupation", "Occupation")
+                        .WithMany("ExamSettings")
+                        .HasForeignKey("OccupationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CodeSpirit.ExamApi.Data.Models.StudentGroup", null)
                         .WithMany("ExamSettings")
                         .HasForeignKey("StudentGroupId");
 
                     b.Navigation("ExamPaper");
+
+                    b.Navigation("JobCategory");
+
+                    b.Navigation("Occupation");
                 });
 
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.ExamSettingStudentGroup", b =>
@@ -1380,6 +1569,17 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Navigation("ExamSetting");
 
                     b.Navigation("StudentGroup");
+                });
+
+            modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.JobCategory", b =>
+                {
+                    b.HasOne("CodeSpirit.ExamApi.Data.Models.Occupation", "Occupation")
+                        .WithMany("JobCategories")
+                        .HasForeignKey("OccupationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Occupation");
                 });
 
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.PracticeRecord", b =>
@@ -1523,6 +1723,18 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Navigation("ExamRecords");
 
                     b.Navigation("StudentGroups");
+                });
+
+            modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.JobCategory", b =>
+                {
+                    b.Navigation("ExamSettings");
+                });
+
+            modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.Occupation", b =>
+                {
+                    b.Navigation("ExamSettings");
+
+                    b.Navigation("JobCategories");
                 });
 
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.PracticeSession", b =>

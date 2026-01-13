@@ -276,7 +276,8 @@ public class ExamRecordPreGenerationService : IExamRecordPreGenerationService, I
                             QuestionId = question.QuestionId,
                             QuestionVersionId = question.QuestionVersionId,
                             OrderNumber = i + 1,
-                            IsMarked = false
+                            IsMarked = false,
+                            QuestionScore = question.Score
                             // TenantId会由MultiTenantDbContext在SaveChanges时自动设置（从ICurrentUser.TenantId获取）
                         });
                     }

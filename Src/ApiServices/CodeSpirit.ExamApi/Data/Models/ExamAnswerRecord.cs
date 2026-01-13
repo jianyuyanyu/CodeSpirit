@@ -65,6 +65,13 @@ public class ExamAnswerRecord : LongKeyAuditableEntityBase, IMultiTenant
     public bool? IsCorrect { get; set; }
 
     /// <summary>
+    /// 该题在试卷中的分值（来自 ExamPaperQuestion.Score）
+    /// </summary>
+    [Required]
+    [Range(0, 100)]
+    public int QuestionScore { get; set; }
+
+    /// <summary>
     /// 得分
     /// </summary>
     [Range(0, 100)]

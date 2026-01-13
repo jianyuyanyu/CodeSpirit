@@ -370,89 +370,6 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     }
 
     /// <summary>
-    /// 完成考试
-    /// </summary>
-    public async Task<ExamRecordDto> FinishExamAsync(FinishExamDto finishExamDto)
-    {
-        // 验证考试记录是否存在
-        var examRecord = await Repository.CreateQuery()
-            .Include(r => r.AnswerRecords)
-            .Include(r => r.ExamSetting)
-            .ThenInclude(es => es.ExamPaper)
-            .FirstOrDefaultAsync(r => r.Id == finishExamDto.ExamRecordId);
-
-        if (examRecord == null)
-        {
-            throw new BusinessException("考试记录不存在");
-        }
-
-        // 检查考试状态
-        if (examRecord.Status != ExamRecordStatus.InProgress)
-        {
-            throw new BusinessException("考试已结束");
-        }
-
-        // 检查是否所有题目都已作答
-        var unansweredQuestions = examRecord.AnswerRecords.Count(a => string.IsNullOrEmpty(a.Answer));
-        if (unansweredQuestions > 0 && !finishExamDto.ForceSubmit)
-        {
-            throw new BusinessException($"还有{unansweredQuestions}道题目未作答，是否确认提交？");
-        }
-
-        // 更新考试记录状态
-        examRecord.Status = ExamRecordStatus.Submitted;
-        examRecord.SubmitTime = finishExamDto.SubmitTime ?? DateTime.UtcNow;
-
-        if (examRecord.StartTime != null && examRecord.SubmitTime != null)
-        {
-            examRecord.Duration = (int)(examRecord.SubmitTime.Value - examRecord.StartTime).TotalMinutes;
-        }
-
-        // 自动评分（客观题）
-        double totalScore = 0;
-        foreach (var answer in examRecord.AnswerRecords)
-        {
-            var questionVersion = await _questionVersionRepository.CreateQuery()
-                .Include(qv => qv.Question)
-                .FirstOrDefaultAsync(qv => qv.Id == answer.QuestionVersionId);
-
-            if (questionVersion != null && !string.IsNullOrEmpty(answer.Answer))
-            {
-                // 判断题和单选题可以自动评分
-                if (questionVersion.Question.Type == QuestionType.SingleChoice ||
-                    questionVersion.Question.Type == QuestionType.TrueFalse)
-                {
-                    bool isCorrect = answer.Answer.Trim() == questionVersion.CorrectAnswer.Trim();
-                    answer.IsCorrect = isCorrect;
-                    answer.Score = isCorrect ? questionVersion.DefaultScore : 0;
-                    totalScore += answer.Score ?? 0;
-                }
-                // 多选题也可以自动评分，但需要特殊处理
-                else if (questionVersion.Question.Type == QuestionType.MultipleChoice)
-                {
-                    var studentAnswers = answer.Answer.Split(',').Select(a => a.Trim()).OrderBy(a => a).ToArray();
-                    var correctAnswers = questionVersion.CorrectAnswer.Split(',').Select(a => a.Trim()).OrderBy(a => a).ToArray();
-
-                    bool isCorrect = studentAnswers.SequenceEqual(correctAnswers);
-                    answer.IsCorrect = isCorrect;
-                    answer.Score = isCorrect ? questionVersion.DefaultScore : 0;
-                    totalScore += answer.Score ?? 0;
-                }
-                // 其他题型需要人工评分
-            }
-        }
-
-        // 应用成绩换算
-        await ApplyScoreConversion(examRecord, totalScore);
-
-        // 保存更改
-        await _answerRecordRepository.UpdateRangeAsync(examRecord.AnswerRecords);
-        await Repository.UpdateAsync(examRecord);
-
-        return Mapper.Map<ExamRecordDto>(examRecord);
-    }
-
-    /// <summary>
     /// 应用成绩换算逻辑
     /// </summary>
     /// <param name="examRecord">考试记录</param>
@@ -699,7 +616,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                         QuestionType = a.Question.Type.ToString(),
                         Score = a.Score,
                         IsCorrect = a.IsCorrect,
-                        DefaultScore = a.QuestionVersion.DefaultScore,
+                        DefaultScore = a.QuestionScore,
                         OrderNumber = a.OrderNumber
                     }).ToList()
             }).FirstOrDefaultAsync();
@@ -931,7 +848,8 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                             QuestionId = question.QuestionId,
                             QuestionVersionId = question.QuestionVersionId,
                             OrderNumber = i + 1,
-                            IsMarked = false
+                            IsMarked = false,
+                            QuestionScore = question.Score
                         });
                     }
 
@@ -1340,7 +1258,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                         QuestionId = answerRecord.QuestionId,
                         Content = answerRecord.QuestionVersion.Content ?? string.Empty,
                         Type = answerRecord.Question.Type.ToString(),
-                        Score = Convert.ToInt32(answerRecord.QuestionVersion.DefaultScore),
+                        Score = answerRecord.QuestionScore,
                         UserAnswer = answerRecord.Question.Type == QuestionType.TrueFalse ?
                             ConvertTrueFalseAnswer(answerRecord.Answer ?? string.Empty) :
                             answerRecord.Answer ?? string.Empty,
@@ -1360,7 +1278,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                         QuestionId = paperQuestion.QuestionId,
                         Content = paperQuestion.QuestionVersion?.Content ?? string.Empty,
                         Type = paperQuestion.Question?.Type.ToString() ?? string.Empty,
-                        Score = Convert.ToInt32(paperQuestion.QuestionVersion?.DefaultScore ?? 0),
+                        Score = paperQuestion.Score,
                         UserAnswer = string.Empty,
                         CorrectAnswer = paperQuestion.Question?.Type == QuestionType.TrueFalse ?
                             ConvertTrueFalseAnswer(paperQuestion.QuestionVersion?.CorrectAnswer ?? string.Empty) :
@@ -1745,8 +1663,8 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     {
         // 按照未得满分的题目进行排序（优先调整分值较大的题目）
         var adjustableAnswers = answerRecords
-            .Where(a => (a.Score ?? 0) < a.QuestionVersion.DefaultScore)
-            .OrderByDescending(a => a.QuestionVersion.DefaultScore - (a.Score ?? 0))
+            .Where(a => (a.Score ?? 0) < a.QuestionScore)
+            .OrderByDescending(a => a.QuestionScore - (a.Score ?? 0))
             .ToList();
 
         double remainingScoreToAdd = scoreToAdd;
@@ -1757,7 +1675,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             if (remainingScoreToAdd <= 0) break;
 
             double currentScore = answer.Score ?? 0;
-            double maxScore = answer.QuestionVersion.DefaultScore;
+            double maxScore = answer.QuestionScore;
             double scoreGap = maxScore - currentScore;
 
             if (scoreGap <= 0) continue;
@@ -1804,14 +1722,14 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         {
             var zeroScoreAnswers = answerRecords
                 .Where(a => (a.Score ?? 0) == 0)
-                .OrderByDescending(a => a.QuestionVersion.DefaultScore)
+                .OrderByDescending(a => a.QuestionScore)
                 .ToList();
 
             foreach (var answer in zeroScoreAnswers)
             {
                 if (remainingScoreToAdd <= 0) break;
 
-                double maxScore = answer.QuestionVersion.DefaultScore;
+                double maxScore = answer.QuestionScore;
 
                 // 计算可以添加的分数
                 double scoreToAddForThisAnswer = Math.Min(maxScore, remainingScoreToAdd);
@@ -1869,7 +1787,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         {
             // 找出分值最大的题目，分配额外分数
             var highestScoreAnswer = answerRecords
-                .OrderByDescending(a => a.QuestionVersion.DefaultScore)
+                .OrderByDescending(a => a.QuestionScore)
                 .FirstOrDefault();
 
             if (highestScoreAnswer != null)
@@ -1901,7 +1819,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             double currentScore = answer.Score ?? 0;
             if (currentScore <= 0) continue;
 
-            double maxScore = answer.QuestionVersion.DefaultScore;
+            double maxScore = answer.QuestionScore;
 
             // 计算可以减少的分数
             double scoreToReduceForThisAnswer = Math.Min(currentScore, remainingScoreToReduce);
@@ -2184,7 +2102,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             {
                 var typeAnswers = questionsByType[type];
 
-                var totalScore = typeAnswers.Sum(a => a.QuestionVersion.DefaultScore);
+                var totalScore = typeAnswers.Sum(a => a.QuestionScore);
                 var obtainedScore = (int)typeAnswers.Sum(a => a.Score ?? 0);
                 var correctCount = typeAnswers.Count(a => a.IsCorrect ?? false);
 
@@ -2208,7 +2126,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                     Type = a.QuestionVersion.Question.Type,
                     Content = a.QuestionVersion.Content,
                     Options = a.QuestionVersion.Options,
-                    Score = a.QuestionVersion.DefaultScore,
+                    Score = a.QuestionScore,
                     OrderNumber = a.OrderNumber
                 })
                 .ToList();
@@ -2224,7 +2142,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                     QuestionType = a.QuestionVersion.Question.Type.ToString(),
                     Score = a.Score,
                     IsCorrect = a.IsCorrect,
-                    DefaultScore = a.QuestionVersion.DefaultScore,
+                    DefaultScore = a.QuestionScore,
                     OrderNumber = a.OrderNumber
                 })
                 .ToList();

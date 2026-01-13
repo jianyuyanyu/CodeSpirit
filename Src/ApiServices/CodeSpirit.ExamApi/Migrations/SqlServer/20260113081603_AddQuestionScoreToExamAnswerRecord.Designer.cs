@@ -4,6 +4,7 @@ using CodeSpirit.ExamApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,13 +12,15 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CodeSpirit.ExamApi.Migrations.SqlServer
 {
     [DbContext(typeof(SqlServerExamDbContext))]
-    partial class SqlServerExamDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260113081603_AddQuestionScoreToExamAnswerRecord")]
+    partial class AddQuestionScoreToExamAnswerRecord
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.7")
+                .HasAnnotation("ProductVersion", "9.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -367,6 +370,19 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Property<decimal?>("ScoreConversionRatio")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("ScoreSyncFailureReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("ScoreSyncRetryCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ScoreSyncStatus")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ScoreSyncTime")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("ScreenSwitchCount")
                         .HasColumnType("int");
 
@@ -459,11 +475,17 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Property<DateTime>("EndTime")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("EvaluationType")
+                        .HasColumnType("int");
+
                     b.Property<long>("ExamPaperId")
                         .HasColumnType("bigint");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
+
+                    b.Property<long?>("JobCategoryId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("MinExamTime")
                         .HasColumnType("int");
@@ -472,6 +494,12 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<long?>("OccupationId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("PlannedExamDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime>("StartTime")
                         .HasColumnType("datetime2");
@@ -496,6 +524,10 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.HasKey("Id");
 
                     b.HasIndex("ExamPaperId");
+
+                    b.HasIndex("JobCategoryId");
+
+                    b.HasIndex("OccupationId");
 
                     b.HasIndex("StudentGroupId");
 
@@ -558,6 +590,149 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .HasDatabaseName("IX_ExamSettingStudentGroups_TenantId_Id");
 
                     b.ToTable("ExamSettingStudentGroups", (string)null);
+                });
+
+            modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.JobCategory", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<long>("OccupationId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("UpdatedBy")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccupationId");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("IX_JobCategories_TenantId");
+
+                    b.HasIndex("TenantId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("IX_JobCategories_TenantId_Code");
+
+                    b.HasIndex("TenantId", "Id")
+                        .HasDatabaseName("IX_JobCategories_TenantId_Id");
+
+                    b.HasIndex("TenantId", "OccupationId")
+                        .HasDatabaseName("IX_JobCategories_TenantId_OccupationId");
+
+                    b.ToTable("JobCategories", (string)null);
+                });
+
+            modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.Occupation", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("UpdatedBy")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("IX_Occupations_TenantId");
+
+                    b.HasIndex("TenantId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Occupations_TenantId_Code");
+
+                    b.HasIndex("TenantId", "Id")
+                        .HasDatabaseName("IX_Occupations_TenantId_Id");
+
+                    b.ToTable("Occupations", (string)null);
                 });
 
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.PracticeRecord", b =>
@@ -1356,11 +1531,25 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("CodeSpirit.ExamApi.Data.Models.JobCategory", "JobCategory")
+                        .WithMany("ExamSettings")
+                        .HasForeignKey("JobCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CodeSpirit.ExamApi.Data.Models.Occupation", "Occupation")
+                        .WithMany("ExamSettings")
+                        .HasForeignKey("OccupationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CodeSpirit.ExamApi.Data.Models.StudentGroup", null)
                         .WithMany("ExamSettings")
                         .HasForeignKey("StudentGroupId");
 
                     b.Navigation("ExamPaper");
+
+                    b.Navigation("JobCategory");
+
+                    b.Navigation("Occupation");
                 });
 
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.ExamSettingStudentGroup", b =>
@@ -1380,6 +1569,17 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Navigation("ExamSetting");
 
                     b.Navigation("StudentGroup");
+                });
+
+            modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.JobCategory", b =>
+                {
+                    b.HasOne("CodeSpirit.ExamApi.Data.Models.Occupation", "Occupation")
+                        .WithMany("JobCategories")
+                        .HasForeignKey("OccupationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Occupation");
                 });
 
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.PracticeRecord", b =>
@@ -1523,6 +1723,18 @@ namespace CodeSpirit.ExamApi.Migrations.SqlServer
                     b.Navigation("ExamRecords");
 
                     b.Navigation("StudentGroups");
+                });
+
+            modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.JobCategory", b =>
+                {
+                    b.Navigation("ExamSettings");
+                });
+
+            modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.Occupation", b =>
+                {
+                    b.Navigation("ExamSettings");
+
+                    b.Navigation("JobCategories");
                 });
 
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.PracticeSession", b =>

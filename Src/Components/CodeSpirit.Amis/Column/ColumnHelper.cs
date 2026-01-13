@@ -1375,9 +1375,13 @@ namespace CodeSpirit.Amis.Column
                 ["buttons"] = buttons,
                 ["fixed"] = "right"
             };
-            if (buttons.Count > 3)
+            if (buttons.Count >= 5)
             {
-                colObj["width"] = 80 + (buttons.Count - 3) * 50;
+                colObj["width"] = 220;
+            }
+            else if (buttons.Count > 3)
+            {
+                colObj["width"] = 150;
             }
             return colObj;
         }

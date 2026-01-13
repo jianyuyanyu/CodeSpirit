@@ -599,10 +599,15 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
     {
         try
         {
+            // ✅ 性能优化：一次性加载所有关联数据，避免 N+1 查询
             var examSetting = await _context.ExamSettings
                 .Include(e => e.ExamPaper)
                 .ThenInclude(p => p.ExamPaperQuestions)
                 .ThenInclude(q => q.Question)
+                .Include(e => e.ExamPaper)
+                .ThenInclude(p => p.ExamPaperQuestions)
+                .ThenInclude(q => q.QuestionVersion)
+                .AsSplitQuery()  // 拆分查询避免笛卡尔积
                 .Where(e => e.Id == examId)
                 .FirstOrDefaultAsync();
 
@@ -612,12 +617,10 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
                 return null;
             }
 
-            // 加载题目版本信息
-            foreach (var paperQuestion in examSetting.ExamPaper.ExamPaperQuestions)
+            if (examSetting.ExamPaper == null)
             {
-                await _context.Entry(paperQuestion)
-                    .Reference(q => q.QuestionVersion)
-                    .LoadAsync();
+                _logger.LogWarning("考试{ExamId}未配置关联试卷，加载题目失败", examId);
+                return null;
             }
 
             // 构建题目字典

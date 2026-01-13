@@ -163,8 +163,6 @@ public class IndexController : ApiControllerBase
     /// <param name="id">考试ID</param>
     /// <returns>考试基本信息</returns>
     [HttpGet("{id}/basic")]
-    [OutputCache(Duration = 60, VaryByHeaderNames = new string[] { "Authorization" },
-    VaryByRouteValueNames = new string[] { "id" }, Tags = new string[] { "byUser", "exam-basic" })]
     public async Task<ActionResult<ApiResponse<ClientExamBasicInfoDto>>> GetExamBasicInfo(long id)
     {
         // ⚡ 性能监控：记录方法执行时间
@@ -258,7 +256,6 @@ public class IndexController : ApiControllerBase
     /// <returns>考试轻量信息</returns>
     [HttpGet("{id}/light")]
     [DisplayName("获取考试轻量信息")]
-    [OutputCache(Duration = 60, VaryByHeaderNames = new string[] { "Authorization" }, VaryByRouteValueNames = new string[] { "id" }, Tags = new string[] { "byUser", "exam-light" })]
     public async Task<ActionResult<ApiResponse<ClientExamLightInfoDto>>> GetExamLightInfo(long id)
     {
         var currentUserId = GetCurrentUserId();

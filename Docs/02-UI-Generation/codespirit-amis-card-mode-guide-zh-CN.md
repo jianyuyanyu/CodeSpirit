@@ -296,6 +296,6 @@ public int Score { get; set; }
 
 ## 相关文档
 
-- [CodeSpirit.Amis智能界面生成引擎](./CodeSpirit.Amis智能界面生成引擎.md)
-- [AMIS列自动推断功能说明](./AMIS列自动推断功能说明.md)
+- [CodeSpirit.Amis智能界面生成引擎](./codespirit-amis-engine-zh-CN.md)
+- [AMIS列自动推断功能说明](./amis-column-inference-zh-CN.md)
 - [AMIS官方文档 - Card组件](https://aisuda.bce.baidu.com/amis/zh-CN/components/card)

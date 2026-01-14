@@ -1990,10 +1990,10 @@ public long? DepartmentId { get; set; }
 
 ## 相关文档
 
-- [CodeSpirit.Core核心框架](./CodeSpirit.Core核心框架.md)
-- [开发环境搭建指南](./开发环境搭建指南.md)
-- [项目整体架构设计](./项目整体架构设计.md)
-- [统一异常处理指南](./CodeSpirit统一异常处理指南.md)
+- [CodeSpirit.Core核心框架](./04-codespirit-core-framework-zh-CN.md)
+- [开发环境搭建指南](./03-development-environment-setup-zh-CN.md)
+- [项目整体架构设计](./01-project-architecture-zh-CN.md)
+- [统一异常处理指南](./05-unified-exception-handling-zh-CN.md)
 
 ## 总结
 

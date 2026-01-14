@@ -446,4 +446,4 @@ curl -X GET "https://localhost:7001/api/exam/QuestionCategories/tree"
 
 侧边栏联动功能通过简单的特性注解就能实现复杂的页面布局和交互效果，显著提升了开发效率和用户体验。结合 CodeSpirit.Amis 的其他功能，可以快速构建现代化的管理后台界面。
 
-更多高级用法和配置选项，请参考 [CodeSpirit.Amis智能界面生成引擎.md](CodeSpirit.Amis智能界面生成引擎.md)。
+更多高级用法和配置选项，请参考 [CodeSpirit.Amis智能界面生成引擎](./codespirit-amis-engine-zh-CN.md)。

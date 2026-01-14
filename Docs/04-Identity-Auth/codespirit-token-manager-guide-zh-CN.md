@@ -664,10 +664,10 @@ if (TokenManager.isTokenExpired() && TokenManager.getRefreshToken()) {
 
 ## 相关文档
 
-- [CodeSpirit.IdentityApi身份认证服务](./CodeSpirit.IdentityApi身份认证服务.md)
-- [多租户登录页面使用指南](./多租户登录页面使用指南.md)
-- [CodeSpirit多租户组件整改计划](./CodeSpirit多租户组件整改计划.md)
-- [项目整体架构设计](./项目整体架构设计.md)
+- [CodeSpirit.IdentityApi身份认证服务](./codespirit-identity-api-zh-CN.md)
+- [多租户登录页面使用指南](../05-Multi-Tenancy/multi-tenant-login-page-guide-zh-CN.md)
+- [CodeSpirit多租户组件整改计划](../05-Multi-Tenancy/codespirit-multi-tenant-refactor-plan-zh-CN.md)
+- [项目整体架构设计](../01-Core-Docs/01-project-architecture-zh-CN.md)
 
 ## 联系支持
 

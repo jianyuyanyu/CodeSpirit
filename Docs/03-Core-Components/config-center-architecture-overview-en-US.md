@@ -390,7 +390,7 @@ System Platform → Configuration Center → public application
 
 ### Development Environment Configuration Guide
 
-> **For detailed configuration steps, please refer to**: [Development Environment Setup and Startup Guide - Configuration Management Chapter](../../Docs/01-Core-Docs/03-development-environment-setup-en.md#configuration-management)
+> **For detailed configuration steps, please refer to**: [Development Environment Setup and Startup Guide - Configuration Management Chapter](../01-Core-Docs/03-development-environment-setup-en-US.md#configuration-management)
 
 **Quick Configuration of LLM API Key (Required):**
 
@@ -402,7 +402,7 @@ System Platform → Configuration Center → public application
 6. Click "Save" and "Publish" configuration
 7. Refresh application page, AI features can be used
 
-> **💡 Alibaba Cloud Tongyi Qianwen Recommendation**: Free quota during development phase is fully sufficient, see [Alibaba Cloud Tongyi Qianwen Free Experience Guide](../../Docs/01-Core-Docs/阿里云通义千问免费体验指南.md)
+> **💡 Alibaba Cloud Tongyi Qianwen Recommendation**: Free quota during development phase is fully sufficient, see [Alibaba Cloud Tongyi Qianwen Free Experience Guide](../01-Core-Docs/08-aliyun-qwen-free-trial-guide-en-US.md)
 
 ---
 

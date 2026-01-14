@@ -1324,9 +1324,8 @@ public enum QuestionType
 
 ## 9. 相关文档
 
-- [多语言国际化使用指南](多语言国际化使用指南.md)
-- [多语言国际化实施报告](多语言国际化实施报告.md)
-- [CodeSpirit.Settings 组件使用指南](CodeSpirit.Settings设置管理组件使用指南.md)
+- [多语言国际化使用指南](../01-Core-Docs/07-i18n-localization-guide-zh-CN.md)
+- [CodeSpirit.Settings 组件使用指南](./codespirit-settings-guide-zh-CN.md)
 - [ASP.NET Core 全球化和本地化](https://learn.microsoft.com/zh-cn/aspnet/core/fundamentals/localization)
 - [AMIS 国际化文档](https://aisuda.bce.baidu.com/amis/zh-CN/docs/extend/i18n)
 

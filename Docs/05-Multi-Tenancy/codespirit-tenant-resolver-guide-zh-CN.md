@@ -571,7 +571,7 @@ public async Task<IActionResult> DebugTenantResolution()
 ## 📚 相关文档
 
 - [多租户组件README](../Src/Components/CodeSpirit.MultiTenant/README.md)
-- [多租户数据库上下文架构](./CodeSpirit%20多租户数据库上下文架构.md)
+- [多租户数据库上下文架构](./codespirit-multi-tenant-dbcontext-architecture-zh-CN.md)
 - [配置示例](../Tests/Components/CodeSpirit.MultiTenant.Tests/Examples/)
 - [IdentityApi集成文档](./CodeSpirit.IdentityApi身份认证服务.md)
 

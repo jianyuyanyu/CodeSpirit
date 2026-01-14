@@ -647,9 +647,9 @@ dotnet test Tests/Components/CodeSpirit.ScheduledTasks.Tests/
 ## 相关资源
 
 ### 文档链接
-- [CodeSpirit.Caching统一缓存组件指南](./CodeSpirit.Caching统一缓存组件指南.md)
-- [CodeSpirit.Amis智能界面生成引擎](../02-UI-Generation/CodeSpirit.Amis智能界面生成引擎.md)
-- [CodeSpirit.Audit分布式审计完整指南](./CodeSpirit.Audit分布式审计完整指南.md)
+- [CodeSpirit.Caching统一缓存组件指南](../06-Infrastructure/codespirit-caching-guide-zh-CN.md)
+- [CodeSpirit.Amis智能界面生成引擎](../02-UI-Generation/codespirit-amis-engine-zh-CN.md)
+- [CodeSpirit.Audit分布式审计完整指南](./codespirit-audit-distributed-guide-zh-CN.md)
 
 ### 技术支持
 - **项目仓库**: 提交Issue进行问题反馈

@@ -2288,9 +2288,9 @@ builder.Build().Run();
 
 ## 📚 相关文档
 
-- [CodeSpirit.Amis智能界面生成引擎](../02-UI-Generation/CodeSpirit.Amis智能界面生成引擎.md)
-- [CodeSpirit.LLM大语言模型组件使用指南](../03-Core-Components/CodeSpirit.LLM大语言模型组件使用指南.md)
-- [CodeSpirit.Authorization权限组件详解](../04-Identity-Auth/CodeSpirit.Authorization权限组件详解.md)
-- [CodeSpirit多租户组件整改计划](../05-Multi-Tenancy/CodeSpirit多租户组件整改计划.md)
+- [CodeSpirit.Amis智能界面生成引擎](../02-UI-Generation/codespirit-amis-engine-zh-CN.md)
+- [CodeSpirit.LLM大语言模型组件使用指南](../03-Core-Components/codespirit-llm-guide-zh-CN.md)
+- [CodeSpirit.Authorization权限组件详解](../04-Identity-Auth/codespirit-authorization-guide-zh-CN.md)
+- [CodeSpirit多租户组件整改计划](../05-Multi-Tenancy/codespirit-multi-tenant-refactor-plan-zh-CN.md)
 
 ---

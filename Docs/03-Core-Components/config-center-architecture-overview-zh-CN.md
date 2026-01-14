@@ -390,7 +390,7 @@ if (aiFeaturesConfig.EnableAiFormFill)
 
 ### 开发环境配置指南
 
-> **详细配置步骤请参考**：[开发环境搭建及启动指南 - 配置管理章节](../../Docs/01-Core-Docs/03-development-environment-setup-zh-CN.md#配置管理)
+> **详细配置步骤请参考**：[开发环境搭建及启动指南 - 配置管理章节](../01-Core-Docs/03-development-environment-setup-zh-CN.md#配置管理)
 
 **快速配置 LLM API 密钥（必需）：**
 
@@ -402,7 +402,7 @@ if (aiFeaturesConfig.EnableAiFormFill)
 6. 点击「保存」并「发布」配置
 7. 刷新应用页面，AI 功能即可使用
 
-> **💡 阿里云通义千问推荐**：开发阶段免费额度完全够用，详见 [阿里云通义千问免费体验指南](../../Docs/01-Core-Docs/阿里云通义千问免费体验指南.md)
+> **💡 阿里云通义千问推荐**：开发阶段免费额度完全够用，详见 [阿里云通义千问免费体验指南](../01-Core-Docs/08-aliyun-qwen-free-trial-guide-zh-CN.md)
 
 ---
 

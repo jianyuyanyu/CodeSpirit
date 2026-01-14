@@ -324,7 +324,7 @@ CodeSpirit 采用 **配置中心** 统一管理业务配置，基础设施配置
 3. 创建 API Key
 4. 将 API Key 配置到配置中心
 
-> 💡 **推荐阅读**：[阿里云通义千问免费体验指南](./阿里云通义千问免费体验指南.md) - 详细的注册指南、配置教程和成本分析，帮助您零成本体验 CodeSpirit 的强大 AI 能力！
+> 💡 **推荐阅读**：[阿里云通义千问免费体验指南](./08-aliyun-qwen-free-trial-guide-zh-CN.md) - 详细的注册指南、配置教程和成本分析，帮助您零成本体验 CodeSpirit 的强大 AI 能力！
 
 #### OpenAI（如使用 OpenAI 兼容接口）
 
@@ -573,11 +573,11 @@ docker build -f Src/CodeSpirit.IdentityApi/Dockerfile -t codespirit-identity:lat
 
 环境搭建完成后，您可以：
 
-1. 📖 阅读 [项目整体架构设计](./项目整体架构设计.md)
-2. 🔧 了解 [CodeSpirit.Core核心框架](./CodeSpirit.Core核心框架.md)
-3. 📋 查看 [总体技术体系说明](./总体技术体系说明.md)
-4. 🔐 学习 [统一异常处理指南](./CodeSpirit统一异常处理指南.md)
-5. 💻 参考 [CRUD开发示例](./CRUD开发示例.md) 开始开发
+1. 📖 阅读 [项目整体架构设计](./01-project-architecture-zh-CN.md)
+2. 🔧 了解 [CodeSpirit.Core核心框架](./04-codespirit-core-framework-zh-CN.md)
+3. 📋 查看 [总体技术体系说明](./02-technical-system-overview-zh-CN.md)
+4. 🔐 学习 [统一异常处理指南](./05-unified-exception-handling-zh-CN.md)
+5. 💻 参考 [CRUD开发示例](./06-crud-development-example-zh-CN.md) 开始开发
 
 ## 获取帮助
 

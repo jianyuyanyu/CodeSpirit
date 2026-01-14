@@ -328,9 +328,9 @@ file: employees.xlsx
 
 ## 相关文档
 
-- [CodeSpirit.Core核心框架](../01-Core-Docs/CodeSpirit.Core核心框架.md)
-- [CodeSpirit.Authorization权限组件详解](CodeSpirit.Authorization权限组件详解.md)
-- [CodeSpirit.IdentityApi身份认证服务](CodeSpirit.IdentityApi身份认证服务.md)
+- [CodeSpirit.Core核心框架](../01-Core-Docs/04-codespirit-core-framework-zh-CN.md)
+- [CodeSpirit.Authorization权限组件详解](./codespirit-authorization-guide-zh-CN.md)
+- [CodeSpirit.IdentityApi身份认证服务](./codespirit-identity-api-zh-CN.md)
 - [多租户架构设计](../05-Multi-Tenancy/)
 
 ## 版本历史

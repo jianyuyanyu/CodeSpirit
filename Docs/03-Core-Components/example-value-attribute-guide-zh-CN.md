@@ -249,8 +249,8 @@ private string? GenerateExampleValue(PropertyInfo property)
 
 ## 📚 相关文档
 
-- [增强批量导入组件使用指南](../02-UI-Generation/增强批量导入组件使用指南.md)
-- [CodeSpirit.Core核心框架](../01-Core-Docs/CodeSpirit.Core核心框架.md)
+- [增强批量导入组件使用指南](../02-UI-Generation/enhanced-bulk-import-guide-zh-CN.md)
+- [CodeSpirit.Core核心框架](../01-Core-Docs/04-codespirit-core-framework-zh-CN.md)
 
 ## 🔍 注意事项
 

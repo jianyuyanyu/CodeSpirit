@@ -660,10 +660,10 @@ public class UsersController : ControllerBase
 
 - [Amis API Documentation](https://aisuda.bce.baidu.com/amis/zh-CN/docs/types/api)
 - [ASP.NET Core Exception Handling](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/error-handling)
-- [CodeSpirit.Core Core Framework](./CodeSpirit.Core%20Core%20Framework.md)
-- [Project Overall Architecture Design](./Project%20Overall%20Architecture%20Design.md)
-- [Overall Technical System Overview](./Overall%20Technical%20System%20Overview.md)
-- [Development Environment Setup Guide](./Development%20Environment%20Setup%20Guide.md)
+- [CodeSpirit.Core Core Framework](./04-codespirit-core-framework-en-US.md)
+- [Project Overall Architecture Design](./01-project-architecture-en-US.md)
+- [Overall Technical System Overview](./02-technical-system-overview-en-US.md)
+- [Development Environment Setup Guide](./03-development-environment-setup-en-US.md)
 
 ## 🎯 Summary
 

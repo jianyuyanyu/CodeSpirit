@@ -14,21 +14,21 @@
 
 ### 核心文档
 
-1. **[Pathfinder实施方案.md](./Pathfinder实施方案.md)** ⭐ **重点文档**
+1. **[Pathfinder实施方案.md](./pathfinder-implementation-plan-zh-CN.md)** ⭐ **重点文档**
    - 完整的技术实施方案
    - 基于 CodeSpirit 框架的架构设计
    - MVP 和一期扩展的详细开发计划
    - 数据库设计、服务拆分、部署方案
    - 测试策略、安全性考虑、性能优化
 
-2. **[技术路线图.md](./技术路线图.md)** ⭐ **开发指南**
+2. **[技术路线图.md](./pathfinder-technology-roadmap-zh-CN.md)** ⭐ **开发指南**
    - 详细的开发时间表（12周MVP + 12周一期）
    - 按周拆解的开发任务
    - 里程碑与验收标准
    - 资源分配与风险管理
    - 技术产出清单
 
-3. **[快速参考指南.md](./快速参考指南.md)** ⭐ **速查手册**
+3. **[快速参考指南.md](./pathfinder-quick-reference-zh-CN.md)** ⭐ **速查手册**
    - 核心功能清单
    - 技术架构速查
    - API速查表
@@ -61,17 +61,17 @@ cat D:\repos\pathfinder\精益画布.md
 ### 2. 学习技术方案
 
 阅读本目录的实施方案文档：
-- [Pathfinder实施方案.md](./Pathfinder实施方案.md)
+- [Pathfinder实施方案.md](./pathfinder-implementation-plan-zh-CN.md)
 
 ### 3. 准备开发环境
 
-参考 [开发环境搭建指南](../01-Core-Docs/开发环境搭建指南.md)
+参考 [开发环境搭建指南](../01-Core-Docs/03-development-environment-setup-zh-CN.md)
 
 ### 4. 了解基础框架
 
 学习 CodeSpirit 框架的核心组件：
-- [CodeSpirit框架核心亮点](../CodeSpirit框架核心亮点.md)
-- [项目整体架构设计](../01-Core-Docs/项目整体架构设计.md)
+- [CodeSpirit框架核心亮点](../codespirit-framework-highlights-zh-CN.md)
+- [项目整体架构设计](../01-Core-Docs/01-project-architecture-zh-CN.md)
 
 ## 🏗️ 技术架构
 
@@ -255,23 +255,23 @@ dotnet ef database update
 
 ### CodeSpirit框架文档
 
-- [总体技术体系说明](../01-Core-Docs/总体技术体系说明.md)
-- [项目整体架构设计](../01-Core-Docs/项目整体架构设计.md)
-- [CodeSpirit.Core核心框架](../01-Core-Docs/CodeSpirit.Core核心框架.md)
+- [总体技术体系说明](../01-Core-Docs/02-technical-system-overview-zh-CN.md)
+- [项目整体架构设计](../01-Core-Docs/01-project-architecture-zh-CN.md)
+- [CodeSpirit.Core核心框架](../01-Core-Docs/04-codespirit-core-framework-zh-CN.md)
 
 ### 核心组件文档
 
-- [CodeSpirit.LLM大语言模型组件使用指南](../03-Core-Components/CodeSpirit.LLM大语言模型组件使用指南.md)
-- [CodeSpirit.Amis智能界面生成引擎](../02-UI-Generation/CodeSpirit.Amis智能界面生成引擎.md)
-- [CodeSpirit.ScheduledTasks组件文档](../03-Core-Components/CodeSpirit.ScheduledTasks组件文档.md)
+- [CodeSpirit.LLM大语言模型组件使用指南](../03-Core-Components/codespirit-llm-guide-zh-CN.md)
+- [CodeSpirit.Amis智能界面生成引擎](../02-UI-Generation/codespirit-amis-engine-zh-CN.md)
+- [CodeSpirit.ScheduledTasks组件文档](../03-Core-Components/codespirit-scheduled-tasks-doc-zh-CN.md)
 - [CodeSpirit.Messaging消息队列组件](../03-Core-Components/)
-- [CodeSpirit.Authorization权限组件详解](../04-Identity-Auth/CodeSpirit.Authorization权限组件详解.md)
+- [CodeSpirit.Authorization权限组件详解](../04-Identity-Auth/codespirit-authorization-guide-zh-CN.md)
 
 ### 基础设施文档
 
-- [CodeSpirit.Aspire数据库集成统一方案](../06-Infrastructure/CodeSpirit.Aspire数据库集成统一方案.md)
-- [CodeSpirit.Caching统一缓存组件指南](../06-Infrastructure/CodeSpirit.Caching统一缓存组件指南.md)
-- [RabbitMQ-Aspire-Integration](../06-Infrastructure/RabbitMQ-Aspire-Integration.md)
+- [CodeSpirit.Aspire数据库集成统一方案](../06-Infrastructure/codespirit-aspire-database-integration-guide-zh-CN.md)
+- [CodeSpirit.Caching统一缓存组件指南](../06-Infrastructure/codespirit-caching-guide-zh-CN.md)
+- [RabbitMQ-Aspire-Integration](../06-Infrastructure/rabbitmq-aspire-integration-zh-CN.md)
 
 ## 🔧 开发规范
 

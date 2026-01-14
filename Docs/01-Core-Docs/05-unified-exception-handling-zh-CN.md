@@ -660,10 +660,10 @@ public class UsersController : ControllerBase
 
 - [Amis API 文档](https://aisuda.bce.baidu.com/amis/zh-CN/docs/types/api)
 - [ASP.NET Core 异常处理](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/error-handling)
-- [CodeSpirit.Core 核心框架](./CodeSpirit.Core核心框架.md)
-- [项目整体架构设计](./项目整体架构设计.md)
-- [总体技术体系说明](./总体技术体系说明.md)
-- [开发环境搭建指南](./开发环境搭建指南.md)
+- [CodeSpirit.Core 核心框架](./04-codespirit-core-framework-zh-CN.md)
+- [项目整体架构设计](./01-project-architecture-zh-CN.md)
+- [总体技术体系说明](./02-technical-system-overview-zh-CN.md)
+- [开发环境搭建指南](./03-development-environment-setup-zh-CN.md)
 
 ## 🎯 总结
 

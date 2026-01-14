@@ -1907,10 +1907,10 @@ public async Task<List<EmployeeDto>> GetActiveEmployeesByDepartmentAsync(long de
 
 ## Related Documentation
 
-- [CodeSpirit.Core Core Framework](./CodeSpirit.Core%20Core%20Framework.md)
-- [Development Environment Setup Guide](./Development%20Environment%20Setup%20Guide.md)
-- [Project Overall Architecture Design](./Project%20Overall%20Architecture%20Design.md)
-- [Unified Exception Handling Guide](./CodeSpirit%20Unified%20Exception%20Handling%20Guide.md)
+- [CodeSpirit.Core Core Framework](./04-codespirit-core-framework-en-US.md)
+- [Development Environment Setup Guide](./03-development-environment-setup-en-US.md)
+- [Project Overall Architecture Design](./01-project-architecture-en-US.md)
+- [Unified Exception Handling Guide](./05-unified-exception-handling-en-US.md)
 
 ## Summary
 

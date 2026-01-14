@@ -734,7 +734,7 @@ throw new BusinessException("Errors.NotFound");
 
 - [ASP.NET Core 全球化和本地化](https://learn.microsoft.com/zh-cn/aspnet/core/fundamentals/localization)
 - [AMIS 国际化文档](https://aisuda.bce.baidu.com/amis/zh-CN/docs/extend/i18n)
-- [CodeSpirit Settings 组件](../Components/CodeSpirit.Settings/README.md)
+- [CodeSpirit Settings 组件](../03-Core-Components/codespirit-settings-guide-zh-CN.md)
 
 ## 💡 FAQ
 

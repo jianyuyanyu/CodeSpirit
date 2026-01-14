@@ -516,8 +516,8 @@ public async Task<IActionResult> GetAllTenantsData()
 
 ## 📚 **相关文档**
 
-- [CodeSpirit 多租户数据库上下文架构](./CodeSpirit%20多租户数据库上下文架构.md)
-- [CodeSpirit.Authorization权限组件详解](./CodeSpirit.Authorization权限组件详解.md)
+- [CodeSpirit 多租户数据库上下文架构](./codespirit-multi-tenant-dbcontext-architecture-zh-CN.md)
+- [CodeSpirit.Authorization权限组件详解](../04-Identity-Auth/codespirit-authorization-guide-zh-CN.md)
 - [CodeSpirit.Audit审计组件集成使用指南](./CodeSpirit.Audit审计组件集成使用指南.md)
 
 ## 🔗 **相关组件**

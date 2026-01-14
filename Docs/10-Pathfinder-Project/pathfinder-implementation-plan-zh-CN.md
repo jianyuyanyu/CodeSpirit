@@ -2167,10 +2167,10 @@ public class BreakdownGoalMessageHandler : IMessageHandler<BreakdownGoalMessage>
 
 ### A. 参考文档
 
-- [CodeSpirit框架核心亮点](../CodeSpirit框架核心亮点.md)
-- [CodeSpirit.LLM大语言模型组件使用指南](../03-Core-Components/CodeSpirit.LLM大语言模型组件使用指南.md)
-- [CodeSpirit.Amis智能界面生成引擎](../02-UI-Generation/CodeSpirit.Amis智能界面生成引擎.md)
-- [CodeSpirit.ScheduledTasks组件文档](../03-Core-Components/CodeSpirit.ScheduledTasks组件文档.md)
+- [CodeSpirit框架核心亮点](../codespirit-framework-highlights-zh-CN.md)
+- [CodeSpirit.LLM大语言模型组件使用指南](../03-Core-Components/codespirit-llm-guide-zh-CN.md)
+- [CodeSpirit.Amis智能界面生成引擎](../02-UI-Generation/codespirit-amis-engine-zh-CN.md)
+- [CodeSpirit.ScheduledTasks组件文档](../03-Core-Components/codespirit-scheduled-tasks-doc-zh-CN.md)
 
 ### B. 开发规范
 

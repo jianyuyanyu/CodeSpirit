@@ -672,8 +672,8 @@ public class CorsLoggingMiddleware
 
 - [ASP.NET Core CORS 官方文档](https://docs.microsoft.com/en-us/aspnet/core/security/cors)
 - [MDN CORS 文档](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)
-- [CodeSpirit 统一异常处理指南](./CodeSpirit统一异常处理指南.md)
-- [CodeSpirit（码灵）开发指南](./CodeSpirit（码灵）开发指南（初稿）.md)
+- [CodeSpirit 统一异常处理指南](../01-Core-Docs/05-unified-exception-handling-zh-CN.md)
+- [CodeSpirit（码灵）开发指南](../01-Core-Docs/03-development-environment-setup-zh-CN.md)
 
 ## 🔄 版本历史
 

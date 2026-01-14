@@ -718,9 +718,9 @@ X-Audit-OperationType: Create
 
 ## 📚 相关文档
 
-- [CodeSpirit.Audit 审计组件详解](./CodeSpirit.Audit审计组件详解.md)
-- [CodeSpirit 统一异常处理指南](../01-Core-Docs/CodeSpirit统一异常处理指南.md)
-- [项目整体架构设计](../01-Core-Docs/项目整体架构设计.md)
+- [CodeSpirit.Audit 审计组件详解](./codespirit-audit-integration-guide-zh-CN.md)
+- [CodeSpirit 统一异常处理指南](../01-Core-Docs/05-unified-exception-handling-zh-CN.md)
+- [项目整体架构设计](../01-Core-Docs/01-project-architecture-zh-CN.md)
 
 ## 🎯 总结
 

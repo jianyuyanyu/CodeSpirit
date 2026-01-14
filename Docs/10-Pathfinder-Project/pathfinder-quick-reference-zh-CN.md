@@ -731,10 +731,10 @@ services.AddSingleton<IExecutionTool, MyTool>();
 
 ## 📚 相关文档
 
-- [Pathfinder实施方案](./Pathfinder实施方案.md)
-- [技术路线图](./技术路线图.md)
-- [CodeSpirit框架核心亮点](../CodeSpirit框架核心亮点.md)
-- [CodeSpirit.LLM使用指南](../03-Core-Components/CodeSpirit.LLM大语言模型组件使用指南.md)
+- [Pathfinder实施方案](./pathfinder-implementation-plan-zh-CN.md)
+- [技术路线图](./pathfinder-technology-roadmap-zh-CN.md)
+- [CodeSpirit框架核心亮点](../codespirit-framework-highlights-zh-CN.md)
+- [CodeSpirit.LLM使用指南](../03-Core-Components/codespirit-llm-guide-zh-CN.md)
 
 ---
 

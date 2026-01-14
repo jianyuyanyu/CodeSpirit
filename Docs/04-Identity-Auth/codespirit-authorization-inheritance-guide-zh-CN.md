@@ -4,7 +4,7 @@
 
 权限继承机制是 CodeSpirit.Authorization 组件的一个重要特性，它允许拥有特定权限的用户访问相关的其他接口，而无需单独授予每个接口的权限。这在实际业务场景中非常有用，可以简化权限管理并提升用户体验。
 
-> **注意**：本文档介绍的是 `AllowInheritedPermissions` 特性。关于通配权限（`*`）的使用，请参阅 [CodeSpirit.Authorization组件README](../../Src/Components/CodeSpirit.Authorization/README.md) 和 [权限组件详解](CodeSpirit.Authorization权限组件详解.md)。
+> **注意**：本文档介绍的是 `AllowInheritedPermissions` 特性。关于通配权限（`*`）的使用，请参阅 [CodeSpirit.Authorization组件README](../../Src/Components/CodeSpirit.Authorization/README.md) 和 [权限组件详解](./codespirit-authorization-guide-zh-CN.md)。
 
 ## 核心概念
 

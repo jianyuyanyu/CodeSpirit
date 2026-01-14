@@ -275,7 +275,7 @@ services.Scan(scan => scan
 
 - [Scrutor GitHub](https://github.com/khellang/Scrutor)
 - [.NET依赖注入最佳实践](https://docs.microsoft.com/en-us/dotnet/core/extensions/dependency-injection-guidelines)
-- [CodeSpirit.Core核心框架文档](./CodeSpirit.Core核心框架.md)
+- [CodeSpirit.Core核心框架文档](../01-Core-Docs/04-codespirit-core-framework-zh-CN.md)
 
 ---
 

@@ -568,11 +568,11 @@ Production environment configuration is managed through:
 
 After environment setup is complete, you can:
 
-1. 📖 Read [Project Overall Architecture Design](./Project%20Overall%20Architecture%20Design.md)
-2. 🔧 Learn about [CodeSpirit.Core Core Framework](./CodeSpirit.Core%20Core%20Framework.md)
-3. 📋 Review [Overall Technical System Overview](./Overall%20Technical%20System%20Overview.md)
-4. 🔐 Study [Unified Exception Handling Guide](./CodeSpirit%20Unified%20Exception%20Handling%20Guide.md)
-5. 💻 Reference [CRUD Development Example](./CRUD%20Development%20Example.md) to start development
+1. 📖 Read [Project Overall Architecture Design](./01-project-architecture-en-US.md)
+2. 🔧 Learn about [CodeSpirit.Core Core Framework](./04-codespirit-core-framework-en-US.md)
+3. 📋 Review [Overall Technical System Overview](./02-technical-system-overview-en-US.md)
+4. 🔐 Study [Unified Exception Handling Guide](./05-unified-exception-handling-en-US.md)
+5. 💻 Reference [CRUD Development Example](./06-crud-development-example-en-US.md) to start development
 
 ## Get Help
 

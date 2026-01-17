@@ -28,19 +28,22 @@ namespace CodeSpirit.Web.Controllers
         private readonly ILogger<NavigationController> _logger;
         private readonly IHasPermissionService _hasPermissionService;
         private readonly DashboardConfig _dashboardConfig;
+        private readonly ICurrentUser _currentUser;
 
         public NavigationController(
             INavigationService navigationService,
             INavigationLocalizationService localizationService,
             CultureResolver cultureResolver,
             ILogger<NavigationController> logger,
-            IHasPermissionService hasPermissionService)
+            IHasPermissionService hasPermissionService,
+            ICurrentUser currentUser)
         {
             _navigationService = navigationService;
             _localizationService = localizationService;
             _cultureResolver = cultureResolver;
             _logger = logger;
             _hasPermissionService = hasPermissionService;
+            _currentUser = currentUser;
         }
 
         /// <summary>
@@ -67,23 +70,26 @@ namespace CodeSpirit.Web.Controllers
                 {
                     currentVersion = "initial";
                 }
-                
+
                 // 获取当前语言，将语言信息包含在 ETag 中以支持多语言切换
                 var currentLanguage = _cultureResolver.GetCurrentLanguage();
-                var versionWithLanguage = $"{currentVersion}-{currentLanguage}";
+
+                // 获取用户ID和设备类型，加入 ETag 以实现缓存隔离
+                var userId = _currentUser.Id;
+                var versionWithContext = $"{currentVersion}-{currentLanguage}-{userId}-{deviceType}";
 
                 // 2. 设置响应头
-                Response.Headers.ETag = $"\"{versionWithLanguage}\"";
+                Response.Headers.ETag = $"\"{versionWithContext}\"";
                 Response.Headers.CacheControl = "private, must-revalidate";
 
                 // 3. 检查客户端If-None-Match头
                 if (Request.Headers.IfNoneMatch.Any())
                 {
                     var clientETag = Request.Headers.IfNoneMatch.FirstOrDefault();
-                    if (clientETag == $"\"{versionWithLanguage}\"")
+                    if (clientETag == $"\"{versionWithContext}\"")
                     {
-                        _logger.LogDebug("ETag matched (version: {Version}, language: {Language}), returning 304 Not Modified", 
-                            currentVersion, currentLanguage);
+                        _logger.LogDebug("ETag matched (version: {Version}, language: {Language}, userId: {UserId}, device: {Device}), returning 304 Not Modified",
+                            currentVersion, currentLanguage, userId, deviceType);
                         return StatusCode(304); // Not Modified
                     }
                 }
@@ -158,23 +164,26 @@ namespace CodeSpirit.Web.Controllers
                 {
                     currentVersion = "initial";
                 }
-                
+
                 // 获取当前语言，将语言信息包含在 ETag 中以支持多语言切换
                 var currentLanguage = _cultureResolver.GetCurrentLanguage();
-                var versionWithLanguage = $"{currentVersion}-{currentLanguage}";
+
+                // 获取用户ID和设备类型，加入 ETag 以实现缓存隔离
+                var userId = _currentUser.Id;
+                var versionWithContext = $"{currentVersion}-{currentLanguage}-{userId}-{deviceType}";
 
                 // 2. 设置响应头
-                Response.Headers.ETag = $"\"{versionWithLanguage}\"";
+                Response.Headers.ETag = $"\"{versionWithContext}\"";
                 Response.Headers.CacheControl = "private, must-revalidate";
 
                 // 3. 检查客户端If-None-Match头
                 if (Request.Headers.IfNoneMatch.Any())
                 {
                     var clientETag = Request.Headers.IfNoneMatch.FirstOrDefault();
-                    if (clientETag == $"\"{versionWithLanguage}\"")
+                    if (clientETag == $"\"{versionWithContext}\"")
                     {
-                        _logger.LogDebug("ETag matched for tenant navigation (version: {Version}, language: {Language}), returning 304 Not Modified", 
-                            currentVersion, currentLanguage);
+                        _logger.LogDebug("ETag matched for tenant navigation (version: {Version}, language: {Language}, userId: {UserId}, device: {Device}), returning 304 Not Modified",
+                            currentVersion, currentLanguage, userId, deviceType);
                         return StatusCode(304); // Not Modified
                     }
                 }

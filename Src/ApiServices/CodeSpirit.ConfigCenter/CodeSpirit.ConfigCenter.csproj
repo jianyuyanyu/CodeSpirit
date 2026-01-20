@@ -10,22 +10,22 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="9.5.0" />
-		<PackageReference Include="Aspire.Pomelo.EntityFrameworkCore.MySql" Version="9.5.0" />
-		<PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
-		<PackageReference Include="LinqKit.Core" Version="1.2.8" />
-		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
+		<!-- 注意：Aspire 13.1.0 的 EF Core 集成需要 EF Core 10.0.1，但 Pomelo 9.0.0 不支持 EF Core 10 -->
+		<!-- 因此我们使用 Pomelo.EntityFrameworkCore.MySql 直接通过 CodeSpirit.Shared 传递，不使用 Aspire EF Core 集成 -->
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.9" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.9" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.0">
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>
+		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
+		<!-- Pomelo.EntityFrameworkCore.MySql 通过 CodeSpirit.Shared 传递 -->
+		<!-- LinqKit.Core 通过 CodeSpirit.Shared 传递 -->
+		<!-- Newtonsoft.Json 通过 CodeSpirit.Shared 传递 -->
 	</ItemGroup>
 
 	<ItemGroup>

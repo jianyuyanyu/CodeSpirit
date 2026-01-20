@@ -9,21 +9,22 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="9.5.0" />
-		<PackageReference Include="Aspire.Pomelo.EntityFrameworkCore.MySql" Version="9.5.0" />
-		<PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
-		<PackageReference Include="LinqKit.Core" Version="1.2.8" />
-		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.0" />
-		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.0" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.9" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.0">
+		<!-- 注意：Aspire 13.1.0 的 EF Core 集成需要 EF Core 10.0.1，但 Pomelo 9.0.0 不支持 EF Core 10 -->
+		<!-- 因此使用默认的 EF Core 9.0.9 版本，通过 CodeSpirit.Shared 传递 Pomelo -->
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>
-		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
-		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.7.0" />
-		<PackageReference Include="SKIT.FlurlHttpClient.Wechat.Api" Version="3.13.0" />
+		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
+		<PackageReference Include="System.IdentityModel.Tokens.Jwt" />
+		<PackageReference Include="SKIT.FlurlHttpClient.Wechat.Api" />
+		<!-- Pomelo.EntityFrameworkCore.MySql 通过 CodeSpirit.Shared 传递 -->
+		<!-- LinqKit.Core 通过 CodeSpirit.Shared 传递 -->
 	</ItemGroup>
 
 	<ItemGroup>

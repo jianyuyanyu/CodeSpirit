@@ -1,4 +1,4 @@
----
+﻿---
 description: CodeSpirit 全局开发规范概览 - 核心原则和规范索引
 globs: 
 alwaysApply: true
@@ -55,6 +55,12 @@ alwaysApply: true
 ## 安全规范
 - 权限控制（`[Authorize]` + `[RequirePermission]`）+ 审计追踪 + 数据加密
 - 📖 [详细规范](mdc:.cursor/rules/security.mdc)
+
+## 包管理规范
+- 集中式包管理：所有包版本在 `Directory.Packages.props` 中统一管理
+- 项目文件中只引用包名，不指定版本
+- 避免冗余引用：通过传递依赖可用的包不需要显式引用
+- 📖 [详细规范](mdc:.cursor/rules/package-management.mdc)
 
 # 数据访问
 
@@ -121,5 +127,8 @@ Src/
 
 ## 项目结构
 - [项目结构](mdc:.cursor/rules/project-structure.mdc) - 完整目录树
+
+## 包管理
+- [包管理规范](mdc:.cursor/rules/package-management.mdc) - 集中式包管理、版本统一、传递依赖处理
 
 > 💡 专项规范会根据文件类型自动应用

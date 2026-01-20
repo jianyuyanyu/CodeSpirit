@@ -1,4 +1,4 @@
-# CodeSpirit Cursor 规则文档
+﻿# CodeSpirit Cursor 规则文档
 
 本目录包含 CodeSpirit 项目的开发规范文档，用于 Cursor IDE 智能提示和代码生成。
 
@@ -31,6 +31,7 @@
 - **[performance.mdc](./performance.mdc)** - 性能优化：异步编程、缓存策略、查询优化、分布式场景
 - **[security.mdc](./security.mdc)** - 安全规范：权限控制、审计追踪、数据保护
 - **[testing.mdc](./testing.mdc)** - 测试开发规范：单元测试、集成测试、Mock使用
+- **[package-management.mdc](./package-management.mdc)** - 包管理规范：集中式包管理、版本统一、传递依赖处理
 
 ### 项目结构
 - **[project-structure.mdc](./project-structure.mdc)** - 完整项目结构、目录树和组件分类

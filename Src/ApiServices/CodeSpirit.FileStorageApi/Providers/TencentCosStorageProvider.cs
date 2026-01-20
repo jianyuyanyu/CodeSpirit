@@ -495,49 +495,78 @@ public class TencentCosStorageProvider : IStorageProvider
         string? contentType, 
         IDictionary<string, string>? metadata)
     {
-        var request = new PutObjectRequest(fullBucketName, fileName, stream);
-        
-        if (!string.IsNullOrEmpty(contentType))
+        // 由于 Tencent.QCloud.Cos.Sdk 5.4.0+ 的 PutObjectRequest 构造函数限制，
+        // 需要先将 Stream 写入临时文件，然后使用文件路径上传
+        var tempFile = Path.GetTempFileName();
+        long streamLength = 0L;
+        try
         {
-            request.SetRequestHeader("Content-Type", contentType);
-        }
-
-        if (metadata != null)
-        {
-            foreach (var meta in metadata)
+            using (var fileStream = File.Create(tempFile))
             {
-                // 只对值进行编码，键名保持原样（但需要是安全的ASCII字符）
-                var safeKey = SanitizeHeaderName(meta.Key);
-                var encodedValue = EncodeMetadataValue(meta.Value);
-                
+                await stream.CopyToAsync(fileStream);
+                streamLength = fileStream.Length;
+            }
+
+            // PutObjectRequest 构造函数使用文件路径: (bucket, key, srcPath)
+            var request = new PutObjectRequest(fullBucketName, fileName, tempFile);
+            
+            if (!string.IsNullOrEmpty(contentType))
+            {
+                request.SetRequestHeader("Content-Type", contentType);
+            }
+
+            if (metadata != null)
+            {
+                foreach (var meta in metadata)
+                {
+                    // 只对值进行编码，键名保持原样（但需要是安全的ASCII字符）
+                    var safeKey = SanitizeHeaderName(meta.Key);
+                    var encodedValue = EncodeMetadataValue(meta.Value);
+                    
+                    try
+                    {
+                        var headerName = $"x-cos-meta-{safeKey}";
+                        _logger.LogDebug("设置COS元数据头部: {HeaderName} = {EncodedValue} (原始: {OriginalKey}={OriginalValue})", 
+                            headerName, encodedValue, meta.Key, meta.Value);
+                        
+                        request.SetRequestHeader(headerName, encodedValue);
+                        
+                        _logger.LogDebug("COS元数据头部设置成功: {HeaderName}", headerName);
+                    }
+                    catch (ArgumentException ex) when (ex.Message.Contains("Control characters") || ex.Message.Contains("invalid HTTP Header characters"))
+                    {
+                        _logger.LogWarning("元数据头部设置失败，跳过: 原始Key={OriginalKey}, 清理后Key={SafeKey}, 原始Value={OriginalValue}, 编码后Value={EncodedValue}, Error={Error}", 
+                            meta.Key, safeKey, meta.Value, encodedValue, ex.Message);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "设置COS元数据头部时发生未知错误: Key={Key}, Value={Value}", meta.Key, meta.Value);
+                    }
+                }
+            }
+
+            var result = await Task.Run(() => _cosXml.PutObject(request));
+            
+            _logger.LogDebug("腾讯云COS小文件上传成功: {FileName}, ETag: {ETag}", fileName, result.eTag);
+            
+            var fileUrl = $"https://{fullBucketName}.cos.{_options.Region}.myqcloud.com/{fileName}";
+            return StorageResult.CreateSuccess(result.eTag?.Trim('"') ?? "", fileUrl, streamLength);
+        }
+        finally
+        {
+            // 清理临时文件
+            if (File.Exists(tempFile))
+            {
                 try
                 {
-                    var headerName = $"x-cos-meta-{safeKey}";
-                    _logger.LogDebug("设置COS元数据头部: {HeaderName} = {EncodedValue} (原始: {OriginalKey}={OriginalValue})", 
-                        headerName, encodedValue, meta.Key, meta.Value);
-                    
-                    request.SetRequestHeader(headerName, encodedValue);
-                    
-                    _logger.LogDebug("COS元数据头部设置成功: {HeaderName}", headerName);
-                }
-                catch (ArgumentException ex) when (ex.Message.Contains("Control characters") || ex.Message.Contains("invalid HTTP Header characters"))
-                {
-                    _logger.LogWarning("元数据头部设置失败，跳过: 原始Key={OriginalKey}, 清理后Key={SafeKey}, 原始Value={OriginalValue}, 编码后Value={EncodedValue}, Error={Error}", 
-                        meta.Key, safeKey, meta.Value, encodedValue, ex.Message);
+                    File.Delete(tempFile);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "设置COS元数据头部时发生未知错误: Key={Key}, Value={Value}", meta.Key, meta.Value);
+                    _logger.LogWarning(ex, "删除临时文件失败: {TempFile}", tempFile);
                 }
             }
         }
-
-        var result = await Task.Run(() => _cosXml.PutObject(request));
-        
-        _logger.LogDebug("腾讯云COS小文件上传成功: {FileName}, ETag: {ETag}", fileName, result.eTag);
-        
-        var fileUrl = $"https://{fullBucketName}.cos.{_options.Region}.myqcloud.com/{fileName}";
-        return StorageResult.CreateSuccess(result.eTag?.Trim('"') ?? "", fileUrl, stream.Length);
     }
 
     /// <summary>

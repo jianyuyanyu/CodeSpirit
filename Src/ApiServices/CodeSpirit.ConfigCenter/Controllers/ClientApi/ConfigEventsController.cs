@@ -1,5 +1,6 @@
 using CodeSpirit.ConfigCenter.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 
@@ -43,11 +44,22 @@ public class ConfigEventsController : ControllerBase
             return;
         }
 
+        // 禁用响应缓冲，确保SSE数据能够立即发送
+        HttpContext.Features.Get<IHttpResponseBodyFeature>()?.DisableBuffering();
+
         // 设置SSE响应头（使用 Append 确保兼容性）
         Response.Headers.ContentType = "text/event-stream";
         Response.Headers.CacheControl = "no-cache";
         Response.Headers.Connection = "keep-alive";
         Response.Headers.Append("X-Accel-Buffering", "no"); // 禁用Nginx缓冲
+        
+        // 设置状态码（必须在StartAsync之前设置）
+        Response.StatusCode = 200;
+
+        // 立即启动响应，确保响应头被发送到客户端
+        // 这对于 HttpCompletionOption.ResponseHeadersRead 的客户端非常重要
+        // 必须在设置所有响应头之后调用
+        await Response.StartAsync(cancellationToken);
 
         try
         {

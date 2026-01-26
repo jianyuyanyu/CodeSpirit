@@ -67,6 +67,37 @@ public class ExamApiConfiguration : BaseApiConfiguration
 
 ### ConfigureServices - 服务注册
 
+#### 简化配置方式（推荐）
+
+使用扩展方法简化配置，减少重复代码：
+
+```csharp
+public override void ConfigureServices(IServiceCollection services, IConfiguration configuration)
+{
+    // ⚠️ 必须调用基类方法（初始化路径前缀配置）
+    base.ConfigureServices(services, configuration);
+    
+    // 配置标准数据库服务（多数据库支持、仓储模式）
+    this.ConfigureStandardDatabaseServices<ExamDbContext, MySqlExamDbContext, SqlServerExamDbContext>(
+        services, configuration);
+    
+    // 配置标准基础设施服务（事件总线、HTTP客户端）+ 可选组件（多租户、设置管理）
+    this.ConfigureStandardInfrastructureServices(services, configuration, (s, c) =>
+    {
+        s.AddCodeSpiritMultiTenant(c);
+        s.AddSettingsManagerWithDatabase(c);
+    });
+    
+    // 只配置特定业务服务
+    services.AddLLMServices();
+    AddExamSpecificServices(services);
+}
+```
+
+#### 传统配置方式
+
+如果需要更多控制，可以使用传统方式：
+
 ```csharp
 public override void ConfigureServices(IServiceCollection services, IConfiguration configuration)
 {
@@ -137,6 +168,26 @@ public override Task ConfigurePreControllerMiddlewareAsync(WebApplication app)
 
 #### 3. ConfigureMiddlewareAsync - 自定义中间件
 在通用中间件之后执行：
+
+**简化配置方式（推荐）：**
+
+```csharp
+public override async Task ConfigureMiddlewareAsync(WebApplication app)
+{
+    // 配置标准中间件（聚合器）+ 可选组件（多租户、AI表单填充）
+    await this.ConfigureStandardMiddlewareAsync(app, a =>
+    {
+        a.UseCodeSpiritMultiTenant();
+        a.UseAiFormFillEndpoints();
+    });
+    
+    // 只配置特定中间件
+    app.MapHub<ExamHub>("/exam-hub");
+}
+```
+
+**传统配置方式：**
+
 ```csharp
 public override async Task ConfigureMiddlewareAsync(WebApplication app)
 {
@@ -159,6 +210,20 @@ public override async Task ConfigureMiddlewareAsync(WebApplication app)
 ---
 
 ### InitializeDatabaseAsync - 数据库初始化
+
+**简化配置方式（推荐）：**
+
+```csharp
+public override async Task InitializeDatabaseAsync(WebApplication app)
+{
+    // 使用标准数据库初始化方法
+    // 自动应用迁移和初始化种子数据（如果 DbContext 实现了 IInitializableDbContext）
+    await this.InitializeStandardDatabaseAsync<ExamDbContext, MySqlExamDbContext, SqlServerExamDbContext>(
+        app, "ExamApi");
+}
+```
+
+**传统配置方式：**
 
 ```csharp
 public override async Task InitializeDatabaseAsync(WebApplication app)
@@ -189,6 +254,8 @@ public override async Task InitializeDatabaseAsync(WebApplication app)
     }
 }
 ```
+
+**注意：** 如果 DbContext 实现了 `IInitializableDbContext` 接口，标准初始化方法会自动调用 `InitializeDatabaseAsync()` 方法。
 
 ---
 
@@ -262,6 +329,69 @@ public virtual PathPrefixOptions PathPrefixOptions { get; protected set; }
 ---
 
 ## 完整配置类示例
+
+### 简化配置示例（推荐）
+
+```csharp
+using CodeSpirit.ExamApi.Data;
+using CodeSpirit.Shared.Performance;
+using CodeSpirit.Shared.Startup;
+
+namespace CodeSpirit.ExamApi.Configuration;
+
+public class ExamApiConfiguration : BaseApiConfiguration
+{
+    public override string ServiceName => "exam";
+    public override string ConnectionStringKey => "exam-api";
+    
+    public override void ConfigureServices(IServiceCollection services, IConfiguration configuration)
+    {
+        // 线程池配置（可选）
+        var logger = services.BuildServiceProvider()
+            .GetService<ILoggerFactory>()?.CreateLogger<ExamApiConfiguration>();
+        ThreadPoolConfiguration.ConfigureThreadPool(
+            ThreadPoolConfiguration.ServiceTier.High, 
+            expectedInstances: 3, 
+            logger);
+        
+        // 调用基类（初始化路径前缀）
+        base.ConfigureServices(services, configuration);
+        
+        // 配置标准数据库服务（多数据库支持、仓储模式）
+        this.ConfigureStandardDatabaseServices<ExamDbContext, MySqlExamDbContext, SqlServerExamDbContext>(
+            services, configuration);
+        
+        // 配置标准基础设施服务（事件总线、HTTP客户端）+ 可选组件（多租户、设置管理）
+        this.ConfigureStandardInfrastructureServices(services, configuration, (s, c) =>
+        {
+            s.AddCodeSpiritMultiTenant(c);
+            s.AddSettingsManagerWithDatabase(c);
+        });
+        
+        // 只配置特定业务服务
+        services.AddLLMServices();
+    }
+    
+    public override async Task ConfigureMiddlewareAsync(WebApplication app)
+    {
+        // 配置标准中间件（聚合器）+ 可选组件（多租户、AI表单填充）
+        await this.ConfigureStandardMiddlewareAsync(app, a =>
+        {
+            a.UseCodeSpiritMultiTenant();
+            a.UseAiFormFillEndpoints();
+        });
+    }
+    
+    public override async Task InitializeDatabaseAsync(WebApplication app)
+    {
+        // 使用标准数据库初始化方法
+        await this.InitializeStandardDatabaseAsync<ExamDbContext, MySqlExamDbContext, SqlServerExamDbContext>(
+            app, "ExamApi");
+    }
+}
+```
+
+### 传统配置示例
 
 ```csharp
 using CodeSpirit.Aggregator;
@@ -348,7 +478,67 @@ public class ExamApiConfiguration : BaseApiConfiguration
 | 规则 | 说明 |
 |------|------|
 | ✅ 调用 `base.ConfigureServices()` | 必须调用以初始化路径前缀配置 |
+| ✅ 使用扩展方法简化配置 | 推荐使用 `ConfigureStandardDatabaseServices`、`ConfigureStandardInfrastructureServices` 等扩展方法 |
+| ✅ 使用回调委托配置可选组件 | 通过委托参数显式配置可选组件，避免反射调用 |
 | ✅ 使用 `DatabaseMigrationHelper` | 简化多数据库配置 |
+| ✅ 实现 `IInitializableDbContext` | 如果 DbContext 需要初始化种子数据，实现此接口 |
 | ✅ 异步方法返回 `Task` | 所有中间件配置方法都是异步的 |
 | ❌ 在 Program.cs 添加配置 | 所有配置放在 API 配置类中 |
 | ❌ 重复注册框架已有服务 | 检查自动配置列表避免重复 |
+| ❌ 使用反射调用扩展方法 | 反射调用失去编译时类型安全，且性能较差 |
+
+---
+
+## 可选组件配置最佳实践
+
+### ❌ 错误方式：使用反射调用
+
+```csharp
+// ❌ 不推荐：使用反射动态调用扩展方法
+private static void TryInvokeExtensionMethod(IServiceCollection services, 
+    string namespaceName, string className, string methodName, IConfiguration configuration)
+{
+    var assembly = AppDomain.CurrentDomain.GetAssemblies()
+        .FirstOrDefault(a => a.GetTypes().Any(t => t.Namespace == namespaceName));
+    var type = assembly.GetType($"{namespaceName}.{className}");
+    var method = type.GetMethod(methodName, BindingFlags.Public | BindingFlags.Static);
+    method?.Invoke(null, new object[] { services, configuration });
+}
+```
+
+**问题**：
+- ❌ 编译时无法检测方法签名变更
+- ❌ 运行时性能损耗
+- ❌ IDE 无法追踪引用关系
+- ❌ 错误被默默吞掉，不易察觉
+- ❌ 重构时容易遗漏
+
+### ✅ 正确方式：使用回调委托
+
+```csharp
+// ✅ 推荐：通过回调委托配置可选组件
+public static void ConfigureStandardInfrastructureServices(
+    this BaseApiConfiguration config,
+    IServiceCollection services,
+    IConfiguration configuration,
+    Action<IServiceCollection, IConfiguration>? additionalConfiguration = null)
+{
+    // 核心服务（必需）
+    services.AddEventBus();
+    services.AddHttpClient();
+    
+    // 可选组件通过委托配置
+    additionalConfiguration?.Invoke(services, configuration);
+}
+```
+
+**调用示例**：
+
+```csharp
+// 显式配置需要的可选组件
+this.ConfigureStandardInfrastructureServices(services, configuration, (s, c) =>
+{
+    s.AddCodeSpiritMultiTenant(c);        // 多租户支持
+    s.AddSettingsManagerWithDatabase(c);  // 设置管理
+});
+```

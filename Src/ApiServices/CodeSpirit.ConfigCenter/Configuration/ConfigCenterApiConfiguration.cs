@@ -41,21 +41,25 @@ public class ConfigCenterApiConfiguration : BaseApiConfiguration
     /// <param name="configuration">配置对象</param>
     public override void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        // 配置多数据库支持的配置中心数据库
-        DatabaseMigrationHelper.ConfigureMultiDatabaseDbContext<ConfigDbContext, MySqlConfigDbContext, SqlServerConfigDbContext>(
-            services, configuration, ConnectionStringKey);
+        // 调用基类方法以初始化路径前缀配置
+        base.ConfigureServices(services, configuration);
         
-        // 添加多租户支持
-        services.AddCodeSpiritMultiTenant(configuration);
+        // 配置标准数据库服务（多数据库支持、仓储模式）
+        this.ConfigureStandardDatabaseServices<ConfigDbContext, MySqlConfigDbContext, SqlServerConfigDbContext>(
+            services, configuration);
+        
+        // 配置标准基础设施服务（事件总线、HTTP客户端）+ 可选组件（多租户）
+        // 注意：配置中心不使用设置管理
+        this.ConfigureStandardInfrastructureServices(services, configuration, (s, c) =>
+        {
+            s.AddCodeSpiritMultiTenant(c);
+        });
         
         // 添加LLM服务
         AddLLMServices(services);
         
         // 添加AI表单填充服务（包含自动端点功能）
         services.AddAiFormFillEndpoints();
-        
-        // 注册事件总线（用于分布式通知）
-        services.AddEventBus();
         
         // 注册配置变更事件处理器（订阅事件并推送给本地SSE客户端）
         services.AddEventHandler<Events.ConfigChangedEvent, ConfigChangedEventHandler>();
@@ -85,18 +89,14 @@ public class ConfigCenterApiConfiguration : BaseApiConfiguration
     /// </summary>
     /// <param name="app">应用程序构建器</param>
     /// <returns>异步任务</returns>
-    public override Task ConfigureMiddlewareAsync(WebApplication app)
+    public override async Task ConfigureMiddlewareAsync(WebApplication app)
     {
-        // 多租户中间件 - 必须在认证之前添加
-        app.UseCodeSpiritMultiTenant();
-        
-        // 使用聚合器
-        app.UseCodeSpiritAggregator();
-
-        // 使用AI表单填充自动端点
-        app.UseAiFormFillEndpoints();
-        
-        return Task.CompletedTask;
+        // 配置标准中间件（聚合器）+ 可选组件（多租户、AI表单填充）
+        await this.ConfigureStandardMiddlewareAsync(app, a =>
+        {
+            a.UseCodeSpiritMultiTenant();
+            a.UseAiFormFillEndpoints();
+        });
     }
     
     /// <summary>

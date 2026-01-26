@@ -48,9 +48,16 @@ public class IdentityApiConfiguration : BaseApiConfiguration
         // 调用基类方法以初始化路径前缀配置
         base.ConfigureServices(services, configuration);
         
-        // 使用统一的多数据库配置方法（支持 MySQL 和 SQL Server）
-        DatabaseMigrationHelper.ConfigureMultiDatabaseDbContext<ApplicationDbContext, MySqlDbContext, SqlServerDbContext>(
-            services, configuration, ConnectionStringKey);
+        // 配置标准数据库服务（多数据库支持、仓储模式）
+        this.ConfigureStandardDatabaseServices<ApplicationDbContext, MySqlDbContext, SqlServerDbContext>(
+            services, configuration);
+        
+        // 配置标准基础设施服务（事件总线、HTTP客户端）+ 可选组件（多租户、设置管理）
+        this.ConfigureStandardInfrastructureServices(services, configuration, (s, c) =>
+        {
+            s.AddCodeSpiritMultiTenant(c);
+            s.AddSettingsManagerWithDatabase(c);
+        });
         
         // 添加自定义业务服务
         AddCustomServices(services);
@@ -63,21 +70,9 @@ public class IdentityApiConfiguration : BaseApiConfiguration
         
         // 配置自定义控制器和审计
         ConfigureCustomControllers(services);
-                
-        // 注册多租户服务
-        services.AddCodeSpiritMultiTenant(configuration);
-        
-        // 注册设置管理服务（包含数据库）
-        services.AddSettingsManagerWithDatabase(configuration);
         
         // 注册Charts服务
         RegisterChartServices(services);
-        
-        
-        // 审计元数据过滤器将通过AddAuditMetadataFilter自动注册
-        
-        // 注册事件总线
-        services.AddEventBus();
         
         // 注册事件处理器
         services.AddTenantAwareEventHandler<UserCreatedOrUpdatedEvent, UserCreatedOrUpdatedEventHandler>();
@@ -122,10 +117,9 @@ public class IdentityApiConfiguration : BaseApiConfiguration
     /// <returns>异步任务</returns>
     public override Task ConfigureMiddlewareAsync(WebApplication app)
     {
-        // 使用聚合器（在导航之后）
+        // 配置标准中间件（多租户、聚合器、AI表单填充）
+        // 注意：Identity API 的多租户中间件在 ConfigurePreAuthenticationMiddlewareAsync 中配置
         app.UseCodeSpiritAggregator();
-
-        // 使用AI表单填充自动端点
         app.UseAiFormFillEndpoints();
 
         return Task.CompletedTask;
@@ -183,9 +177,8 @@ public class IdentityApiConfiguration : BaseApiConfiguration
     /// <param name="services">服务集合</param>
     private static void AddCustomServices(IServiceCollection services)
     {
-        // 注册 Repositories 和 Handlers
-        services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-
+        // 注意：IRepository<> 已在 ConfigureStandardDatabaseServices 中注册，无需重复注册
+        
         // 注册自定义授权处理程序（这个需要特殊处理，因为是 Identity 框架的组件）
         services.AddScoped<SignInManager<ApplicationUser>, CustomSignInManager>();
 

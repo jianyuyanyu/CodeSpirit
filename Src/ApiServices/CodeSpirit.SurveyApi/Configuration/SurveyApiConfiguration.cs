@@ -44,21 +44,22 @@ public class SurveyApiConfiguration : BaseApiConfiguration
     /// <param name="configuration">配置对象</param>
     public override void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        // 配置多数据库支持的问卷系统数据库
-        DatabaseMigrationHelper.ConfigureMultiDatabaseDbContext<SurveyDbContext, MySqlSurveyDbContext, SqlServerSurveyDbContext>(
-            services, configuration, ConnectionStringKey);
+        // 调用基类方法以初始化路径前缀配置
+        base.ConfigureServices(services, configuration);
         
-        // 注册仓储模式
-        services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+        // 配置标准数据库服务（多数据库支持、仓储模式）
+        this.ConfigureStandardDatabaseServices<SurveyDbContext, MySqlSurveyDbContext, SqlServerSurveyDbContext>(
+            services, configuration);
         
-        // 添加多租户支持
-        services.AddCodeSpiritMultiTenant(configuration);
+        // 配置标准基础设施服务（事件总线、HTTP客户端）+ 可选组件（多租户、设置管理）
+        this.ConfigureStandardInfrastructureServices(services, configuration, (s, c) =>
+        {
+            s.AddCodeSpiritMultiTenant(c);
+            s.AddSettingsManagerWithDatabase(c);
+        });
         
         // 添加Redis分布式锁服务
         AddRedisDistributedLock(services);
-        
-        // 注册事件总线
-        services.AddEventBus();
         
         // 注册Charts服务
         AddChartServices(services);
@@ -66,14 +67,8 @@ public class SurveyApiConfiguration : BaseApiConfiguration
         // 注册LLM服务
         services.AddLLMServices();
         
-        // 添加设置管理
-        services.AddSettingsManagerWithDatabase(configuration);
-        
         // 注册问卷系统特定服务
         AddSurveyServices(services);
-        
-        // 添加HTTP客户端服务
-        services.AddHttpClient();
         
         // 配置控制器和审计元数据过滤器
         ConfigureControllersWithAudit(services, configuration);
@@ -99,17 +94,15 @@ public class SurveyApiConfiguration : BaseApiConfiguration
     /// <returns>异步任务</returns>
     public override async Task ConfigureMiddlewareAsync(WebApplication app)
     {
-        // 使用多租户中间件
-        app.UseCodeSpiritMultiTenant();
+        // 配置标准中间件（聚合器）+ 可选组件（多租户、AI表单填充）
+        await this.ConfigureStandardMiddlewareAsync(app, a =>
+        {
+            a.UseCodeSpiritMultiTenant();
+            a.UseAiFormFillEndpoints();
+        });
         
         // 初始化设置管理
         await app.UseSettingsManagerAsync();
-        
-        // 使用聚合器
-        app.UseCodeSpiritAggregator();
-        
-        // 使用AI表单填充自动端点
-        app.UseAiFormFillEndpoints();
     }
     
     /// <summary>
@@ -119,27 +112,9 @@ public class SurveyApiConfiguration : BaseApiConfiguration
     /// <returns>异步任务</returns>
     public override async Task InitializeDatabaseAsync(WebApplication app)
     {
-        // 初始化数据库
-        using var scope = app.Services.CreateScope();
-        var services = scope.ServiceProvider;
-        var logger = services.GetRequiredService<ILogger<SurveyApiConfiguration>>();
-        var configuration = services.GetRequiredService<IConfiguration>();
-        
-        try
-        {
-            // 应用数据库迁移
-            await DatabaseMigrationHelper.ApplyDatabaseMigrationsAsync<MySqlSurveyDbContext, SqlServerSurveyDbContext>(
-                services, configuration, logger, "SurveyApi");
-            
-            // 初始化数据
-            var context = services.GetRequiredService<SurveyDbContext>();
-            await context.InitializeDatabaseAsync();
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "初始化问卷系统数据库时发生错误：{Message}", ex.Message);
-            throw;
-        }
+        // 使用标准数据库初始化方法
+        await this.InitializeStandardDatabaseAsync<SurveyDbContext, MySqlSurveyDbContext, SqlServerSurveyDbContext>(
+            app, "SurveyApi");
     }
     
     /// <summary>

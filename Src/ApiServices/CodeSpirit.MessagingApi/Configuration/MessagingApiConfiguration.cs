@@ -39,9 +39,15 @@ public class MessagingApiConfiguration : BaseApiConfiguration
     /// <param name="configuration">配置对象</param>
     public override void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        // 使用多数据库配置助手配置消息系统数据库
-        CodeSpirit.Shared.Data.DatabaseMigrationHelper.ConfigureMultiDatabaseDbContext<MessagingDbContext, MySqlMessagingDbContext, SqlServerMessagingDbContext>(
-            services, configuration, ConnectionStringKey);
+        // 调用基类方法以初始化路径前缀配置
+        base.ConfigureServices(services, configuration);
+        
+        // 配置标准数据库服务（多数据库支持、仓储模式）
+        this.ConfigureStandardDatabaseServices<MessagingDbContext, MySqlMessagingDbContext, SqlServerMessagingDbContext>(
+            services, configuration);
+        
+        // 添加多租户支持（消息系统不使用标准基础设施服务）
+        services.AddCodeSpiritMultiTenant(configuration);
         
         // 从已有MessagingServices中迁移 - 保持原有功能
         services.AddMessagingServices(configuration);
@@ -49,9 +55,6 @@ public class MessagingApiConfiguration : BaseApiConfiguration
         
         // 添加AutoMapper
         services.AddAutoMapper(typeof(MappingProfile).Assembly);
-        
-        // 添加多租户支持
-        services.AddCodeSpiritMultiTenant(configuration);
         
         // 添加控制器和API探索器
         services.AddControllers();

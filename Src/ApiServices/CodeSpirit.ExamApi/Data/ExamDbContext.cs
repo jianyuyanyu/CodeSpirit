@@ -15,7 +15,7 @@ namespace CodeSpirit.ExamApi.Data;
 /// <summary>
 /// 考试系统数据库上下文 - 支持多租户和多数据库
 /// </summary>
-public class ExamDbContext : MultiDatabaseDbContextBase
+public class ExamDbContext : MultiDatabaseDbContextBase, IInitializableDbContext
 {
     private readonly IServiceProvider _serviceProvider;
     

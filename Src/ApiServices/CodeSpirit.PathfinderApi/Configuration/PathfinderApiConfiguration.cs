@@ -50,18 +50,15 @@ public class PathfinderApiConfiguration : BaseApiConfiguration
         // 调用基类方法以初始化路径前缀配置
         base.ConfigureServices(services, configuration);
         
-        // 配置多数据库支持的Pathfinder数据库
-        DatabaseMigrationHelper.ConfigureMultiDatabaseDbContext<PathfinderDbContext, MySqlPathfinderDbContext, SqlServerPathfinderDbContext>(
-            services, configuration, ConnectionStringKey);
+        // 配置标准数据库服务（多数据库支持、仓储模式）
+        this.ConfigureStandardDatabaseServices<PathfinderDbContext, MySqlPathfinderDbContext, SqlServerPathfinderDbContext>(
+            services, configuration);
         
-        // 注册仓储模式
-        services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-        
-        // 添加多租户支持
-        services.AddCodeSpiritMultiTenant(configuration);
-        
-        // 注册事件总线
-        services.AddEventBus();
+        // 配置标准基础设施服务（事件总线、HTTP客户端）+ 可选组件（多租户）
+        this.ConfigureStandardInfrastructureServices(services, configuration, (s, c) =>
+        {
+            s.AddCodeSpiritMultiTenant(c);
+        });
         
         // 添加CodeSpirit缓存服务
         AddCachingServices(services, configuration);
@@ -155,16 +152,12 @@ public class PathfinderApiConfiguration : BaseApiConfiguration
     /// <returns>异步任务</returns>
     public override async Task ConfigureMiddlewareAsync(WebApplication app)
     {
-        // 使用多租户中间件
-        app.UseCodeSpiritMultiTenant();
-        
-        // 使用聚合器中间件
-        app.UseCodeSpiritAggregator();
-        
-        // 使用AI表单填充中间件（提供自动端点）
-        app.UseAiFormFillEndpoints();
-        
-        await Task.CompletedTask;
+        // 配置标准中间件（聚合器）+ 可选组件（多租户、AI表单填充）
+        await this.ConfigureStandardMiddlewareAsync(app, a =>
+        {
+            a.UseCodeSpiritMultiTenant();
+            a.UseAiFormFillEndpoints();
+        });
     }
     
     /// <summary>
@@ -174,35 +167,9 @@ public class PathfinderApiConfiguration : BaseApiConfiguration
     /// <returns>异步任务</returns>
     public override async Task InitializeDatabaseAsync(WebApplication app)
     {
-        // 初始化数据库
-        using var scope = app.Services.CreateScope();
-        var services = scope.ServiceProvider;
-        var logger = services.GetRequiredService<ILogger<PathfinderApiConfiguration>>();
-        var configuration = services.GetRequiredService<IConfiguration>();
-        
-        try
-        {
-            // 应用数据库迁移
-            await DatabaseMigrationHelper.ApplyDatabaseMigrationsAsync<MySqlPathfinderDbContext, SqlServerPathfinderDbContext>(
-                services, configuration, logger, "PathfinderApi");
-            
-            logger.LogInformation("Pathfinder数据库初始化成功");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "初始化Pathfinder数据库时发生错误：{Message}", ex.Message);
-            
-            // 如果是迁移冲突错误，提供解决建议
-            if (ex.Message.Contains("already an object named") || 
-                ex.Message.Contains("Table") && ex.Message.Contains("already exists"))
-            {
-                logger.LogError("检测到数据库迁移冲突！建议解决方案:");
-                logger.LogError("1. 清理迁移历史: DELETE FROM __EFMigrationsHistory;");
-                logger.LogError("2. 然后重启应用程序");
-            }
-            
-            throw;
-        }
+        // 使用标准数据库初始化方法
+        await this.InitializeStandardDatabaseAsync<PathfinderDbContext, MySqlPathfinderDbContext, SqlServerPathfinderDbContext>(
+            app, "PathfinderApi");
     }
     
     /// <summary>

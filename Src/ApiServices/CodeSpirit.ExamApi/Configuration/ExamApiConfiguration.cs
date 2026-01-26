@@ -58,21 +58,20 @@ public class ExamApiConfiguration : BaseApiConfiguration
         
         // 调用基类方法以初始化路径前缀配置
         base.ConfigureServices(services, configuration);
-        // 配置多数据库支持的考试系统数据库
-        DatabaseMigrationHelper.ConfigureMultiDatabaseDbContext<ExamDbContext, MySqlExamDbContext, SqlServerExamDbContext>(
-            services, configuration, ConnectionStringKey);
         
-        // 注册仓储模式
-        services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+        // 配置标准数据库服务（多数据库支持、仓储模式）
+        this.ConfigureStandardDatabaseServices<ExamDbContext, MySqlExamDbContext, SqlServerExamDbContext>(
+            services, configuration);
         
-        // 添加多租户支持
-        services.AddCodeSpiritMultiTenant(configuration);
+        // 配置标准基础设施服务（事件总线、HTTP客户端）+ 可选组件（多租户、设置管理）
+        this.ConfigureStandardInfrastructureServices(services, configuration, (s, c) =>
+        {
+            s.AddCodeSpiritMultiTenant(c);
+            s.AddSettingsManagerWithDatabase(c);
+        });
         
         // 添加Redis分布式锁服务
         AddRedisDistributedLock(services);
-        
-        // 注册事件总线
-        services.AddEventBus();
         
         // 注册Charts服务
         AddChartServices(services);
@@ -82,12 +81,6 @@ public class ExamApiConfiguration : BaseApiConfiguration
         
         // 注册 QuestPDF 服务（轻量级PDF生成，默认启用）
         AddQuestPdfServices(services);
-        
-        // 添加设置管理
-        services.AddSettingsManagerWithDatabase(configuration);
-        
-        // 添加HTTP客户端服务
-        services.AddHttpClient();
         
         // 添加输出缓存服务
         AddOutputCacheServices(services);
@@ -124,8 +117,12 @@ public class ExamApiConfiguration : BaseApiConfiguration
     /// <returns>异步任务</returns>
     public override async Task ConfigureMiddlewareAsync(WebApplication app)
     {
-        // 使用多租户中间件
-        app.UseCodeSpiritMultiTenant();
+        // 配置标准中间件（聚合器）+ 可选组件（多租户、AI表单填充）
+        await this.ConfigureStandardMiddlewareAsync(app, a =>
+        {
+            a.UseCodeSpiritMultiTenant();
+            a.UseAiFormFillEndpoints();
+        });
         
         // 🚨 紧急优化：启用请求限流中间件（必须在路由之前）
         app.UseRateLimiter();
@@ -135,12 +132,6 @@ public class ExamApiConfiguration : BaseApiConfiguration
         
         // 初始化设置管理
         await app.UseSettingsManagerAsync();
-        
-        // 使用聚合器
-        app.UseCodeSpiritAggregator();
-        
-        // 使用AI表单填充自动端点
-        app.UseAiFormFillEndpoints();
     }
     
     /// <summary>
@@ -150,41 +141,9 @@ public class ExamApiConfiguration : BaseApiConfiguration
     /// <returns>异步任务</returns>
     public override async Task InitializeDatabaseAsync(WebApplication app)
     {
-        // 初始化数据库
-        using var scope = app.Services.CreateScope();
-        var services = scope.ServiceProvider;
-        var logger = services.GetRequiredService<ILogger<ExamApiConfiguration>>();
-        var configuration = services.GetRequiredService<IConfiguration>();
-        
-        try
-        {
-            // 应用数据库迁移（使用改进的迁移方法）
-            await DatabaseMigrationHelper.ApplyDatabaseMigrationsAsync<MySqlExamDbContext, SqlServerExamDbContext>(
-                services, configuration, logger, "ExamApi");
-            
-            // 初始化数据
-            var context = services.GetRequiredService<ExamDbContext>();
-            await context.InitializeDatabaseAsync();
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "初始化考试系统数据库时发生错误：{Message}", ex.Message);
-            
-            // 如果是迁移冲突错误，提供解决建议
-            if (ex.Message.Contains("already an object named") || 
-                ex.Message.Contains("Table") && ex.Message.Contains("already exists"))
-            {
-                logger.LogError("检测到数据库迁移冲突！这通常是因为:");
-                logger.LogError("1. 数据库中已存在表但迁移历史不一致");
-                logger.LogError("2. 多个DbContext尝试创建相同的表");
-                logger.LogError("建议解决方案:");
-                logger.LogError("1. 运行迁移冲突修复脚本: .\\Scripts\\fix-migration-conflicts.ps1 -ApiProject ExamApi -DatabaseType SqlServer -Action CheckStatus");
-                logger.LogError("2. 或手动清理数据库: DELETE FROM __EFMigrationsHistory;");
-                logger.LogError("3. 然后重启应用程序");
-            }
-            
-            throw;
-        }
+        // 使用标准数据库初始化方法
+        await this.InitializeStandardDatabaseAsync<ExamDbContext, MySqlExamDbContext, SqlServerExamDbContext>(
+            app, "ExamApi");
     }
     
     /// <summary>

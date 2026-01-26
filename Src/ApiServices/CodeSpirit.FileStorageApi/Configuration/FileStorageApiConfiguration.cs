@@ -45,12 +45,21 @@ public class FileStorageApiConfiguration : BaseApiConfiguration
     /// <param name="configuration">配置对象</param>
     public override void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        // 配置多数据库支持的文件存储数据库
-        DatabaseMigrationHelper.ConfigureMultiDatabaseDbContext<FileStorageDbContext, MySqlFileStorageDbContext, SqlServerFileStorageDbContext>(
-            services, configuration, ConnectionStringKey);
+        // 调用基类方法以初始化路径前缀配置
+        base.ConfigureServices(services, configuration);
         
-        // 添加多租户支持
+        // 配置标准数据库服务（多数据库支持、仓储模式）
+        this.ConfigureStandardDatabaseServices<FileStorageDbContext, MySqlFileStorageDbContext, SqlServerFileStorageDbContext>(
+            services, configuration);
+        
+        // 添加多租户支持（文件存储不使用设置管理，所以单独添加）
         services.AddCodeSpiritMultiTenant(configuration);
+        
+        // 注册事件总线
+        services.AddEventBus();
+        
+        // 添加HTTP客户端服务
+        services.AddHttpClient();
         
         // 添加控制器和授权
         services.AddControllers();
@@ -67,9 +76,6 @@ public class FileStorageApiConfiguration : BaseApiConfiguration
             options.DefaultAcquireTimeout = TimeSpan.FromSeconds(10);
             options.RetryInterval = TimeSpan.FromMilliseconds(100);
         });
-        
-        // 注册事件总线
-        services.AddEventBus();
         
         // 注册文件存储配置
         services.Configure<FileStorageOptions>(configuration.GetSection(FileStorageOptions.SectionName));
@@ -120,26 +126,15 @@ public class FileStorageApiConfiguration : BaseApiConfiguration
     /// <returns>异步任务</returns>
     public override async Task InitializeDatabaseAsync(WebApplication app)
     {
+        // 使用标准数据库初始化方法
+        await this.InitializeStandardDatabaseAsync<FileStorageDbContext, MySqlFileStorageDbContext, SqlServerFileStorageDbContext>(
+            app, "FileStorageApi");
+        
+        // 文件存储有特殊的初始化逻辑，需要额外处理
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
-        var logger = services.GetRequiredService<ILogger<FileStorageApiConfiguration>>();
-        var configuration = services.GetRequiredService<IConfiguration>();
-        
-        try
-        {
-            // 应用数据库迁移
-            await DatabaseMigrationHelper.ApplyDatabaseMigrationsAsync<MySqlFileStorageDbContext, SqlServerFileStorageDbContext>(
-                services, configuration, logger, "FileStorageApi");
-            
-            // 初始化数据
-            var context = services.GetRequiredService<FileStorageDbContext>();
-            await FileStorageDbContextExtensions.InitializeDatabaseAsync(context);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "初始化文件存储数据库时发生错误：{Message}", ex.Message);
-            throw;
-        }
+        var context = services.GetRequiredService<FileStorageDbContext>();
+        await FileStorageDbContextExtensions.InitializeDatabaseAsync(context);
     }
     
     /// <summary>

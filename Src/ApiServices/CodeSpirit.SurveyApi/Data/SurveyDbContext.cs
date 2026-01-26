@@ -10,7 +10,7 @@ namespace CodeSpirit.SurveyApi.Data;
 /// <summary>
 /// 问卷系统数据库上下文 - 支持多数据库
 /// </summary>
-public class SurveyDbContext : MultiDatabaseDbContextBase
+public class SurveyDbContext : MultiDatabaseDbContextBase, IInitializableDbContext
 {
     /// <summary>
     /// 初始化问卷数据库上下文

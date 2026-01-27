@@ -1,3 +1,4 @@
+using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Audit.Extensions;
 using CodeSpirit.Audit.Services;
 using CodeSpirit.Audit.Services.Dtos;
@@ -5,6 +6,7 @@ using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Authorization;
 using CodeSpirit.Core.Enums;
+using CodeSpirit.Web.Configuration.Statistics;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
@@ -21,6 +23,7 @@ namespace CodeSpirit.Web.Controllers
     [Navigation(Icon = "fa-solid fa-shield-halved", PlatformType = PlatformType.System)]
     [Platform(PlatformType.System)]
     [NoAudit("系统审计日志控制器不需要审计")]
+    [StatisticsCards<SystemAuditLogStatisticsConfig>]
     public class SystemAuditLogController : ApiControllerBase
     {
         private readonly IAuditService _auditService;
@@ -401,6 +404,42 @@ namespace CodeSpirit.Web.Controllers
             {
                 _logger.LogError(ex, "批量删除审计日志失败");
                 return BadResponse<object>("批量删除审计日志失败: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 获取系统审计日志统计卡片数据
+        /// </summary>
+        /// <param name="tenantId">租户ID，可选</param>
+        /// <returns>统计卡片数据</returns>
+        [HttpGet("statistics/cards")]
+        [DisplayName("获取统计卡片")]
+        public async Task<ActionResult<ApiResponse<object>>> GetStatisticsCards([FromQuery] string? tenantId = null)
+        {
+            try
+            {
+                var stats = await _auditService.GetCardsStatsAsync(tenantId);
+                
+                // 返回扁平化数据供卡片渲染（6个卡片）
+                object data = new
+                {
+                    todayTotal = stats.TodayTotal,
+                    todayActiveTenants = stats.TodayActiveTenants,
+                    todayActiveUsers = stats.TodayActiveUsers,
+                    successRate = $"{stats.SuccessRate:F1}%",
+                    last7DaysTotal = stats.Last7DaysTotal,
+                    avgResponseTime = $"{stats.AvgResponseTime:F0} ms"
+                };
+                
+                _logger.LogInformation("系统管理员 {UserId} 获取系统审计日志统计卡片成功，租户: {TenantId}",
+                    _currentUser.Id, tenantId ?? "全部");
+                
+                return SuccessResponse<object>(data);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取系统审计日志统计卡片失败");
+                return BadResponse<object>("获取统计卡片失败: " + ex.Message);
             }
         }
     }

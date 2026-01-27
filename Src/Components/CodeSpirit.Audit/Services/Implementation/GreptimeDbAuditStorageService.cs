@@ -171,8 +171,11 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
                 ? JsonConvert.SerializeObject(auditLog.AttributeProperties) 
                 : "";
 
+            // 验证表名安全性
+            var sanitizedTableName = SanitizeTableName(tableName);
+            
             var insertSql = $@"
-                INSERT INTO {tableName} (
+                INSERT INTO {sanitizedTableName} (
                     audit_id, user_id, user_name, ip_address, operation_time,
                     operation_type, description, request_path, request_method, request_params,
                     execution_duration, is_success, error_message, status_code,
@@ -236,7 +239,6 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
             }
             
             var tableName = GetFinalTableName();
-            var tenantId = "";
             
             // 分批处理
             var batches = SplitIntoBatches(logList, _options.BatchSize);
@@ -251,6 +253,13 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
                     {
                         valuesBuilder.Append(",");
                     }
+                    
+                    // 获取租户ID（优先使用日志中的TenantId，如果为空则从当前上下文获取）
+                    var effectiveTenantId = log.TenantId ?? GetCurrentTenantId() ?? "";
+                    
+                    // 记录租户ID用于调试
+                    _logger.LogDebug("批量存储审计日志 - LogId: {LogId}, TenantId: {TenantId}, EffectiveTenantId: {EffectiveTenantId}", 
+                        log.Id, log.TenantId, effectiveTenantId);
                     
                     // 序列化AdditionalData和AttributeProperties为JSON
                     var additionalDataJson = log.AdditionalData?.Count > 0 
@@ -279,7 +288,7 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
                          '{EscapeSqlString(log.AfterData)}',
                          '{EscapeSqlString(log.UserAgent)}',
                          '{EscapeSqlString(log.OperationName)}',
-                         '{EscapeSqlString(tenantId)}',
+                         '{EscapeSqlString(effectiveTenantId)}',
                          '{EscapeSqlString(additionalDataJson)}',
                          '{EscapeSqlString(attributePropertiesJson)}')");
                 }
@@ -448,8 +457,10 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
             
             var whereClause = whereConditions.Any() ? $"WHERE {string.Join(" AND ", whereConditions)}" : "";
             
-            // 构建排序
-            var orderBy = $"ORDER BY {GetSqlFieldName(query.OrderBy ?? "OperationTime")} {(query.OrderDir?.ToUpper() == "ASC" ? "ASC" : "DESC")}";
+            // 构建排序（使用白名单验证字段名）
+            var orderByField = GetSqlFieldName(query.OrderBy ?? "OperationTime");
+            var orderDir = query.OrderDir?.ToUpper() == "ASC" ? "ASC" : "DESC";
+            var orderBy = $"ORDER BY {orderByField} {orderDir}";
             
             // 计算总数
             var countSql = $"SELECT COUNT(*) as total FROM {tableName} {whereClause}";
@@ -647,6 +658,144 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
         {
             _logger.LogError(ex, "获取GreptimeDB操作趋势失败");
             return new Dictionary<DateTime, long>();
+        }
+    }
+    
+    /// <summary>
+    /// 获取审计卡片统计数据
+    /// </summary>
+    public async Task<AuditCardsStatsDto> GetCardsStatsAsync(string? tenantId = null)
+    {
+        try
+        {
+            var tableName = GetFinalTableName();
+            
+            // 计算时间范围
+            var now = DateTime.UtcNow;
+            var todayStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
+            var last7DaysStart = todayStart.AddDays(-7);
+            
+            // 如果未指定租户ID且当前上下文有租户，则自动应用租户过滤
+            var effectiveTenantId = tenantId ?? GetCurrentTenantId();
+            var tenantCondition = !string.IsNullOrEmpty(effectiveTenantId) 
+                ? $" AND tenant_id = '{EscapeSqlString(effectiveTenantId)}'" 
+                : "";
+            
+            // 构建并行查询任务
+            var todayTotalSql = $@"
+                SELECT COUNT(*) as count
+                FROM {tableName}
+                WHERE operation_time >= '{todayStart:yyyy-MM-dd HH:mm:ss}'
+                  AND operation_time <= '{now:yyyy-MM-dd HH:mm:ss}' {tenantCondition}";
+            
+            var todaySuccessSql = $@"
+                SELECT COUNT(*) as count
+                FROM {tableName}
+                WHERE operation_time >= '{todayStart:yyyy-MM-dd HH:mm:ss}'
+                  AND operation_time <= '{now:yyyy-MM-dd HH:mm:ss}'
+                  AND is_success = true {tenantCondition}";
+            
+            var todayFailedSql = $@"
+                SELECT COUNT(*) as count
+                FROM {tableName}
+                WHERE operation_time >= '{todayStart:yyyy-MM-dd HH:mm:ss}'
+                  AND operation_time <= '{now:yyyy-MM-dd HH:mm:ss}'
+                  AND is_success = false {tenantCondition}";
+            
+            var last7DaysTotalSql = $@"
+                SELECT COUNT(*) as count
+                FROM {tableName}
+                WHERE operation_time >= '{last7DaysStart:yyyy-MM-dd HH:mm:ss}'
+                  AND operation_time <= '{now:yyyy-MM-dd HH:mm:ss}' {tenantCondition}";
+            
+            var avgResponseTimeSql = $@"
+                SELECT AVG(execution_duration) as avg_duration
+                FROM {tableName}
+                WHERE operation_time >= '{todayStart:yyyy-MM-dd HH:mm:ss}'
+                  AND operation_time <= '{now:yyyy-MM-dd HH:mm:ss}'
+                  AND execution_duration IS NOT NULL {tenantCondition}";
+            
+            // 系统审计专用查询（仅当未指定租户时执行）
+            Task<List<Dictionary<string, object>>>? todayActiveTenantsTask = null;
+            Task<List<Dictionary<string, object>>>? todayActiveUsersTask = null;
+            
+            if (string.IsNullOrEmpty(effectiveTenantId))
+            {
+                var todayActiveTenantsSql = $@"
+                    SELECT COUNT(DISTINCT tenant_id) as count
+                    FROM {tableName}
+                    WHERE operation_time >= '{todayStart:yyyy-MM-dd HH:mm:ss}'
+                      AND operation_time <= '{now:yyyy-MM-dd HH:mm:ss}'
+                      AND tenant_id IS NOT NULL
+                      AND tenant_id != ''";
+                
+                var todayActiveUsersSql = $@"
+                    SELECT COUNT(DISTINCT user_id) as count
+                    FROM {tableName}
+                    WHERE operation_time >= '{todayStart:yyyy-MM-dd HH:mm:ss}'
+                      AND operation_time <= '{now:yyyy-MM-dd HH:mm:ss}'
+                      AND user_id IS NOT NULL
+                      AND user_id != ''";
+                
+                todayActiveTenantsTask = ExecuteQueryAsync(todayActiveTenantsSql);
+                todayActiveUsersTask = ExecuteQueryAsync(todayActiveUsersSql);
+            }
+            
+            // 并行执行查询
+            var todayTotalTask = ExecuteQueryAsync(todayTotalSql);
+            var todaySuccessTask = ExecuteQueryAsync(todaySuccessSql);
+            var todayFailedTask = ExecuteQueryAsync(todayFailedSql);
+            var last7DaysTotalTask = ExecuteQueryAsync(last7DaysTotalSql);
+            var avgResponseTimeTask = ExecuteQueryAsync(avgResponseTimeSql);
+            
+            // 等待所有查询完成
+            await Task.WhenAll(
+                todayTotalTask,
+                todaySuccessTask,
+                todayFailedTask,
+                last7DaysTotalTask,
+                avgResponseTimeTask,
+                todayActiveTenantsTask ?? Task.FromResult(new List<Dictionary<string, object>>()),
+                todayActiveUsersTask ?? Task.FromResult(new List<Dictionary<string, object>>())
+            );
+            
+            // 解析结果
+            var todayTotal = todayTotalTask.Result.FirstOrDefault()?.GetValueOrDefault("count", 0L);
+            var todaySuccess = todaySuccessTask.Result.FirstOrDefault()?.GetValueOrDefault("count", 0L);
+            var todayFailed = todayFailedTask.Result.FirstOrDefault()?.GetValueOrDefault("count", 0L);
+            var last7DaysTotal = last7DaysTotalTask.Result.FirstOrDefault()?.GetValueOrDefault("count", 0L);
+            var avgResponseTime = avgResponseTimeTask.Result.FirstOrDefault()?.GetValueOrDefault("avg_duration", 0.0);
+            
+            var todayActiveTenants = todayActiveTenantsTask?.Result.FirstOrDefault()?.GetValueOrDefault("count", 0L) ?? 0L;
+            var todayActiveUsers = todayActiveUsersTask?.Result.FirstOrDefault()?.GetValueOrDefault("count", 0L) ?? 0L;
+            
+            // 计算成功率
+            var total = ConvertToInt64(todayTotal ?? 0L);
+            var success = ConvertToInt64(todaySuccess ?? 0L);
+            var failed = ConvertToInt64(todayFailed ?? 0L);
+            var successRate = total > 0 ? (success * 100.0 / total) : 0.0;
+            
+            var result = new AuditCardsStatsDto
+            {
+                TodayTotal = total,
+                TodaySuccess = success,
+                TodayFailed = failed,
+                SuccessRate = successRate,
+                TodayActiveTenants = ConvertToInt64(todayActiveTenants),
+                TodayActiveUsers = ConvertToInt64(todayActiveUsers),
+                Last7DaysTotal = ConvertToInt64(last7DaysTotal ?? 0L),
+                AvgResponseTime = Convert.ToDouble(avgResponseTime ?? 0.0)
+            };
+            
+            _logger.LogDebug("获取审计卡片统计成功，租户: {TenantId}, 今日总数: {Total}, 成功率: {SuccessRate:F2}%",
+                effectiveTenantId ?? "全部", total, successRate);
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取GreptimeDB审计卡片统计失败");
+            return new AuditCardsStatsDto();
         }
     }
     
@@ -1157,8 +1306,18 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
     }
     
     /// <summary>
-    /// 转义SQL字符串
+    /// 转义SQL字符串（增强安全性）
     /// </summary>
+    /// <remarks>
+    /// 转义所有可能导致SQL注入的特殊字符
+    /// 虽然 GreptimeDB HTTP API 不支持参数化查询，但通过严格的转义和验证可以降低风险
+    /// 
+    /// 安全措施：
+    /// 1. 转义单引号（防止字符串注入）
+    /// 2. 转义反斜杠（防止转义序列注入）
+    /// 3. 检测并记录潜在危险字符（注释、分号等）
+    /// 4. 限制字符串长度（防止DoS攻击）
+    /// </remarks>
     private string EscapeSqlString(string? input)
     {
         if (string.IsNullOrEmpty(input))
@@ -1166,7 +1325,96 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
             return "";
         }
         
-        return input.Replace("'", "''").Replace("\\", "\\\\");
+        // 限制字符串长度（防止DoS攻击，单个字段最大64KB）
+        const int maxLength = 65536;
+        if (input.Length > maxLength)
+        {
+            _logger.LogWarning("SQL字符串超过最大长度限制 ({MaxLength} 字符)，将被截断: {ActualLength}", 
+                maxLength, input.Length);
+            input = input.Substring(0, maxLength);
+        }
+        
+        // 转义单引号（SQL字符串分隔符）- 最重要
+        var escaped = input.Replace("'", "''");
+        
+        // 转义反斜杠（防止转义序列注入）
+        escaped = escaped.Replace("\\", "\\\\");
+        
+        // 检测潜在危险字符（记录警告，但不阻止，因为这些字符在字符串值中可能是合法的）
+        // 例如：用户输入可能包含 "--" 作为文本内容的一部分
+        var dangerousPatterns = new[]
+        {
+            ("--", "SQL注释"),
+            ("/*", "SQL块注释开始"),
+            ("*/", "SQL块注释结束"),
+            (";", "SQL语句分隔符"),
+            ("xp_", "扩展存储过程前缀"),
+            ("sp_", "系统存储过程前缀"),
+            ("exec", "执行命令关键字"),
+            ("execute", "执行命令关键字"),
+            ("union", "SQL联合查询关键字"),
+            ("select", "SQL查询关键字"),
+            ("insert", "SQL插入关键字"),
+            ("update", "SQL更新关键字"),
+            ("delete", "SQL删除关键字"),
+            ("drop", "SQL删除关键字"),
+            ("alter", "SQL修改关键字"),
+            ("create", "SQL创建关键字")
+        };
+        
+        foreach (var (pattern, description) in dangerousPatterns)
+        {
+            // 使用不区分大小写的检查
+            if (escaped.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+            {
+                var previewLength = Math.Min(200, escaped.Length);
+                _logger.LogWarning("检测到潜在SQL注入模式 '{Pattern}' ({Description})，已转义: {Preview}...", 
+                    pattern, description, escaped.Substring(0, previewLength));
+            }
+        }
+        
+        return escaped;
+    }
+    
+    /// <summary>
+    /// 验证并转义表名（使用白名单）
+    /// </summary>
+    /// <remarks>
+    /// 表名只能包含字母、数字、下划线和连字符，防止SQL注入
+    /// </remarks>
+    private string SanitizeTableName(string tableName)
+    {
+        if (string.IsNullOrWhiteSpace(tableName))
+        {
+            throw new ArgumentException("表名不能为空", nameof(tableName));
+        }
+        
+        // 只允许字母、数字、下划线和连字符
+        if (!System.Text.RegularExpressions.Regex.IsMatch(tableName, @"^[a-zA-Z0-9_-]+$"))
+        {
+            throw new ArgumentException($"表名包含非法字符: {tableName}", nameof(tableName));
+        }
+        
+        return tableName;
+    }
+    
+    /// <summary>
+    /// 验证并转义字段名（使用白名单）
+    /// </summary>
+    private string SanitizeFieldName(string fieldName)
+    {
+        if (string.IsNullOrWhiteSpace(fieldName))
+        {
+            throw new ArgumentException("字段名不能为空", nameof(fieldName));
+        }
+        
+        // 只允许字母、数字、下划线和连字符
+        if (!System.Text.RegularExpressions.Regex.IsMatch(fieldName, @"^[a-zA-Z0-9_-]+$"))
+        {
+            throw new ArgumentException($"字段名包含非法字符: {fieldName}", nameof(fieldName));
+        }
+        
+        return fieldName;
     }
     
     /// <summary>
@@ -1277,11 +1525,21 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
     
     
     /// <summary>
-    /// 获取SQL字段名
+    /// 获取SQL字段名（使用白名单映射）
     /// </summary>
+    /// <remarks>
+    /// 将DTO字段名安全映射到数据库字段名
+    /// 使用白名单机制，未知字段名默认返回 "operation_time"
+    /// </remarks>
     private string GetSqlFieldName(string dtoFieldName)
     {
-        return dtoFieldName switch
+        if (string.IsNullOrWhiteSpace(dtoFieldName))
+        {
+            return "operation_time";
+        }
+        
+        // 使用白名单映射，防止SQL注入
+        var fieldName = dtoFieldName switch
         {
             "Id" => "audit_id",
             "UserId" => "user_id",
@@ -1295,8 +1553,24 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
             "ExecutionDuration" => "execution_duration",
             "IsSuccess" => "is_success",
             "StatusCode" => "status_code",
-            _ => "operation_time"
+            _ => "operation_time" // 默认字段，防止注入
         };
+        
+        // 额外验证：确保映射后的字段名也是安全的
+        if (fieldName != "operation_time")
+        {
+            try
+            {
+                SanitizeFieldName(fieldName);
+            }
+            catch (ArgumentException)
+            {
+                _logger.LogWarning("字段名验证失败，使用默认字段: {FieldName}", fieldName);
+                return "operation_time";
+            }
+        }
+        
+        return fieldName;
     }
     
     

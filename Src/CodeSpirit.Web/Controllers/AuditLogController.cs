@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Audit.Attributes;
 using CodeSpirit.Audit.Extensions;
 using CodeSpirit.Audit.Services;
@@ -7,6 +8,7 @@ using CodeSpirit.Audit.Services.Dtos;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
+using CodeSpirit.Web.Configuration.Statistics;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,6 +21,7 @@ namespace CodeSpirit.Web.Controllers
     [DisplayName("审计日志")]
     [Navigation(Icon = "fa-solid fa-clipboard-list", PlatformType = PlatformType.Tenant)]
     [NoAudit("审计日志控制器不需要审计")]
+    [StatisticsCards<AuditLogStatisticsConfig>]
     public class AuditLogController : ApiControllerBase
     {
         private readonly IAuditService _auditService;
@@ -357,6 +360,39 @@ namespace CodeSpirit.Web.Controllers
             {
                 _logger.LogError(ex, "获取统计报表失败，报表类型: {ReportType}", reportType);
                 return BadResponse<object>("获取统计报表失败: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 获取审计日志统计卡片数据
+        /// </summary>
+        /// <returns>统计卡片数据</returns>
+        [HttpGet("statistics/cards")]
+        [DisplayName("获取统计卡片")]
+        public async Task<ActionResult<ApiResponse<object>>> GetStatisticsCards()
+        {
+            try
+            {
+                var stats = await _auditService.GetCardsStatsAsync(_currentUser.TenantId);
+                
+                // 返回扁平化数据供卡片渲染
+                object data = new
+                {
+                    todayTotal = stats.TodayTotal,
+                    todaySuccess = stats.TodaySuccess,
+                    todayFailed = stats.TodayFailed,
+                    successRate = $"{stats.SuccessRate:F1}%"
+                };
+                
+                _logger.LogInformation("租户 {TenantId} 用户 {UserId} 获取审计日志统计卡片成功",
+                    _currentUser.TenantId, _currentUser.Id);
+                
+                return SuccessResponse<object>(data);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取审计日志统计卡片失败");
+                return BadResponse<object>("获取统计卡片失败: " + ex.Message);
             }
         }
     }

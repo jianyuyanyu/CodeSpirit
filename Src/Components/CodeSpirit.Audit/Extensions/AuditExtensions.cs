@@ -6,6 +6,7 @@ using CodeSpirit.MultiTenant.Abstractions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using System;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
@@ -24,57 +25,24 @@ public static class AuditExtensions
     /// </summary>
     public static IServiceCollection AddAuditServices(this IServiceCollection services, IConfiguration configuration)
     {
-        // 智能处理配置 - 检查是否已经是Audit配置节
-        IConfiguration auditConfig;
-        if (configuration.GetSection("Audit").Exists())
-        {
-            // 传入的是完整配置，获取Audit节
-            auditConfig = configuration.GetSection("Audit");
-        }
-        else
-        {
-            // 传入的就是Audit配置节
-            auditConfig = configuration;
-        }
+        // 获取审计配置节
+        var auditConfig = configuration.GetSection("Audit").Exists() 
+            ? configuration.GetSection("Audit") 
+            : configuration;
         
-        // 注册选项
+        // 注册选项并添加验证
         services.Configure<AuditOptions>(auditConfig);
+        services.AddSingleton<IValidateOptions<AuditOptions>, AuditOptionsValidator>();
         
-        // 获取存储提供者类型 - 明确检查多个可能的配置位置
-        var storageProvider = auditConfig.GetValue<string>("StorageProvider") 
-                            ?? configuration.GetValue<string>("Audit:StorageProvider")
-                            ?? configuration.GetValue<string>("StorageProvider")
-                            ?? "Elasticsearch";
+        // 获取存储提供者类型（统一从 Audit:StorageProvider 读取）
+        var storageProvider = auditConfig.GetValue<string>("StorageProvider") ?? "Elasticsearch";
         
-        // 强制检查 Elasticsearch 配置是否存在
-        var hasElasticsearchConfig = auditConfig.GetSection("Elasticsearch:Urls").Exists() 
-                                   && auditConfig.GetSection("Elasticsearch:Urls").Get<List<string>>()?.Any() == true;
+        // 创建临时服务提供者以获取日志记录器
+        using var tempProvider = services.BuildServiceProvider();
+        var logger = tempProvider.GetService<ILoggerFactory>()?.CreateLogger(typeof(AuditExtensions));
         
-        // 如果有 Elasticsearch 配置但没有明确设置存储提供者，强制使用 Elasticsearch
-        if (hasElasticsearchConfig && string.Equals(storageProvider, "Elasticsearch", StringComparison.OrdinalIgnoreCase))
-        {
-            storageProvider = "Elasticsearch";
-            Console.WriteLine($"[审计配置] 检测到 Elasticsearch 配置，强制使用 Elasticsearch 存储提供者");
-        }
-        
-        // 添加调试日志来确认配置
-        Console.WriteLine($"[审计配置] === 配置检测开始 ===");
-        Console.WriteLine($"[审计配置] 存储提供者: '{storageProvider}'");
-        Console.WriteLine($"[审计配置] 配置节存在: {(auditConfig as IConfigurationSection)?.Exists() ?? true}");
-        Console.WriteLine($"[审计配置] 配置节路径: {(auditConfig as IConfigurationSection)?.Path ?? "根配置"}");
-        
-        // 显示所有审计相关的配置键
-        var allConfigs = auditConfig.AsEnumerable().Where(kv => !string.IsNullOrEmpty(kv.Key)).ToList();
-        Console.WriteLine($"[审计配置] 找到 {allConfigs.Count} 个配置项:");
-        foreach (var config in allConfigs.Take(10)) // 只显示前10个避免日志过长
-        {
-            Console.WriteLine($"[审计配置]   {config.Key} = {config.Value}");
-        }
-        
-        // 特别检查 Elasticsearch 配置
-        var esUrls = auditConfig.GetSection("Elasticsearch:Urls").Get<List<string>>();
-        Console.WriteLine($"[审计配置] Elasticsearch URLs: {string.Join(", ", esUrls ?? new List<string>())}");
-        Console.WriteLine($"[审计配置] === 配置检测结束 ===");
+        // 记录配置信息（使用结构化日志）
+        logger?.LogInformation("审计服务配置: StorageProvider={StorageProvider}", storageProvider);
         
         // 注册RabbitMQ服务
         services.AddSingleton<IRabbitMQService, RabbitMQService>();
@@ -83,7 +51,7 @@ public static class AuditExtensions
         switch (storageProvider.ToLowerInvariant())
         {
             case "greptimedb":
-                Console.WriteLine("[审计配置] 使用GreptimeDB存储提供者，跳过Elasticsearch服务注册");
+                logger?.LogInformation("使用 GreptimeDB 存储提供者");
                 // 注册GreptimeDB存储服务
                 services.AddHttpClient<GreptimeDbAuditStorageService>();
                 services.AddScoped<IAuditStorageService>(provider =>
@@ -111,7 +79,7 @@ public static class AuditExtensions
             
             case "elasticsearch":
             default:
-                Console.WriteLine("[审计配置] 使用Elasticsearch存储提供者");
+                logger?.LogInformation("使用 Elasticsearch 存储提供者");
                 // 注册Elasticsearch服务（默认）
                 services.AddSingleton<IElasticsearchService, ElasticsearchService>();
                 services.AddScoped<IAuditStorageService>(provider =>
@@ -125,14 +93,39 @@ public static class AuditExtensions
                 break;
         }
         
-        // 注册审计服务
+        // 注册拆分后的审计服务（职责单一）
+        services.AddScoped<IAuditRecorder, AuditRecorder>();
+        services.AddScoped<IAuditQueryService, AuditQueryService>();
+        services.AddScoped<IAuditStatisticsService, AuditStatisticsService>();
+        
+        // 注册审计服务（向后兼容，内部委托给拆分后的服务）
         services.AddScoped<IAuditService, AuditService>();
+        
+        // 注册中间件辅助类
+        services.AddSingleton<Middleware.ControllerTypeRegistry>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<Middleware.ControllerTypeRegistry>>();
+            var actionDescriptorProvider = provider.GetService<IActionDescriptorCollectionProvider>();
+            return new Middleware.ControllerTypeRegistry(logger, actionDescriptorProvider);
+        });
+        // 注册 ControllerTypeRegistry 为托管服务，以便在启动时初始化控制器类型缓存
+        services.AddHostedService(provider => provider.GetRequiredService<Middleware.ControllerTypeRegistry>());
+        services.AddScoped<Middleware.SensitiveDataProcessor>();
+        services.AddScoped<Middleware.AuditContextBuilder>();
+        services.AddScoped<Middleware.AuditLogBuilder>();
         
         // 注册地理位置服务
         services.AddSingleton<IGeoLocationService, GeoLocationService>();
         
         // 注册错误处理服务
         services.AddSingleton<IAuditErrorHandler, AuditErrorHandler>();
+        
+        // 注册审计指标
+        services.AddSingleton<Metrics.AuditMetrics>();
+        
+        // 注册健康检查
+        services.AddHealthChecks()
+            .AddCheck<HealthChecks.AuditHealthCheck>("audit", tags: new[] { "audit", "ready" });
         
         // 注册内存缓存（如果尚未注册）
         if (!services.Any(x => x.ServiceType == typeof(IMemoryCache)))
@@ -152,9 +145,25 @@ public static class AuditExtensions
     }
 
     /// <summary>
-    /// 使用审计中间件
+    /// 使用审计中间件（重构版本）
     /// </summary>
+    /// <remarks>
+    /// 使用重构后的中间件，代码更简洁，职责更清晰。
+    /// 如需使用旧版本，请调用 <see cref="UseAuditMiddlewareLegacy"/>。
+    /// </remarks>
     public static IApplicationBuilder UseAuditMiddleware(this IApplicationBuilder app)
+    {
+        return app.UseMiddleware<AuditMiddlewareV2>();
+    }
+
+    /// <summary>
+    /// 使用审计中间件（旧版本）
+    /// </summary>
+    /// <remarks>
+    /// 使用原始的审计中间件实现，功能完整但代码较复杂。
+    /// </remarks>
+    [Obsolete]
+    public static IApplicationBuilder UseAuditMiddlewareLegacy(this IApplicationBuilder app)
     {
         return app.UseMiddleware<AuditMiddleware>();
     }
@@ -239,23 +248,24 @@ public static class AuditExtensions
         // ⚠️ 重要：配置绑定 AuditOptions（包含 LLMAudit 配置）
         services.Configure<AuditOptions>(auditConfig);
         
-        var storageProvider = auditConfig.GetValue<string>("StorageProvider") 
-                            ?? configuration.GetValue<string>("Audit:StorageProvider")
-                            ?? "Elasticsearch";
+        var storageProvider = auditConfig.GetValue<string>("StorageProvider") ?? "Elasticsearch";
         
-        Console.WriteLine($"[LLM审计配置] 跟随通用审计存储提供者: '{storageProvider}'");
+        // 创建临时服务提供者以获取日志记录器
+        using var tempProvider = services.BuildServiceProvider();
+        var logger = tempProvider.GetService<ILoggerFactory>()?.CreateLogger(typeof(AuditExtensions));
+        logger?.LogInformation("LLM审计服务配置: StorageProvider={StorageProvider}", storageProvider);
         
         // 根据配置注册存储服务
         switch (storageProvider.ToLowerInvariant())
         {
             case "greptimedb":
-                Console.WriteLine("[LLM审计配置] 使用GreptimeDB存储提供者");
+                logger?.LogInformation("LLM审计使用 GreptimeDB 存储提供者");
                 services.AddHttpClient<Services.LLM.Implementation.LLMGreptimeDbStorageService>();
                 services.AddScoped<Services.LLM.ILLMAuditStorageService, Services.LLM.Implementation.LLMGreptimeDbStorageService>();
                 break;
             
             case "rabbitmq":
-                Console.WriteLine("[LLM审计配置] 使用RabbitMQ存储提供者，LLM审计将通过消息队列异步处理");
+                logger?.LogInformation("LLM审计使用 RabbitMQ 存储提供者，将通过消息队列异步处理");
                 // RabbitMQ模式下，LLM审计通过消息队列异步处理，但仍需要一个存储服务作为最终存储
                 // 默认使用GreptimeDB作为最终存储，如果需要其他存储可以通过配置指定
                 services.AddHttpClient<Services.LLM.Implementation.LLMGreptimeDbStorageService>();
@@ -264,7 +274,7 @@ public static class AuditExtensions
             
             case "elasticsearch":
             default:
-                Console.WriteLine("[LLM审计配置] 使用Elasticsearch存储提供者");
+                logger?.LogInformation("LLM审计使用 Elasticsearch 存储提供者");
                 services.AddScoped<Services.LLM.ILLMAuditStorageService, Services.LLM.Implementation.LLMElasticsearchStorageService>();
                 break;
         }

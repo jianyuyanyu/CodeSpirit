@@ -1,4 +1,5 @@
 using CodeSpirit.Audit.Extensions;
+using CodeSpirit.Audit.Startup;
 using CodeSpirit.Messaging;
 using CodeSpirit.Messaging.Data;
 using CodeSpirit.Messaging.Extensions;
@@ -20,7 +21,7 @@ namespace CodeSpirit.MessagingApi.Configuration;
 /// <summary>
 /// 消息系统API服务配置
 /// </summary>
-public class MessagingApiConfiguration : BaseApiConfiguration
+public class MessagingApiConfiguration : AuditAwareApiConfiguration
 {
     /// <summary>
     /// 服务名称，用于Aspire服务发现
@@ -80,22 +81,9 @@ public class MessagingApiConfiguration : BaseApiConfiguration
                 options.PayloadSerializerSettings.NullValueHandling = NullValueHandling.Ignore;
             });
         
-        // 配置控制器和审计元数据过滤器
-        ConfigureControllersWithAudit(services, configuration);
+        // 注意：审计元数据过滤器已由 BaseApiConfiguration 根据配置自动添加
     }
     
-    /// <summary>
-    /// 配置控制器和审计元数据过滤器
-    /// </summary>
-    /// <param name="services">服务集合</param>
-    /// <param name="configuration">配置对象</param>
-    private static void ConfigureControllersWithAudit(IServiceCollection services, IConfiguration configuration)
-    {
-        // 审计元数据过滤器将通过AddAuditMetadataFilter自动注册
-        
-        // 添加审计元数据过滤器到控制器
-        services.AddControllers().AddAuditMetadataFilter();
-    }
     
     /// <summary>
     /// 配置消息系统特定中间件

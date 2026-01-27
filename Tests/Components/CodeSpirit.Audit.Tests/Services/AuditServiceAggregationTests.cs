@@ -39,12 +39,14 @@ public class AuditServiceAggregationTests
         });
         _configuration = configBuilder.Build();
         
-        var mockStorageService = new Mock<IAuditStorageService>();
+        var mockRecorder = new Mock<IAuditRecorder>();
+        var mockQueryService = new Mock<IAuditQueryService>();
+        var mockStatisticsService = new Mock<IAuditStatisticsService>();
+        
         _auditService = new AuditService(
-            mockStorageService.Object,
-            _mockRabbitMQService.Object,
-            _mockLogger.Object,
-            _configuration);
+            mockRecorder.Object,
+            mockQueryService.Object,
+            mockStatisticsService.Object);
     }
     
     /// <summary>

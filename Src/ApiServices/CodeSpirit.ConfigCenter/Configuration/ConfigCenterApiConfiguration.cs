@@ -1,6 +1,7 @@
 using CodeSpirit.Aggregator;
 using CodeSpirit.AiFormFill;
 using CodeSpirit.Audit.Extensions;
+using CodeSpirit.Audit.Startup;
 using CodeSpirit.ConfigCenter.Data;
 using CodeSpirit.ConfigCenter.Data.Seeders;
 using CodeSpirit.ConfigCenter.Services;
@@ -22,7 +23,7 @@ namespace CodeSpirit.ConfigCenter.Configuration;
 /// <summary>
 /// 配置中心API服务配置
 /// </summary>
-public class ConfigCenterApiConfiguration : BaseApiConfiguration
+public class ConfigCenterApiConfiguration : AuditAwareApiConfiguration
 {
     /// <summary>
     /// 服务名称，用于Aspire服务发现
@@ -67,22 +68,9 @@ public class ConfigCenterApiConfiguration : BaseApiConfiguration
         // 注册SSE连接管理器（自动管理健康状态）
         services.AddSingleton<SseConnectionManager>();
         
-        // 配置控制器和审计元数据过滤器
-        ConfigureControllersWithAudit(services, configuration);
+        // 注意：审计元数据过滤器已由 BaseApiConfiguration 根据配置自动添加
     }
     
-    /// <summary>
-    /// 配置控制器和审计元数据过滤器
-    /// </summary>
-    /// <param name="services">服务集合</param>
-    /// <param name="configuration">配置对象</param>
-    private static void ConfigureControllersWithAudit(IServiceCollection services, IConfiguration configuration)
-    {
-        // 审计元数据过滤器将通过AddAuditMetadataFilter自动注册
-        
-        // 添加审计元数据过滤器到控制器
-        services.AddControllers().AddAuditMetadataFilter();
-    }
     
     /// <summary>
     /// 配置配置中心特定中间件

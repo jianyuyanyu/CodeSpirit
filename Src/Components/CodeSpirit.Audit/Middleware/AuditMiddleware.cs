@@ -17,6 +17,8 @@ using MvcControllerActionDescriptor = Microsoft.AspNetCore.Mvc.Controllers.Contr
 using CodeSpirit.Core;
 using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.Audit.Attributes;
+using CodeSpirit.Audit.Models;
+using Newtonsoft.Json;
 
 namespace CodeSpirit.Audit.Middleware;
 
@@ -491,147 +493,227 @@ public class AuditMiddleware
             auditLog.StatusCode = context.Response.StatusCode;
 
             // 尝试从响应头获取审计元数据（用于分布式场景）
-            if (context.Response.Headers.TryGetValue("X-Audit-OperationName", out var operationNameHeader))
+            // 优先使用新的 JSON 响应头格式，向后兼容旧的多个响应头格式
+            AuditMetadata? metadata = null;
+            
+            if (context.Response.Headers.TryGetValue("X-Audit-Metadata", out var metadataHeader))
             {
-                var headerValue = operationNameHeader.ToString();
-                if (!string.IsNullOrEmpty(headerValue))
+                try
                 {
-                    auditLog.OperationName = DecodeHeaderValue(headerValue);
-                    _logger.LogDebug("从响应头获取操作名称: {OperationName}", auditLog.OperationName);
+                    var base64Value = metadataHeader.ToString();
+                    if (!string.IsNullOrEmpty(base64Value))
+                    {
+                        var json = Encoding.UTF8.GetString(Convert.FromBase64String(base64Value));
+                        metadata = JsonConvert.DeserializeObject<AuditMetadata>(json);
+                        
+                        if (metadata != null)
+                        {
+                            _logger.LogDebug("从JSON响应头解析审计元数据成功");
+                            
+                            // 应用元数据到审计日志
+                            if (!string.IsNullOrEmpty(metadata.OperationName))
+                                auditLog.OperationName = metadata.OperationName;
+                            
+                            if (!string.IsNullOrEmpty(metadata.OperationType))
+                                auditLog.OperationType = metadata.OperationType;
+                            
+                            if (!string.IsNullOrEmpty(metadata.Controller))
+                                auditLog.AdditionalData["ApiController"] = metadata.Controller;
+                            
+                            if (!string.IsNullOrEmpty(metadata.Action))
+                                auditLog.AdditionalData["ApiAction"] = metadata.Action;
+                            
+                            if (!string.IsNullOrEmpty(metadata.Description) && string.IsNullOrEmpty(auditLog.Description))
+                                auditLog.Description = metadata.Description;
+                            
+                            if (!metadata.LogRequestParams)
+                                auditLog.RequestParams = null;
+                            
+                            if (metadata.LogResponseData && string.IsNullOrEmpty(auditLog.AfterData))
+                            {
+                                responseBodyStream.Position = 0;
+                                var responseBody = await new StreamReader(responseBodyStream).ReadToEndAsync();
+                                auditLog.AfterData = SanitizeSensitiveData(responseBody);
+                            }
+                            
+                            if (!string.IsNullOrEmpty(metadata.EntityName))
+                                auditLog.AdditionalData["EntityName"] = metadata.EntityName;
+                            
+                            if (!string.IsNullOrEmpty(metadata.EntityIdParamName))
+                                auditLog.AdditionalData["EntityIdParamName"] = metadata.EntityIdParamName;
+                            
+                            if (!string.IsNullOrEmpty(metadata.OperationLabel))
+                                auditLog.AttributeProperties["OperationLabel"] = metadata.OperationLabel;
+                            
+                            if (!string.IsNullOrEmpty(metadata.OperationActionType))
+                                auditLog.AttributeProperties["OperationActionType"] = metadata.OperationActionType;
+                            
+                            if (!string.IsNullOrEmpty(metadata.OperationApi))
+                                auditLog.AttributeProperties["OperationApi"] = metadata.OperationApi;
+                            
+                            if (!string.IsNullOrEmpty(metadata.OperationConfirmText))
+                                auditLog.AttributeProperties["OperationConfirmText"] = metadata.OperationConfirmText;
+                            
+                            if (!string.IsNullOrEmpty(metadata.OperationIcon))
+                                auditLog.AttributeProperties["OperationIcon"] = metadata.OperationIcon;
+                            
+                            if (metadata.IsBulkOperation)
+                                auditLog.AttributeProperties["IsBulkOperation"] = "true";
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "解析JSON审计元数据失败，回退到旧格式");
+                    metadata = null; // 回退到旧格式
                 }
             }
-
-            if (context.Response.Headers.TryGetValue("X-Audit-OperationType", out var operationTypeHeader))
+            
+            // 向后兼容：如果没有新的JSON响应头，尝试解析旧的多个响应头
+            if (metadata == null)
             {
-                var headerValue = operationTypeHeader.ToString();
-                if (!string.IsNullOrEmpty(headerValue))
+                if (context.Response.Headers.TryGetValue("X-Audit-OperationName", out var operationNameHeader))
                 {
-                    auditLog.OperationType = DecodeHeaderValue(headerValue);
-                    _logger.LogDebug("从响应头获取操作类型: {OperationType}", auditLog.OperationType);
+                    var headerValue = operationNameHeader.ToString();
+                    if (!string.IsNullOrEmpty(headerValue))
+                    {
+                        auditLog.OperationName = DecodeHeaderValue(headerValue);
+                        _logger.LogDebug("从响应头获取操作名称: {OperationName}", auditLog.OperationName);
+                    }
                 }
-            }
 
-            // 保存额外的审计元数据
-            if (context.Response.Headers.TryGetValue("X-Audit-Controller", out var controllerHeader))
-            {
-                var headerValue = controllerHeader.ToString();
-                if (!string.IsNullOrEmpty(headerValue))
+                if (context.Response.Headers.TryGetValue("X-Audit-OperationType", out var operationTypeHeader))
                 {
-                    var decodedValue = DecodeHeaderValue(headerValue);
-                    auditLog.AdditionalData["ApiController"] = decodedValue;
-                    _logger.LogDebug("从响应头解码控制器名称: 原值={Original}, 解码后={Decoded}", headerValue, decodedValue);
+                    var headerValue = operationTypeHeader.ToString();
+                    if (!string.IsNullOrEmpty(headerValue))
+                    {
+                        auditLog.OperationType = DecodeHeaderValue(headerValue);
+                        _logger.LogDebug("从响应头获取操作类型: {OperationType}", auditLog.OperationType);
+                    }
                 }
-            }
 
-            if (context.Response.Headers.TryGetValue("X-Audit-Action", out var actionHeader))
-            {
-                var headerValue = actionHeader.ToString();
-                if (!string.IsNullOrEmpty(headerValue))
+                // 保存额外的审计元数据
+                if (context.Response.Headers.TryGetValue("X-Audit-Controller", out var controllerHeader))
                 {
-                    var decodedValue = DecodeHeaderValue(headerValue);
-                    auditLog.AdditionalData["ApiAction"] = decodedValue;
-                    _logger.LogDebug("从响应头解码方法名称: 原值={Original}, 解码后={Decoded}", headerValue, decodedValue);
+                    var headerValue = controllerHeader.ToString();
+                    if (!string.IsNullOrEmpty(headerValue))
+                    {
+                        var decodedValue = DecodeHeaderValue(headerValue);
+                        auditLog.AdditionalData["ApiController"] = decodedValue;
+                        _logger.LogDebug("从响应头解码控制器名称: 原值={Original}, 解码后={Decoded}", headerValue, decodedValue);
+                    }
                 }
-            }
 
-            if (context.Response.Headers.TryGetValue("X-Audit-Description", out var descriptionHeader))
-            {
-                var headerValue = descriptionHeader.ToString();
-                if (!string.IsNullOrEmpty(headerValue) && string.IsNullOrEmpty(auditLog.Description))
+                if (context.Response.Headers.TryGetValue("X-Audit-Action", out var actionHeader))
                 {
-                    auditLog.Description = DecodeHeaderValue(headerValue);
+                    var headerValue = actionHeader.ToString();
+                    if (!string.IsNullOrEmpty(headerValue))
+                    {
+                        var decodedValue = DecodeHeaderValue(headerValue);
+                        auditLog.AdditionalData["ApiAction"] = decodedValue;
+                        _logger.LogDebug("从响应头解码方法名称: 原值={Original}, 解码后={Decoded}", headerValue, decodedValue);
+                    }
                 }
-            }
 
-            // 处理审计特性的额外字段
-            if (context.Response.Headers.TryGetValue("X-Audit-LogRequestParams", out var logRequestParamsHeader))
-            {
-                var headerValue = logRequestParamsHeader.ToString();
-                if (!string.IsNullOrEmpty(headerValue))
+                if (context.Response.Headers.TryGetValue("X-Audit-Description", out var descriptionHeader))
                 {
-                    auditLog.AdditionalData["LogRequestParams"] = headerValue;
+                    var headerValue = descriptionHeader.ToString();
+                    if (!string.IsNullOrEmpty(headerValue) && string.IsNullOrEmpty(auditLog.Description))
+                    {
+                        auditLog.Description = DecodeHeaderValue(headerValue);
+                    }
                 }
-            }
 
-            if (context.Response.Headers.TryGetValue("X-Audit-LogResponseData", out var logResponseDataHeader))
-            {
-                var headerValue = logResponseDataHeader.ToString();
-                if (!string.IsNullOrEmpty(headerValue))
+                // 处理审计特性的额外字段
+                if (context.Response.Headers.TryGetValue("X-Audit-LogRequestParams", out var logRequestParamsHeader))
                 {
-                    auditLog.AdditionalData["LogResponseData"] = headerValue;
+                    var headerValue = logRequestParamsHeader.ToString();
+                    if (!string.IsNullOrEmpty(headerValue))
+                    {
+                        auditLog.AdditionalData["LogRequestParams"] = headerValue;
+                    }
                 }
-            }
 
-            if (context.Response.Headers.TryGetValue("X-Audit-EntityName", out var entityNameHeader))
-            {
-                var headerValue = entityNameHeader.ToString();
-                if (!string.IsNullOrEmpty(headerValue))
+                if (context.Response.Headers.TryGetValue("X-Audit-LogResponseData", out var logResponseDataHeader))
                 {
-                    auditLog.AdditionalData["EntityName"] = DecodeHeaderValue(headerValue);
+                    var headerValue = logResponseDataHeader.ToString();
+                    if (!string.IsNullOrEmpty(headerValue))
+                    {
+                        auditLog.AdditionalData["LogResponseData"] = headerValue;
+                    }
                 }
-            }
 
-            if (context.Response.Headers.TryGetValue("X-Audit-EntityIdParamName", out var entityIdParamNameHeader))
-            {
-                var headerValue = entityIdParamNameHeader.ToString();
-                if (!string.IsNullOrEmpty(headerValue))
+                if (context.Response.Headers.TryGetValue("X-Audit-EntityName", out var entityNameHeader))
                 {
-                    auditLog.AdditionalData["EntityIdParamName"] = DecodeHeaderValue(headerValue);
+                    var headerValue = entityNameHeader.ToString();
+                    if (!string.IsNullOrEmpty(headerValue))
+                    {
+                        auditLog.AdditionalData["EntityName"] = DecodeHeaderValue(headerValue);
+                    }
                 }
-            }
 
-            // 处理操作特性信息
-            if (context.Response.Headers.TryGetValue("X-Audit-OperationLabel", out var operationLabelHeader))
-            {
-                var headerValue = operationLabelHeader.ToString();
-                if (!string.IsNullOrEmpty(headerValue))
+                if (context.Response.Headers.TryGetValue("X-Audit-EntityIdParamName", out var entityIdParamNameHeader))
                 {
-                    auditLog.AttributeProperties["OperationLabel"] = DecodeHeaderValue(headerValue);
+                    var headerValue = entityIdParamNameHeader.ToString();
+                    if (!string.IsNullOrEmpty(headerValue))
+                    {
+                        auditLog.AdditionalData["EntityIdParamName"] = DecodeHeaderValue(headerValue);
+                    }
                 }
-            }
 
-            if (context.Response.Headers.TryGetValue("X-Audit-OperationActionType", out var operationActionTypeHeader))
-            {
-                var headerValue = operationActionTypeHeader.ToString();
-                if (!string.IsNullOrEmpty(headerValue))
+                // 处理操作特性信息
+                if (context.Response.Headers.TryGetValue("X-Audit-OperationLabel", out var operationLabelHeader))
                 {
-                    auditLog.AttributeProperties["OperationActionType"] = DecodeHeaderValue(headerValue);
+                    var headerValue = operationLabelHeader.ToString();
+                    if (!string.IsNullOrEmpty(headerValue))
+                    {
+                        auditLog.AttributeProperties["OperationLabel"] = DecodeHeaderValue(headerValue);
+                    }
                 }
-            }
 
-            if (context.Response.Headers.TryGetValue("X-Audit-OperationApi", out var operationApiHeader))
-            {
-                var headerValue = operationApiHeader.ToString();
-                if (!string.IsNullOrEmpty(headerValue))
+                if (context.Response.Headers.TryGetValue("X-Audit-OperationActionType", out var operationActionTypeHeader))
                 {
-                    auditLog.AttributeProperties["OperationApi"] = DecodeHeaderValue(headerValue);
+                    var headerValue = operationActionTypeHeader.ToString();
+                    if (!string.IsNullOrEmpty(headerValue))
+                    {
+                        auditLog.AttributeProperties["OperationActionType"] = DecodeHeaderValue(headerValue);
+                    }
                 }
-            }
 
-            if (context.Response.Headers.TryGetValue("X-Audit-OperationConfirmText", out var operationConfirmTextHeader))
-            {
-                var headerValue = operationConfirmTextHeader.ToString();
-                if (!string.IsNullOrEmpty(headerValue))
+                if (context.Response.Headers.TryGetValue("X-Audit-OperationApi", out var operationApiHeader))
                 {
-                    auditLog.AttributeProperties["OperationConfirmText"] = DecodeHeaderValue(headerValue);
+                    var headerValue = operationApiHeader.ToString();
+                    if (!string.IsNullOrEmpty(headerValue))
+                    {
+                        auditLog.AttributeProperties["OperationApi"] = DecodeHeaderValue(headerValue);
+                    }
                 }
-            }
 
-            if (context.Response.Headers.TryGetValue("X-Audit-OperationIcon", out var operationIconHeader))
-            {
-                var headerValue = operationIconHeader.ToString();
-                if (!string.IsNullOrEmpty(headerValue))
+                if (context.Response.Headers.TryGetValue("X-Audit-OperationConfirmText", out var operationConfirmTextHeader))
                 {
-                    auditLog.AttributeProperties["OperationIcon"] = DecodeHeaderValue(headerValue);
+                    var headerValue = operationConfirmTextHeader.ToString();
+                    if (!string.IsNullOrEmpty(headerValue))
+                    {
+                        auditLog.AttributeProperties["OperationConfirmText"] = DecodeHeaderValue(headerValue);
+                    }
                 }
-            }
 
-            if (context.Response.Headers.TryGetValue("X-Audit-IsBulkOperation", out var isBulkOperationHeader))
-            {
-                var headerValue = isBulkOperationHeader.ToString();
-                if (!string.IsNullOrEmpty(headerValue))
+                if (context.Response.Headers.TryGetValue("X-Audit-OperationIcon", out var operationIconHeader))
                 {
-                    auditLog.AttributeProperties["IsBulkOperation"] = headerValue;
+                    var headerValue = operationIconHeader.ToString();
+                    if (!string.IsNullOrEmpty(headerValue))
+                    {
+                        auditLog.AttributeProperties["OperationIcon"] = DecodeHeaderValue(headerValue);
+                    }
+                }
+
+                if (context.Response.Headers.TryGetValue("X-Audit-IsBulkOperation", out var isBulkOperationHeader))
+                {
+                    var headerValue = isBulkOperationHeader.ToString();
+                    if (!string.IsNullOrEmpty(headerValue))
+                    {
+                        auditLog.AttributeProperties["IsBulkOperation"] = headerValue;
+                    }
                 }
             }
 
@@ -1082,7 +1164,7 @@ public class AuditMiddleware
             var document = JsonDocument.Parse(input);
             return (true, document);
         }
-        catch (JsonException)
+        catch (System.Text.Json.JsonException)
         {
             return (false, null);
         }

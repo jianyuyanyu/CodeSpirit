@@ -79,6 +79,13 @@ public interface IAuditStorageService
     Task<Dictionary<DateTime, long>> GetOperationTrendAsync(DateTime startTime, DateTime endTime, int interval = 24, string? tenantId = null);
     
     /// <summary>
+    /// 获取审计卡片统计数据
+    /// </summary>
+    /// <param name="tenantId">租户ID（可选）</param>
+    /// <returns>统计数据</returns>
+    Task<AuditCardsStatsDto> GetCardsStatsAsync(string? tenantId = null);
+    
+    /// <summary>
     /// 健康检查
     /// </summary>
     /// <returns>是否健康</returns>

@@ -2,8 +2,11 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using System.ComponentModel;
 using System.Reflection;
 using CodeSpirit.Audit.Attributes;
+using CodeSpirit.Audit.Models;
 using CodeSpirit.Core.Attributes;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using System.Text;
 using System.Web;
 using MvcControllerActionDescriptor = Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor;
 
@@ -127,95 +130,64 @@ public class AuditMetadataFilter : IActionFilter
                 }
             }
 
-            // 添加到响应头（只在响应头尚未设置时添加）
-            if (!context.HttpContext.Response.Headers.ContainsKey("X-Audit-OperationName"))
+            // 构建审计元数据对象
+            var metadata = new AuditMetadata
             {
-                context.HttpContext.Response.Headers.TryAdd("X-Audit-OperationName", EncodeHeaderValue(operationName));
-            }
-            
-            if (!context.HttpContext.Response.Headers.ContainsKey("X-Audit-OperationType"))
-            {
-                context.HttpContext.Response.Headers.TryAdd("X-Audit-OperationType", EncodeHeaderValue(operationType));
-            }
-            
-            if (!context.HttpContext.Response.Headers.ContainsKey("X-Audit-Controller"))
-            {
-                context.HttpContext.Response.Headers.TryAdd("X-Audit-Controller", EncodeHeaderValue(controllerDisplayName));
-            }
-            
-            if (!context.HttpContext.Response.Headers.ContainsKey("X-Audit-Action"))
-            {
-                context.HttpContext.Response.Headers.TryAdd("X-Audit-Action", EncodeHeaderValue(methodDisplayName));
-            }
-
-            // 如果有描述信息，也添加到响应头
-            if (!string.IsNullOrEmpty(description) && !context.HttpContext.Response.Headers.ContainsKey("X-Audit-Description"))
-            {
-                context.HttpContext.Response.Headers.TryAdd("X-Audit-Description", EncodeHeaderValue(description));
-            }
+                OperationName = operationName,
+                OperationType = operationType,
+                Controller = controllerDisplayName,
+                Action = methodDisplayName,
+                Description = description
+            };
 
             // 添加审计特性的额外字段
             if (auditAttr != null)
             {
-                // 传递审计配置信息
-                if (!context.HttpContext.Response.Headers.ContainsKey("X-Audit-LogRequestParams"))
-                {
-                    context.HttpContext.Response.Headers.TryAdd("X-Audit-LogRequestParams", auditAttr.LogRequestParams.ToString().ToLower());
-                }
-                
-                if (!context.HttpContext.Response.Headers.ContainsKey("X-Audit-LogResponseData"))
-                {
-                    context.HttpContext.Response.Headers.TryAdd("X-Audit-LogResponseData", auditAttr.LogResponseData.ToString().ToLower());
-                }
-                
-                if (!string.IsNullOrEmpty(auditAttr.EntityName) && !context.HttpContext.Response.Headers.ContainsKey("X-Audit-EntityName"))
-                {
-                    context.HttpContext.Response.Headers.TryAdd("X-Audit-EntityName", EncodeHeaderValue(auditAttr.EntityName));
-                    _logger.LogDebug("添加审计实体名称到响应头: 实体={EntityName}", auditAttr.EntityName);
-                }
-                
-                if (!string.IsNullOrEmpty(auditAttr.EntityIdParamName) && !context.HttpContext.Response.Headers.ContainsKey("X-Audit-EntityIdParamName"))
-                {
-                    context.HttpContext.Response.Headers.TryAdd("X-Audit-EntityIdParamName", EncodeHeaderValue(auditAttr.EntityIdParamName));
-                }
+                metadata.LogRequestParams = auditAttr.LogRequestParams;
+                metadata.LogResponseData = auditAttr.LogResponseData;
+                metadata.EntityName = auditAttr.EntityName;
+                metadata.EntityIdParamName = auditAttr.EntityIdParamName;
             }
 
             // 添加操作特性信息
             if (operationAttr != null)
             {
-                if (!string.IsNullOrEmpty(operationAttr.Label) && !context.HttpContext.Response.Headers.ContainsKey("X-Audit-OperationLabel"))
-                {
-                    context.HttpContext.Response.Headers.TryAdd("X-Audit-OperationLabel", EncodeHeaderValue(operationAttr.Label));
-                }
-                
-                if (!context.HttpContext.Response.Headers.ContainsKey("X-Audit-OperationActionType"))
-                {
-                    context.HttpContext.Response.Headers.TryAdd("X-Audit-OperationActionType", EncodeHeaderValue(operationAttr.ActionType));
-                }
-                
-                if (!string.IsNullOrEmpty(operationAttr.Api) && !context.HttpContext.Response.Headers.ContainsKey("X-Audit-OperationApi"))
-                {
-                    context.HttpContext.Response.Headers.TryAdd("X-Audit-OperationApi", EncodeHeaderValue(operationAttr.Api));
-                }
-                
-                if (!string.IsNullOrEmpty(operationAttr.ConfirmText) && !context.HttpContext.Response.Headers.ContainsKey("X-Audit-OperationConfirmText"))
-                {
-                    context.HttpContext.Response.Headers.TryAdd("X-Audit-OperationConfirmText", EncodeHeaderValue(operationAttr.ConfirmText));
-                }
-                
-                if (!string.IsNullOrEmpty(operationAttr.Icon) && !context.HttpContext.Response.Headers.ContainsKey("X-Audit-OperationIcon"))
-                {
-                    context.HttpContext.Response.Headers.TryAdd("X-Audit-OperationIcon", EncodeHeaderValue(operationAttr.Icon));
-                }
-                
-                if (operationAttr.IsBulkOperation && !context.HttpContext.Response.Headers.ContainsKey("X-Audit-IsBulkOperation"))
-                {
-                    context.HttpContext.Response.Headers.TryAdd("X-Audit-IsBulkOperation", "true");
-                }
+                metadata.OperationLabel = operationAttr.Label;
+                metadata.OperationActionType = operationAttr.ActionType;
+                metadata.OperationApi = operationAttr.Api;
+                metadata.OperationConfirmText = operationAttr.ConfirmText;
+                metadata.OperationIcon = operationAttr.Icon;
+                metadata.IsBulkOperation = operationAttr.IsBulkOperation;
             }
 
-            _logger.LogDebug("添加审计元数据到响应头: 操作={Operation}, 类型={Type}, 控制器={Controller}, 方法={Action}", 
-                operationName, operationType, controllerDisplayName, methodDisplayName);
+            // 序列化为JSON并Base64编码，添加到单个响应头
+            try
+            {
+                var json = JsonConvert.SerializeObject(metadata);
+                var base64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
+                
+                // 只在响应头尚未设置时添加
+                if (!context.HttpContext.Response.Headers.ContainsKey("X-Audit-Metadata"))
+                {
+                    context.HttpContext.Response.Headers.TryAdd("X-Audit-Metadata", base64);
+                    _logger.LogDebug("添加审计元数据到响应头: 操作={Operation}, 类型={Type}, 控制器={Controller}, 方法={Action}", 
+                        operationName, operationType, controllerDisplayName, methodDisplayName);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "序列化审计元数据失败，回退到旧的多响应头方式");
+                
+                // 回退到旧方式（向后兼容）
+                if (!context.HttpContext.Response.Headers.ContainsKey("X-Audit-OperationName"))
+                {
+                    context.HttpContext.Response.Headers.TryAdd("X-Audit-OperationName", EncodeHeaderValue(operationName));
+                }
+                if (!context.HttpContext.Response.Headers.ContainsKey("X-Audit-OperationType"))
+                {
+                    context.HttpContext.Response.Headers.TryAdd("X-Audit-OperationType", EncodeHeaderValue(operationType));
+                }
+            }
         }
         catch (Exception ex)
         {

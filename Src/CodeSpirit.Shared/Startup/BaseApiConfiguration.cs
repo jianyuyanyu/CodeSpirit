@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using CodeSpirit.Shared.Configuration;
 
 namespace CodeSpirit.Shared.Startup;
@@ -39,7 +41,25 @@ public abstract class BaseApiConfiguration : IApiServiceConfiguration
         // 初始化路径前缀配置
         InitializePathPrefixOptions(configuration);
         
+        // 自动配置审计元数据过滤器（如果启用）
+        ConfigureAuditMetadataFilter(services, configuration);
+        
         // 默认实现为空，子类可以重写
+    }
+    
+    /// <summary>
+    /// 配置审计元数据过滤器
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configuration">配置对象</param>
+    /// <remarks>
+    /// 默认实现为空。需要审计功能的 API 服务应继承 
+    /// <see cref="CodeSpirit.Audit.Startup.AuditAwareApiConfiguration"/>，
+    /// 该类会自动配置审计元数据过滤器。
+    /// </remarks>
+    protected virtual void ConfigureAuditMetadataFilter(IServiceCollection services, IConfiguration configuration)
+    {
+        // 默认实现为空，由 AuditAwareApiConfiguration 子类提供具体实现
     }
     
     /// <summary>

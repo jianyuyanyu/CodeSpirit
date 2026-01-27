@@ -1,6 +1,11 @@
 using Microsoft.Extensions.Hosting;
 using CodeSpirit.Audit.Services;
+using CodeSpirit.Audit.Metrics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace CodeSpirit.Audit.Extensions;
 
@@ -14,9 +19,16 @@ public class AuditLogConsumerService : BackgroundService
     private readonly IGeoLocationService _geoLocationService;
     private readonly ILogger<AuditLogConsumerService> _logger;
     private readonly AuditOptions _options;
+    private readonly AuditMetrics _metrics;
     private string? _consumerTag;
-    private readonly TimeSpan _retryDelay = TimeSpan.FromSeconds(30);
-    private readonly int _maxRetryAttempts = 10;
+    private readonly TimeSpan _maxRetryDelay = TimeSpan.FromSeconds(60); // 最大重试间隔
+    
+    // 批量处理相关
+    private readonly List<Models.AuditLog> _batchBuffer = new();
+    private readonly object _batchLock = new object();
+    private Timer? _flushTimer;
+    private readonly int _batchSize;
+    private readonly TimeSpan _flushInterval;
     
     /// <summary>
     /// 构造函数
@@ -26,12 +38,14 @@ public class AuditLogConsumerService : BackgroundService
         IServiceScopeFactory serviceScopeFactory,
         IGeoLocationService geoLocationService,
         IConfiguration configuration,
-        ILogger<AuditLogConsumerService> logger)
+        ILogger<AuditLogConsumerService> logger,
+        AuditMetrics metrics)
     {
         _rabbitMQService = rabbitMQService;
         _serviceScopeFactory = serviceScopeFactory;
         _geoLocationService = geoLocationService;
         _logger = logger;
+        _metrics = metrics;
         
         // 获取配置 - 智能处理配置绑定
         var options = new AuditOptions();
@@ -46,6 +60,48 @@ public class AuditLogConsumerService : BackgroundService
             configuration.Bind(options);
         }
         _options = options;
+        
+        // 初始化批量处理配置
+        _batchSize = _options.RabbitMQ?.BatchSize ?? 100;
+        _flushInterval = TimeSpan.FromSeconds(_options.RabbitMQ?.BatchFlushIntervalSeconds ?? 5);
+    }
+    
+    /// <summary>
+    /// 启动时初始化定时刷新
+    /// </summary>
+    public override Task StartAsync(CancellationToken cancellationToken)
+    {
+        // 启动定时刷新任务
+        _flushTimer = new Timer(async _ => await FlushBatchAsync(), null, _flushInterval, _flushInterval);
+        return base.StartAsync(cancellationToken);
+    }
+    
+    /// <summary>
+    /// 停止时清理资源
+    /// </summary>
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("审计日志消费者正在停止...");
+        
+        // 停止定时刷新
+        _flushTimer?.Dispose();
+        
+        // 停止前刷新剩余的批次
+        try
+        {
+            await FlushBatchAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "停止时刷新批量缓冲失败");
+        }
+        
+        // 清理RabbitMQ订阅
+        await CleanupAsync();
+        
+        await base.StopAsync(cancellationToken);
+        
+        _logger.LogInformation("审计日志消费者已完全停止");
     }
     
     /// <summary>
@@ -80,23 +136,22 @@ public class AuditLogConsumerService : BackgroundService
             catch (Exception ex)
             {
                 retryCount++;
-                _logger.LogError(ex, "审计日志消费者初始化失败（第 {RetryCount}/{MaxRetryAttempts} 次尝试）", 
-                    retryCount, _maxRetryAttempts);
+                
+                // 计算指数退避延迟（1s, 2s, 4s, 8s...最大60s）
+                var delaySeconds = Math.Min(Math.Pow(2, retryCount - 1), _maxRetryDelay.TotalSeconds);
+                var delay = TimeSpan.FromSeconds(delaySeconds);
+                
+                _logger.LogWarning(ex, "审计日志消费者初始化失败（第 {RetryCount} 次尝试），将在 {DelaySeconds} 秒后重试。消息保留在RabbitMQ队列中，不会丢失", 
+                    retryCount, delay.TotalSeconds);
                 
                 // 清理可能的部分初始化状态
                 await CleanupAsync();
                 
-                if (retryCount >= _maxRetryAttempts)
-                {
-                    _logger.LogCritical("审计日志消费者服务重试次数已达上限，服务将停止");
-                    break;
-                }
-                
-                // 等待一段时间后重试
+                // 持续重试，不设置最大重试次数限制
+                // 消息保留在RabbitMQ队列中，服务恢复后会自动处理
                 try
                 {
-                    _logger.LogInformation("将在 {DelaySeconds} 秒后重试初始化", _retryDelay.TotalSeconds);
-                    await Task.Delay(_retryDelay, stoppingToken);
+                    await Task.Delay(delay, stoppingToken);
                 }
                 catch (OperationCanceledException)
                 {
@@ -253,116 +308,132 @@ public class AuditLogConsumerService : BackgroundService
     }
     
     /// <summary>
-    /// 处理审计日志消息
+    /// 处理审计日志消息（批量处理）
     /// </summary>
+    /// <remarks>
+    /// 消息立即确认，然后异步批量处理
+    /// 如果批量处理失败，记录错误日志但不重新入队（因为消息已确认）
+    /// </remarks>
     private async Task ProcessAuditLogAsync(Models.AuditLog auditLog)
     {
         var messageId = auditLog?.Id ?? "unknown";
         
         try
         {
-            _logger.LogInformation("=== 开始处理审计日志消息 === ID: {Id}", messageId);
-            
             if (auditLog == null)
             {
                 _logger.LogError("收到空的审计日志消息");
                 throw new ArgumentNullException(nameof(auditLog), "审计日志消息为空");
             }
             
-            _logger.LogDebug("审计日志详情: UserId={UserId}, OperationType={OperationType}, Path={Path}", 
-                auditLog.UserId, auditLog.OperationType, auditLog.RequestPath);
+            _logger.LogDebug("收到审计日志消息: ID={Id}, UserId={UserId}, OperationType={OperationType}", 
+                messageId, auditLog.UserId, auditLog.OperationType);
             
-            // 处理地理位置
-            try
+            // 处理地理位置（异步，不阻塞批量处理）
+            _ = Task.Run(async () =>
             {
-                _logger.LogDebug("开始处理地理位置信息...");
-                await EnrichWithGeoLocationAsync(auditLog);
-                _logger.LogDebug("地理位置信息处理完成");
-            }
-            catch (Exception geoEx)
-            {
-                _logger.LogError(geoEx, "处理地理位置信息失败 - ID: {Id}, 异常类型: {ExceptionType}, 消息: {Message}", 
-                    messageId, geoEx.GetType().Name, geoEx.Message);
-                
-                if (geoEx.InnerException != null)
+                try
                 {
-                    _logger.LogError("地理位置服务内部异常: {InnerExceptionType}: {InnerMessage}", 
-                        geoEx.InnerException.GetType().Name, geoEx.InnerException.Message);
+                    await EnrichWithGeoLocationAsync(auditLog);
                 }
+                catch (Exception geoEx)
+                {
+                    _logger.LogWarning(geoEx, "处理地理位置信息失败 - ID: {Id}", messageId);
+                }
+            });
+            
+            // 添加到批量缓冲（线程安全）
+            bool shouldFlush = false;
+            lock (_batchLock)
+            {
+                _batchBuffer.Add(auditLog);
                 
-                // 地理位置失败不应该阻止整个处理流程，继续执行
+                // 达到批量大小立即刷新
+                if (_batchBuffer.Count >= _batchSize)
+                {
+                    shouldFlush = true;
+                    _logger.LogDebug("批量缓冲达到大小限制 ({BatchSize})，立即刷新", _batchSize);
+                }
             }
             
-            // 保存到存储
-            try
+            // 异步刷新（不阻塞消息确认）
+            if (shouldFlush)
             {
-                _logger.LogDebug("开始保存到存储服务...");
-                using var scope = _serviceScopeFactory.CreateScope();
-                var auditStorageService = scope.ServiceProvider.GetRequiredService<IAuditStorageService>();
-                
-                var stored = await auditStorageService.StoreAsync(auditLog);
-                if (stored)
+                _ = Task.Run(async () =>
                 {
-                    _logger.LogInformation("=== 审计日志处理完成 === ID: {Id}", messageId);
-                }
-                else
-                {
-                    _logger.LogError("存储审计日志失败 - ID: {Id}, 存储服务: {ServiceType}", 
-                        messageId, auditStorageService.GetType().Name);
-                    
-                    // 如果是GreptimeDB存储服务，进行详细诊断
-                    if (auditStorageService is GreptimeDbAuditStorageService greptimeDbService)
+                    try
                     {
-                        _logger.LogWarning("检测到GreptimeDB存储失败，开始健康检查...");
-                        var isHealthy = await greptimeDbService.HealthCheckAsync();
-                        _logger.LogWarning("GreptimeDB健康状态: {IsHealthy}", isHealthy);
-                        
-                        if (!isHealthy)
-                        {
-                            _logger.LogError("GreptimeDB服务不健康，建议检查:");
-                            _logger.LogError("1. GreptimeDB服务是否正在运行");
-                            _logger.LogError("2. 网络连接是否正常");
-                            _logger.LogError("3. 配置URL是否正确");
-                            _logger.LogError("4. 数据库是否存在");
-                        }
+                        await FlushBatchAsync();
                     }
-                    
-                    throw new InvalidOperationException($"存储审计日志失败 - ID: {messageId}, 服务类型: {auditStorageService.GetType().Name}");
-                }
-            }
-            catch (Exception storageEx)
-            {
-                _logger.LogError(storageEx, "保存到存储服务失败 - ID: {Id}, 异常类型: {ExceptionType}, 消息: {Message}", 
-                    messageId, storageEx.GetType().Name, storageEx.Message);
-                
-                if (storageEx.InnerException != null)
-                {
-                    _logger.LogError("存储服务内部异常: {InnerExceptionType}: {InnerMessage}", 
-                        storageEx.InnerException.GetType().Name, storageEx.InnerException.Message);
-                }
-                
-                // 记录详细的堆栈跟踪以便调试
-                _logger.LogError("存储服务异常堆栈跟踪: {StackTrace}", storageEx.StackTrace);
-                
-                throw; // 存储失败必须重新抛出异常
+                    catch (Exception flushEx)
+                    {
+                        _logger.LogError(flushEx, "批量刷新失败");
+                    }
+                });
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "=== 审计日志消费失败 === ID: {Id}, 异常类型: {ExceptionType}, 消息: {Message}", 
-                messageId, ex.GetType().Name, ex.Message);
-            
-            // 记录详细的异常信息
-            if (ex.InnerException != null)
-            {
-                _logger.LogError("内部异常: {InnerExceptionType}: {InnerMessage}", 
-                    ex.InnerException.GetType().Name, ex.InnerException.Message);
-            }
-            
-            // 记录完整的堆栈跟踪用于调试
-            _logger.LogError("完整异常堆栈跟踪: {StackTrace}", ex.StackTrace);
-            
+            _logger.LogError(ex, "处理审计日志消息失败 - ID: {Id}", messageId);
             throw; // 重新抛出异常以便RabbitMQ可以重新入队消息
+        }
+    }
+    
+    /// <summary>
+    /// 刷新批量缓冲
+    /// </summary>
+    private async Task FlushBatchAsync()
+    {
+        List<Models.AuditLog> batch;
+        
+        lock (_batchLock)
+        {
+            if (_batchBuffer.Count == 0)
+                return;
+            
+            batch = _batchBuffer.ToList();
+            _batchBuffer.Clear();
+        }
+        
+        if (batch.Count == 0)
+            return;
+        
+        _logger.LogInformation("开始批量存储审计日志，数量: {Count}", batch.Count);
+        
+        try
+        {
+            using var scope = _serviceScopeFactory.CreateScope();
+            var auditStorageService = scope.ServiceProvider.GetRequiredService<IAuditStorageService>();
+            
+            // 批量存储
+            var stored = await auditStorageService.BulkStoreAsync(batch);
+            
+            if (stored)
+            {
+                _metrics.RecordBatchStored(batch.Count);
+                _metrics.IncrementStorageSuccess();
+                _logger.LogInformation("批量存储审计日志成功，数量: {Count}", batch.Count);
+            }
+            else
+            {
+                _metrics.IncrementStorageFailure();
+                _logger.LogError("批量存储审计日志失败，数量: {Count}", batch.Count);
+                // 失败时重新添加到缓冲（避免丢失）
+                lock (_batchLock)
+                {
+                    _batchBuffer.InsertRange(0, batch);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "批量存储审计日志时发生异常，数量: {Count}", batch.Count);
+            
+            // 失败时重新添加到缓冲（避免丢失）
+            lock (_batchLock)
+            {
+                _batchBuffer.InsertRange(0, batch);
+            }
         }
     }
     
@@ -418,17 +489,4 @@ public class AuditLogConsumerService : BackgroundService
         await Task.Delay(1000);
     }
     
-    /// <summary>
-    /// 停止服务
-    /// </summary>
-    public override async Task StopAsync(CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("审计日志消费者正在停止...");
-        
-        await CleanupAsync();
-        
-        await base.StopAsync(cancellationToken);
-        
-        _logger.LogInformation("审计日志消费者已完全停止");
-    }
 } 

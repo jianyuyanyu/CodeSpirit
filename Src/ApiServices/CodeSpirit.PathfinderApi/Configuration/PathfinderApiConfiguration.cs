@@ -1,6 +1,7 @@
 using CodeSpirit.AiFormFill;
 using CodeSpirit.Aggregator;
 using CodeSpirit.Audit.Extensions;
+using CodeSpirit.Audit.Startup;
 using CodeSpirit.Caching.Extensions;
 using CodeSpirit.LLM;
 using CodeSpirit.MultiTenant.Extensions;
@@ -24,7 +25,7 @@ namespace CodeSpirit.PathfinderApi.Configuration;
 /// <summary>
 /// Pathfinder API服务配置
 /// </summary>
-public class PathfinderApiConfiguration : BaseApiConfiguration
+public class PathfinderApiConfiguration : AuditAwareApiConfiguration
 {
     /// <summary>
     /// 服务名称，用于Aspire服务发现
@@ -75,8 +76,7 @@ public class PathfinderApiConfiguration : BaseApiConfiguration
         // 注册Pathfinder业务服务
         AddPathfinderServices(services);
         
-        // 配置控制器和审计元数据过滤器
-        ConfigureControllersWithAudit(services, configuration);
+        // 注意：审计元数据过滤器已由 BaseApiConfiguration 根据配置自动添加
     }
     
     /// <summary>
@@ -134,16 +134,6 @@ public class PathfinderApiConfiguration : BaseApiConfiguration
         services.AddScoped<ITaskService, TaskService>();
     }
     
-    /// <summary>
-    /// 配置控制器和审计元数据过滤器
-    /// </summary>
-    /// <param name="services">服务集合</param>
-    /// <param name="configuration">配置对象</param>
-    private static void ConfigureControllersWithAudit(IServiceCollection services, IConfiguration configuration)
-    {
-        // 添加审计元数据过滤器到控制器
-        services.AddControllers().AddAuditMetadataFilter();
-    }
     
     /// <summary>
     /// 配置Pathfinder特定中间件

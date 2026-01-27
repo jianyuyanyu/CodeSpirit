@@ -2,6 +2,7 @@ using CodeSpirit.Aggregator;
 using CodeSpirit.AiFormFill;
 using CodeSpirit.ApprovalApi.Data;
 using CodeSpirit.ApprovalApi.Services;
+using CodeSpirit.Audit.Startup;
 using CodeSpirit.LLM;
 using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.Settings.Extensions;
@@ -20,7 +21,7 @@ namespace CodeSpirit.ApprovalApi.Configuration;
 /// <summary>
 /// 审批系统API服务配置
 /// </summary>
-public class ApprovalApiConfiguration : BaseApiConfiguration
+public class ApprovalApiConfiguration : AuditAwareApiConfiguration
 {
     /// <summary>
     /// 服务名称，用于Aspire服务发现

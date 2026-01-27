@@ -185,6 +185,16 @@ public class RabbitMQOptions
     /// 最大订阅者
     /// </summary>
     public int MaxSubscribers { get; set; } = 3;
+    
+    /// <summary>
+    /// 批量处理大小（默认100条）
+    /// </summary>
+    public int BatchSize { get; set; } = 100;
+    
+    /// <summary>
+    /// 批量刷新间隔（秒，默认5秒）
+    /// </summary>
+    public int BatchFlushIntervalSeconds { get; set; } = 5;
 }
 
 /// <summary>

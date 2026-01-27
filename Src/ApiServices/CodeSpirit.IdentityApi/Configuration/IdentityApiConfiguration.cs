@@ -1,6 +1,7 @@
 using CodeSpirit.Aggregator;
 using CodeSpirit.AiFormFill;
 using CodeSpirit.Audit.Extensions;
+using CodeSpirit.Audit.Startup;
 using CodeSpirit.Charts.Extensions;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
@@ -26,7 +27,7 @@ namespace CodeSpirit.IdentityApi.Configuration;
 /// <summary>
 /// 身份认证API服务配置
 /// </summary>
-public class IdentityApiConfiguration : BaseApiConfiguration
+public class IdentityApiConfiguration : AuditAwareApiConfiguration
 {
     /// <summary>
     /// 服务名称，用于Aspire服务发现
@@ -68,7 +69,7 @@ public class IdentityApiConfiguration : BaseApiConfiguration
         // 添加Identity服务
         AddIdentityServices(services, configuration);
         
-        // 配置自定义控制器和审计
+        // 配置自定义控制器（审计元数据过滤器已由 BaseApiConfiguration 自动配置）
         ConfigureCustomControllers(services);
         
         // 注册Charts服务
@@ -269,22 +270,22 @@ public class IdentityApiConfiguration : BaseApiConfiguration
 
     
     /// <summary>
-    /// 配置自定义控制器和审计
+    /// 配置自定义控制器
     /// </summary>
     /// <param name="services">服务集合</param>
+    /// <remarks>
+    /// 审计元数据过滤器已由 BaseApiConfiguration 根据配置自动添加，无需手动配置
+    /// </remarks>
     private static void ConfigureCustomControllers(IServiceCollection services)
     {
-        // 审计配置已由CodeSpirit.Audit组件统一处理
-
         services.ConfigureDefaultControllers((options) =>
         {
             
         });
         
-        // 添加审计元数据过滤器，用于分布式环境中传递审计信息
-        // 注意：这里不能链式调用，因为ConfigureDefaultControllers返回的是IServiceCollection
-        // 需要使用AddControllers()来获取IMvcBuilder
-        services.AddControllers().AddAuditMetadataFilter();
+        // 注意：审计元数据过滤器已由 BaseApiConfiguration.ConfigureAuditMetadataFilter 自动配置
+        // 如果需要在配置中禁用，设置 Audit:EnableMetadataFilter = false
+        services.AddControllers();
     }
     
     /// <summary>

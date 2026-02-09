@@ -78,9 +78,6 @@ public class StatusColumnHandler
     /// <param name="prop">属性信息</param>
     public void ApplyStatusColumnConfiguration(JObject column, PropertyInfo prop)
     {
-        // 设置列类型为状态
-        column["type"] = "status";
-
         // 获取状态列特性
         var statusAttr = prop.GetCustomAttribute<AmisStatusColumnAttribute>();
         var columnAttr = prop.GetCustomAttribute<AmisColumnAttribute>();
@@ -88,14 +85,37 @@ public class StatusColumnHandler
         // 优先使用 AmisStatusColumnAttribute 的配置
         var effectiveAttr = statusAttr ?? columnAttr;
 
-        if (effectiveAttr != null)
+        // 获取属性的基础类型
+        Type underlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+        
+        // 对于布尔类型，使用 mapping 类型而不是 status 类型
+        // mapping 类型会直接显示文字，更适合布尔值的显示
+        if (underlyingType == typeof(bool))
         {
-            ApplyStatusMappingToColumn(column, effectiveAttr);
+            column["type"] = "mapping";
+            if (effectiveAttr != null)
+            {
+                ApplyBooleanMappingToColumn(column, effectiveAttr);
+            }
+            else
+            {
+                // 默认布尔映射
+                ApplyDefaultBooleanMapping(column);
+            }
         }
         else
         {
-            // 如果没有明确的特性配置，尝试智能推断
-            ApplyIntelligentStatusMapping(column, prop);
+            // 非布尔类型使用 status 类型
+            column["type"] = "status";
+            if (effectiveAttr != null)
+            {
+                ApplyStatusMappingToColumn(column, effectiveAttr);
+            }
+            else
+            {
+                // 如果没有明确的特性配置，尝试智能推断
+                ApplyIntelligentStatusMapping(column, prop);
+            }
         }
     }
 
@@ -145,6 +165,41 @@ public class StatusColumnHandler
         {
             ApplyNumericStatusMapping(column);
         }
+    }
+
+    /// <summary>
+    /// 应用布尔映射到列对象（使用 mapping 类型）
+    /// </summary>
+    /// <param name="column">列对象</param>
+    /// <param name="columnAttr">列特性</param>
+    private void ApplyBooleanMappingToColumn(JObject column, AmisColumnAttribute columnAttr)
+    {
+        // 根据映射类型生成标签映射
+        var labelMap = GenerateLabelMapConfig(columnAttr.StatusMapping, columnAttr.StatusLabelMap);
+        
+        if (labelMap != null)
+        {
+            column["map"] = JToken.FromObject(labelMap);
+        }
+        
+        // 添加占位符
+        if (!string.IsNullOrEmpty(columnAttr.StatusPlaceholder))
+        {
+            column["placeholder"] = columnAttr.StatusPlaceholder;
+        }
+    }
+
+    /// <summary>
+    /// 应用默认布尔映射
+    /// </summary>
+    /// <param name="column">列对象</param>
+    private void ApplyDefaultBooleanMapping(JObject column)
+    {
+        column["map"] = new JObject
+        {
+            ["true"] = "是",
+            ["false"] = "否"
+        };
     }
 
     /// <summary>
@@ -417,6 +472,13 @@ public class StatusColumnHandler
                 ["true"] = "success",
                 ["false"] = "fail"
             },
+            // 是/否映射 - 中性语义（蓝色/灰色）
+            StatusMapping.YesNo => new JObject
+            {
+                ["true"] = "info",      // 是
+                ["false"] = "default",  // 否
+                ["null"] = "default"    // 未设置
+            },
             StatusMapping.AuditOperationType => new JObject
             {
                 ["Create"] = "success",
@@ -510,6 +572,13 @@ public class StatusColumnHandler
             {
                 ["true"] = "是",
                 ["false"] = "否"
+            },
+            // 是/否映射标签
+            StatusMapping.YesNo => new JObject
+            {
+                ["true"] = "是",
+                ["false"] = "否",
+                ["null"] = "-"  // 未设置
             },
             StatusMapping.AuditOperationType => new JObject
             {

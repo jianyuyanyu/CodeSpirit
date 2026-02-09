@@ -1,4 +1,4 @@
-﻿namespace CodeSpirit.Amis.Attributes.Columns
+namespace CodeSpirit.Amis.Attributes.Columns
 {
     [AttributeUsage(AttributeTargets.Property)]
     public class AmisColumnAttribute : Attribute
@@ -145,6 +145,14 @@
         /// 0 -> fail
         /// -1 -> warning
         /// </summary>
-        NumericStatus
+        NumericStatus,
+
+        /// <summary>
+        /// 是/否映射（中性语义）
+        /// true -> info (是)
+        /// false -> default (否)
+        /// null -> default (未设置)
+        /// </summary>
+        YesNo
     }
 }

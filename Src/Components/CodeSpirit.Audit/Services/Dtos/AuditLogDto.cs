@@ -194,21 +194,21 @@ public class AuditLogDto
     /// 是否批量操作
     /// </summary>
     [DisplayName("批量操作")]
-    [AmisStatusColumn(StatusMapping.Boolean, Remark = "是否为批量操作")]
+    [AmisStatusColumn(StatusMapping.YesNo, Remark = "是否为批量操作")]
     public bool IsBulkOperation { get; set; }
     
     /// <summary>
     /// 记录请求参数配置
     /// </summary>
     [DisplayName("记录请求参数")]
-    [AmisStatusColumn(StatusMapping.Boolean, Hidden = true)]
+    [AmisStatusColumn(StatusMapping.YesNo, Hidden = true)]
     public bool LogRequestParams { get; set; }
     
     /// <summary>
     /// 记录响应数据配置
     /// </summary>
     [DisplayName("记录响应数据")]
-    [AmisStatusColumn(StatusMapping.Boolean, Hidden = true)]
+    [AmisStatusColumn(StatusMapping.YesNo, Hidden = true)]
     public bool LogResponseData { get; set; }
     
     /// <summary>

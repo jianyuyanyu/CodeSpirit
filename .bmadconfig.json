@@ -1,0 +1,21 @@
+{
+  "project": {
+    "name": "CodeSpirit",
+    "type": "enterprise-saas",
+    "tech_stack": ".NET 10 + Aspire",
+    "scale": "large"
+  },
+  "standards": {
+    "location": ".cursor/rules/",
+    "required_reviews": ["security", "multi-database", "multi-tenant", "i18n"]
+  },
+  "integrations": {
+    "cursor_skills": true,
+    "project_context": "project-context.md"
+  },
+  "workflows": {
+    "quick_flow_max_lines": 200,
+    "architecture_required_for": ["new_service", "database_change", "ai_feature"],
+    "mandatory_reviews": ["code-review", "pre-commit-validation"]
+  }
+}

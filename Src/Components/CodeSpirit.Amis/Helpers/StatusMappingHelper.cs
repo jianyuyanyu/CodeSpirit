@@ -43,6 +43,7 @@ public static class StatusMappingHelper
         {
             StatusMapping.HttpStatusCode => MapHttpStatusCode(value),
             StatusMapping.Boolean => MapBoolean(value),
+            StatusMapping.YesNo => MapYesNo(value),
             StatusMapping.AuditOperationType => MapAuditOperationType(value),
             StatusMapping.CommonStatus => MapCommonStatus(value),
             StatusMapping.HttpMethod => MapHttpMethod(value),
@@ -197,6 +198,50 @@ public static class StatusMappingHelper
             2 => "info",
             _ => "default"
         };
+    }
+
+    /// <summary>
+    /// 是/否值映射（中性语义）
+    /// </summary>
+    /// <param name="value">原始值</param>
+    /// <returns>AMIS 状态值</returns>
+    private static string MapYesNo(object value)
+    {
+        // 处理 null 值
+        if (value == null)
+        {
+            return "default";
+        }
+        
+        if (value is bool boolValue)
+        {
+            return boolValue ? "info" : "default";  // info=是, default=否
+        }
+        
+        // 字符串解析（使用不区分大小写比较以提高性能）
+        var stringValue = value.ToString();
+        if (string.IsNullOrEmpty(stringValue))
+        {
+            return "default";
+        }
+        
+        if (stringValue.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+            stringValue.Equals("1", StringComparison.Ordinal) ||
+            stringValue.Equals("yes", StringComparison.OrdinalIgnoreCase) ||
+            stringValue.Equals("是", StringComparison.Ordinal))
+        {
+            return "info";
+        }
+        
+        if (stringValue.Equals("false", StringComparison.OrdinalIgnoreCase) ||
+            stringValue.Equals("0", StringComparison.Ordinal) ||
+            stringValue.Equals("no", StringComparison.OrdinalIgnoreCase) ||
+            stringValue.Equals("否", StringComparison.Ordinal))
+        {
+            return "default";
+        }
+        
+        return "default";
     }
 
     /// <summary>

@@ -73,4 +73,13 @@
   <data name="Description.Question.Tags" xml:space="preserve">
     <value>Add relevant tags to the question for easier categorization and search</value>
   </data>
+  <data name="QuestionStatus.Draft" xml:space="preserve">
+    <value>Draft</value>
+  </data>
+  <data name="QuestionStatus.Published" xml:space="preserve">
+    <value>Published</value>
+  </data>
+  <data name="QuestionStatus.Archived" xml:space="preserve">
+    <value>Archived</value>
+  </data>
 </root>

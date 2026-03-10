@@ -74,6 +74,11 @@ public enum QuestionType
 </data>
 ```
 
+## 在 QueryDto 中的使用
+
+枚举用于查询 DTO 筛选条件时，**仅使用 `[DisplayName]`**，不要添加 `[AmisSelectField]`。框架会根据枚举的 Display 特性自动生成下拉选项。详见 [dto.mdc - 查询 DTO 中枚举字段](mdc:.cursor/rules/dto.mdc)。
+
 ## 参考文档
 
 - 多语言规范: [i18n.mdc](mdc:.cursor/rules/i18n.mdc)
+- 查询 DTO 枚举配置: [dto.mdc](mdc:.cursor/rules/dto.mdc)

@@ -214,6 +214,13 @@ namespace CodeSpirit.ExamApi.Services.Implementations
 
             var questions = lastVersionQuestions.Select(s => s.Question).ToList();
 
+            // 校验所有题目均为已发布状态
+            var draftQuestions = questions.Where(q => q.Status != QuestionStatus.Published).ToList();
+            if (draftQuestions.Any())
+            {
+                throw new AppServiceException(400, $"以下题目未发布，不能加入试卷：{string.Join("、", draftQuestions.Select(q => q.Id))}");
+            }
+
             // 计算难度系数
             if (questions != null && questions.Count != 0)
             {
@@ -493,6 +500,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                         
                         var tagQuery = _questionRepository.Find(q => 
                             q.Type == typeRule.QuestionType &&
+                            q.Status == QuestionStatus.Published &&
                             q.Tags != null && q.Tags.Contains(escapedTag));
                         
                         // 如果指定了分类ID，则添加分类条件
@@ -516,7 +524,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 else
                 {
                     // 没有标签规则，检查整体题目数量
-                    var query = _questionRepository.Find(q => q.Type == typeRule.QuestionType);
+                    var query = _questionRepository.Find(q => q.Type == typeRule.QuestionType && q.Status == QuestionStatus.Published);
                     
                     // 如果指定了分类ID，则添加分类条件
                     if (createDto.CategoryIds != null && createDto.CategoryIds.Any())
@@ -597,9 +605,10 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         {
             var questions = new List<Question>();
 
-            // 基础查询条件：题目类型 + 分类 + 排除已选题目
+            // 基础查询条件：题目类型 + 已发布 + 分类 + 排除已选题目
             var baseQuery = _questionRepository.Find(q => 
                 q.Type == typeRule.QuestionType && 
+                q.Status == QuestionStatus.Published &&
                 !selectedQuestionIds.Contains(q.Id));
             
             // 如果指定了分类ID，则添加分类条件
@@ -637,6 +646,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 var additionalQuestions = await _questionRepository
                     .Find(q => 
                         q.Type == typeRule.QuestionType && 
+                        q.Status == QuestionStatus.Published &&
                         !currentSelectedIds.Contains(q.Id))
                     .Where(q => categoryIds == null || !categoryIds.Any() || categoryIds.Contains(q.CategoryId))
                     .OrderBy(q => Guid.NewGuid())

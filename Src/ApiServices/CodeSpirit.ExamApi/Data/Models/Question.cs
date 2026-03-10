@@ -96,6 +96,21 @@ public class Question : LongKeyAuditableEntityBase, IMultiTenant
     public string? Tags { get; set; }
 
     /// <summary>
+    /// 题目状态
+    /// </summary>
+    public QuestionStatus Status { get; set; } = QuestionStatus.Draft;
+
+    /// <summary>
+    /// 发布时间
+    /// </summary>
+    public DateTime? PublishedAt { get; set; }
+
+    /// <summary>
+    /// 发布人ID
+    /// </summary>
+    public long? PublishedBy { get; set; }
+
+    /// <summary>
     /// 试卷题目关联
     /// </summary>
     public ICollection<ExamPaperQuestion> ExamPaperQuestions { get; set; } = [];

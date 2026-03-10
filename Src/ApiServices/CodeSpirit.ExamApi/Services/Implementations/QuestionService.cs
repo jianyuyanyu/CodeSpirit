@@ -19,6 +19,7 @@ using CodeSpirit.Shared.Dtos.Common;
 using CodeSpirit.Shared.Dtos;
 using CodeSpirit.LLM;
 using LinqKit;
+using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
@@ -40,6 +41,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         private readonly IIdGenerator _idGenerator;
         private readonly LLMAssistant _llmAssistant;
         private readonly IDistributedCache _distributedCache;
+        private readonly IQuestionValidationService _questionValidationService;
 
         public QuestionService(
             IRepository<Question> repository,
@@ -52,7 +54,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             ISettingsService settingsService,
             ICurrentUser currentUser,
             LLMAssistant llmAssistant,
-            IDistributedCache distributedCache)
+            IDistributedCache distributedCache,
+            IQuestionValidationService questionValidationService)
             : base(repository, mapper)
         {
             _repository = repository;
@@ -66,6 +69,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             _currentUser = currentUser;
             _llmAssistant = llmAssistant;
             _distributedCache = distributedCache;
+            _questionValidationService = questionValidationService;
         }
 
         /// <summary>
@@ -325,7 +329,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 {
                     try
                     {
-                        // 创建题目
+                        // 创建题目（导入的题目默认为草稿状态）
                         var question = new Question
                         {
                             Id = _idGenerator.NewId(),
@@ -338,7 +342,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                             Difficulty = questionPreview.Difficulty,
                             DefaultScore = (int)questionPreview.DefaultScore,
                             CategoryId = categoryId,
-                            Version = 1
+                            Version = 1,
+                            Status = QuestionStatus.Draft
                         };
 
                         await _repository.AddAsync(question);
@@ -2084,6 +2089,12 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 predicate = predicate.And(x => x.Tags != null && x.Tags.Contains(escapedPattern));
             }
 
+            // 题目状态筛选
+            if (query.Status.HasValue)
+            {
+                predicate = predicate.And(x => x.Status == query.Status.Value);
+            }
+
             // 构建查询并排序
             var baseQuery = _repository.Find(predicate)
                 .OrderByDescending(x => x.CreatedAt); // 默认按创建时间倒序
@@ -2108,6 +2119,9 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         public async Task<List<QuestionSelectListDto>> GetQuestionSelectListAsync(QuestionSelectListQueryDto query)
         {
             var predicate = PredicateBuilder.New<Question>(true);
+
+            // 仅返回已发布的题目
+            predicate = predicate.And(x => x.Status == QuestionStatus.Published);
 
             // 题目类型筛选
             if (query.Type.HasValue)
@@ -2143,19 +2157,29 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 throw new AppServiceException(400, "所选分类不存在");
             }
 
+            // 题目内容、选项、答案格式验证及自动修复（与批量导入/AI 生成保持一致）
+            var validatedDto = await _questionValidationService.ValidateAndFixQuestionAsync(createDto);
+            var validationResult = _questionValidationService.ValidateQuestion(validatedDto);
+            if (validationResult.HasErrors)
+            {
+                var errorMessage = string.Join("；", validationResult.Errors);
+                throw new AppServiceException(400, $"题目验证失败：{errorMessage}");
+            }
+
             // 根据设置验证题目内容唯一性
             var settings = await GetQuestionSettingsAsync();
-            var contentToValidate = createDto.Content?.Trim();
+            var contentToValidate = validatedDto.Content?.Trim();
             if (!string.IsNullOrWhiteSpace(contentToValidate))
             {
                 await ValidateQuestionUniquenessAsync(
                     new List<string> { contentToValidate },
-                    createDto.CategoryId,
+                    validatedDto.CategoryId,
                     settings.UniquenessMode);
             }
 
-            var question = _mapper.Map<Question>(createDto);
+            var question = _mapper.Map<Question>(validatedDto);
             question.Id = _idGenerator.NewId();
+            question.Status = QuestionStatus.Draft;
             question.CreatedAt = DateTime.UtcNow;
             question.UpdatedAt = DateTime.UtcNow;
 
@@ -2202,13 +2226,22 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 }
             }
 
+            // 题目内容、选项、答案格式验证及自动修复
+            var validatedDto = await _questionValidationService.ValidateAndFixQuestionAsync(updateDto);
+            var validationResult = _questionValidationService.ValidateQuestion(validatedDto);
+            if (validationResult.HasErrors)
+            {
+                var errorMessage = string.Join("；", validationResult.Errors);
+                throw new AppServiceException(400, $"题目验证失败：{errorMessage}");
+            }
+
             // 保存原始数据用于版本记录
             var originalContent = question.Content;
             var originalOptions = question.Options;
             var originalCorrectAnswer = question.CorrectAnswer;
 
-            // 更新题目
-            _mapper.Map(updateDto, question);
+            // 更新题目（使用验证后的数据）
+            _mapper.Map(validatedDto, question);
             question.UpdatedAt = DateTime.UtcNow;
 
             await _repository.UpdateAsync(question);
@@ -2241,10 +2274,18 @@ namespace CodeSpirit.ExamApi.Services.Implementations
 
         public async Task DeleteQuestionAsync(long id)
         {
-            var question = await _repository.GetByIdAsync(id);
+            var question = await _repository.Find(q => q.Id == id)
+                .Include(q => q.ExamPaperQuestions)
+                .FirstOrDefaultAsync();
             if (question == null)
             {
                 throw new AppServiceException(404, "题目不存在");
+            }
+
+            // 草稿可删除；已发布且未被引用时可删除
+            if (question.Status == QuestionStatus.Published && question.ExamPaperQuestions.Any())
+            {
+                throw new AppServiceException(400, "已发布且被试卷引用的题目不能删除");
             }
 
             await _repository.DeleteAsync(question);
@@ -2278,6 +2319,94 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             }
 
             return (successCount, failedIds);
+        }
+
+        /// <summary>
+        /// 发布题目
+        /// </summary>
+        /// <param name="id">题目ID</param>
+        public async Task PublishQuestionAsync(long id)
+        {
+            var question = await _repository.GetByIdAsync(id);
+            if (question == null)
+            {
+                throw new AppServiceException(404, "题目不存在");
+            }
+
+            if (question.Status == QuestionStatus.Published)
+            {
+                throw new AppServiceException(400, "题目已经是发布状态");
+            }
+
+            if (question.Status != QuestionStatus.Draft)
+            {
+                throw new AppServiceException(400, "只有草稿状态的题目可以发布");
+            }
+
+            question.Status = QuestionStatus.Published;
+            question.PublishedAt = DateTime.UtcNow;
+            question.PublishedBy = _currentUser.Id;
+            question.UpdatedAt = DateTime.UtcNow;
+
+            await _repository.UpdateAsync(question);
+        }
+
+        /// <summary>
+        /// 批量发布题目
+        /// </summary>
+        /// <param name="ids">题目ID列表</param>
+        /// <returns>成功数量和失败ID列表</returns>
+        public async Task<(int successCount, List<long> failedIds)> BatchPublishAsync(IEnumerable<long> ids)
+        {
+            var successCount = 0;
+            var failedIds = new List<long>();
+
+            foreach (var id in ids)
+            {
+                try
+                {
+                    await PublishQuestionAsync(id);
+                    successCount++;
+                }
+                catch
+                {
+                    failedIds.Add(id);
+                }
+            }
+
+            return (successCount, failedIds);
+        }
+
+        /// <summary>
+        /// 取消发布题目
+        /// </summary>
+        /// <param name="id">题目ID</param>
+        public async Task UnpublishQuestionAsync(long id)
+        {
+            var question = await _repository.Find(q => q.Id == id)
+                .Include(q => q.ExamPaperQuestions)
+                .FirstOrDefaultAsync();
+            if (question == null)
+            {
+                throw new AppServiceException(404, "题目不存在");
+            }
+
+            if (question.Status != QuestionStatus.Published)
+            {
+                throw new AppServiceException(400, "只有已发布的题目可以取消发布");
+            }
+
+            if (question.ExamPaperQuestions.Any())
+            {
+                throw new AppServiceException(400, "已被试卷引用的题目不能取消发布");
+            }
+
+            question.Status = QuestionStatus.Draft;
+            question.PublishedAt = null;
+            question.PublishedBy = null;
+            question.UpdatedAt = DateTime.UtcNow;
+
+            await _repository.UpdateAsync(question);
         }
 
         /// <summary>

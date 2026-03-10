@@ -57,6 +57,26 @@ public interface IQuestionService
     Task<List<QuestionVersionDto>> GetQuestionVersionsAsync(long questionId);
 
     Task<(int successCount, List<long> failedIds)> BatchDeleteAsync(IEnumerable<long> ids);
+
+    /// <summary>
+    /// 发布题目
+    /// </summary>
+    /// <param name="id">题目ID</param>
+    Task PublishQuestionAsync(long id);
+
+    /// <summary>
+    /// 批量发布题目
+    /// </summary>
+    /// <param name="ids">题目ID列表</param>
+    /// <returns>成功数量和失败ID列表</returns>
+    Task<(int successCount, List<long> failedIds)> BatchPublishAsync(IEnumerable<long> ids);
+
+    /// <summary>
+    /// 取消发布题目
+    /// </summary>
+    /// <param name="id">题目ID</param>
+    Task UnpublishQuestionAsync(long id);
+
     Task<(int successCount, List<string> failedIds)> BatchImportAsync(IEnumerable<QuestionBatchImportItemDto> importData);
     
     /// <summary>

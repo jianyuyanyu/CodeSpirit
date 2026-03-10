@@ -4,16 +4,19 @@ using CodeSpirit.ExamApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace CodeSpirit.ExamApi.Migrations.SqlServer
+namespace CodeSpirit.ExamApi.Data.Migrations.SqlServer
 {
     [DbContext(typeof(SqlServerExamDbContext))]
-    partial class SqlServerExamDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260309145953_AddQuestionStatusToQuestion")]
+    partial class AddQuestionStatusToQuestion
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

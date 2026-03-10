@@ -107,11 +107,17 @@ public class QuestionValidationService : IQuestionValidationService
         // 验证题目内容
         ValidateQuestionContent(question, result);
 
+        // 验证基本字段
+        ValidateBasicFields(question, result);
+
         // 验证选项
         ValidateOptions(question, result);
 
         // 验证答案
         ValidateAnswer(question, result);
+
+        // 最终校验：单选题和多选题的答案必须是指定选项之一
+        ValidateAnswerInOptions(question, result);
 
         result.HasErrors = result.Errors.Any();
 
@@ -197,14 +203,45 @@ public class QuestionValidationService : IQuestionValidationService
     }
 
     /// <summary>
+    /// 验证基本字段
+    /// </summary>
+    private void ValidateBasicFields(CreateQuestionDto question, QuestionValidationResult result)
+    {
+        if (question.DefaultScore < 0 || question.DefaultScore > 100)
+        {
+            result.Errors.Add("题目分值必须在 0-100 之间");
+        }
+    }
+
+    /// <summary>
     /// 验证选项
     /// </summary>
     private void ValidateOptions(CreateQuestionDto question, QuestionValidationResult result)
     {
+        // 判断题不需要选项，或使用默认 True/False
+        if (question.Type == QuestionType.TrueFalse)
+        {
+            if (question.Options == null || !question.Options.Any())
+            {
+                question.Options = new List<string> { "True", "False" };
+            }
+            return;
+        }
+
         if (question.Options == null || !question.Options.Any())
         {
             result.Errors.Add("选项为空");
             return;
+        }
+
+        // 单选题和多选题至少需要 2 个有效选项
+        var validOptions = question.Options.Where(o => !string.IsNullOrWhiteSpace(o)).ToList();
+        if (question.Type == QuestionType.SingleChoice || question.Type == QuestionType.MultipleChoice)
+        {
+            if (validOptions.Count < 4)
+            {
+                result.Errors.Add("单选题和多选题至少需要 4 个选项");
+            }
         }
 
         // 检查选项是否包含序号
@@ -253,6 +290,25 @@ public class QuestionValidationService : IQuestionValidationService
 
         var answer = question.CorrectAnswer.Trim();
 
+        // 判断题：答案必须是 True 或 False，且必须在选项中
+        if (question.Type == QuestionType.TrueFalse)
+        {
+            if (!string.Equals(answer, "True", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(answer, "False", StringComparison.OrdinalIgnoreCase))
+            {
+                result.Errors.Add("判断题的正确答案必须是 True 或 False");
+            }
+            else if (question.Options != null && question.Options.Any())
+            {
+                var cleanOptions = question.Options.Where(o => !string.IsNullOrWhiteSpace(o)).Select(o => o.Trim()).ToList();
+                if (!cleanOptions.Any(o => string.Equals(o, answer, StringComparison.OrdinalIgnoreCase)))
+                {
+                    result.Errors.Add("正确答案必须是指定选项之一");
+                }
+            }
+            return;
+        }
+
         // 检查是否是字母序号格式（A、B、C、D等）
         if (IsLetterSequenceAnswer(answer))
         {
@@ -269,16 +325,37 @@ public class QuestionValidationService : IQuestionValidationService
             result.FixSuggestions.Add("将数字序号转换为完整选项文本");
         }
 
-        // 验证答案是否与选项匹配
+        // 验证答案是否与选项匹配（单选题、多选题：答案必须是指定选项之一）
         if (question.Options != null && question.Options.Any())
         {
             bool answerMatches = ValidateAnswerMatchesOptions(question);
             if (!answerMatches)
             {
-                result.Errors.Add("答案与选项不匹配");
+                result.Errors.Add("正确答案必须是指定选项之一");
                 result.NeedsAnswerValidation = true;
                 result.FixSuggestions.Add("验证并修正答案与选项的匹配关系");
             }
+        }
+    }
+
+    /// <summary>
+    /// 最终校验：单选题和多选题的正确答案必须是指定选项之一
+    /// </summary>
+    private void ValidateAnswerInOptions(CreateQuestionDto question, QuestionValidationResult result)
+    {
+        if (question.Type != QuestionType.SingleChoice && question.Type != QuestionType.MultipleChoice)
+        {
+            return;
+        }
+
+        if (question.Options == null || !question.Options.Any() || string.IsNullOrWhiteSpace(question.CorrectAnswer))
+        {
+            return;
+        }
+
+        if (!ValidateAnswerMatchesOptions(question) && !result.Errors.Contains("正确答案必须是指定选项之一"))
+        {
+            result.Errors.Add("正确答案必须是指定选项之一");
         }
     }
 
@@ -669,8 +746,10 @@ public class QuestionValidationService : IQuestionValidationService
             CorrectAnswer = question.CorrectAnswer,
             Difficulty = question.Difficulty,
             Analysis = question.Analysis,
+            KnowledgePoints = question.KnowledgePoints,
             Tags = question.Tags?.ToList() ?? new List<string>(),
-            CategoryId = question.CategoryId
+            CategoryId = question.CategoryId,
+            DefaultScore = question.DefaultScore
         };
     }
 

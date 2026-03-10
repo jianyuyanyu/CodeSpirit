@@ -62,6 +62,12 @@ public class QuestionQueryDto : QueryDtoBase
     public string? KnowledgePoint { get; set; }
 
     /// <summary>
+    /// 题目状态
+    /// </summary>
+    [DisplayName("状态")]
+    public QuestionStatus? Status { get; set; }
+
+    /// <summary>
     /// 标签
     /// </summary>
     [DisplayName("标签")]

@@ -4,6 +4,7 @@ using CodeSpirit.Core.Dtos;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.ExamApi.Dtos.Question;
 using CodeSpirit.ExamApi.Services.Implementations;
+using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Dtos.AI;
 using CodeSpirit.Shared.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -165,6 +166,53 @@ public class QuestionsController : ApiControllerBase
     public ActionResult GetQuestionVersions(long id)
     {
         return Ok();
+    }
+
+    /// <summary>
+    /// 发布题目
+    /// </summary>
+    /// <param name="id">题目ID</param>
+    /// <returns>操作结果</returns>
+    [HttpPut("{id:long}/publish")]
+    [Operation("发布", "ajax", null, "确定要发布此题目吗？", visibleOn: "status == 1")]
+    [DisplayName("发布题目")]
+    public async Task<ActionResult<ApiResponse>> PublishQuestion(long id)
+    {
+        await _questionService.PublishQuestionAsync(id);
+        return SuccessResponse();
+    }
+
+    /// <summary>
+    /// 批量发布题目
+    /// </summary>
+    /// <param name="request">批量发布请求数据</param>
+    /// <returns>发布结果</returns>
+    [HttpPost("batch/publish")]
+    [Operation("批量发布", "ajax", null, "确定要批量发布选中的题目吗？", isBulkOperation: true)]
+    [DisplayName("批量发布题目")]
+    public async Task<ActionResult<ApiResponse>> BatchPublish([FromBody] BatchOperationDto<long> request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        (int successCount, List<long> failedQuestionIds) = await _questionService.BatchPublishAsync(request.Ids);
+
+        return failedQuestionIds.Any()
+            ? SuccessResponse($"成功发布 {successCount} 个题目，但以下题目发布失败: {string.Join(", ", failedQuestionIds)}")
+            : SuccessResponse($"成功发布 {successCount} 个题目！");
+    }
+
+    /// <summary>
+    /// 取消发布题目
+    /// </summary>
+    /// <param name="id">题目ID</param>
+    /// <returns>操作结果</returns>
+    [HttpPut("{id:long}/unpublish")]
+    [Operation("取消发布", "ajax", null, "确定要取消发布此题目吗？", visibleOn: "status == 2")]
+    [DisplayName("取消发布题目")]
+    public async Task<ActionResult<ApiResponse>> UnpublishQuestion(long id)
+    {
+        await _questionService.UnpublishQuestionAsync(id);
+        return SuccessResponse();
     }
 
     /// <summary>

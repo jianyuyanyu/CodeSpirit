@@ -1,4 +1,5 @@
 using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.Entities.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -240,6 +241,9 @@ public class ExamDbContext : MultiDatabaseDbContextBase, IInitializableDbContext
             entity.Property(e => e.Analysis).HasMaxLength(2000);
             entity.Property(e => e.KnowledgePoints).HasMaxLength(500);
             entity.Property(e => e.Tags).HasMaxLength(500);
+            entity.Property(e => e.Status).IsRequired().HasDefaultValue(QuestionStatus.Published);
+            entity.Property(e => e.PublishedAt);
+            entity.Property(e => e.PublishedBy);
 
             // 配置与分类的关系
             entity.HasOne(e => e.Category)

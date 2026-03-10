@@ -64,6 +64,26 @@ public class QuestionDto
     [TagsColumn(Color = "info")]
     public List<string>? Tags { get; set; }
 
+    /// <summary>
+    /// 题目状态
+    /// </summary>
+    [DisplayName("状态")]
+    public QuestionStatus Status { get; set; }
+
+    /// <summary>
+    /// 发布时间
+    /// </summary>
+    [DisplayName("发布时间")]
+    [DateColumn(Format = "YYYY-MM-DD HH:mm", FromNow = true)]
+    public DateTime? PublishedAt { get; set; }
+
+    /// <summary>
+    /// 发布人ID
+    /// </summary>
+    [DisplayName("发布人")]
+    [AggregateField(dataSource: "http://identity/api/identity/internal/users/{value}.data.name", template: "{field}")]
+    public long? PublishedBy { get; set; }
+
     [DisplayName("更新时间")]
     [DateColumn(Format = "YYYY-MM-DD HH:mm", FromNow = true)]
     public DateTime? UpdatedAt { get; set; }

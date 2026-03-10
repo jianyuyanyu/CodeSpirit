@@ -18,6 +18,24 @@ alwaysApply: false
 6. BatchImportItemDto 需要添加 JsonProperty 特性，propertyName 与 DisplayName 一致，参考 [UserBatchImportItemDto.cs](mdc:Src/CodeSpirit.IdentityApi/Dtos/User/UserBatchImportItemDto.cs)
 7. 如果需要显示用户信息，请使用聚合器字段特性 [AggregateFieldAttribute.cs](mdc:Src/CodeSpirit.Core/Attributes/AggregateFieldAttribute.cs)，参考 [CodeSpirit.Aggregator聚合器使用指南.md](mdc:Docs/CodeSpirit.Aggregator聚合器使用指南.md)
 
+## 查询 DTO 中枚举字段
+
+**枚举筛选字段仅需 `[DisplayName]`，不要使用 `[AmisSelectField]`。**
+
+SearchFieldHelper 会自动为枚举类型生成 Select 下拉选项，选项文案来自枚举值的 `[Display(Name = "...")]` 特性。若添加 `AmisSelectField`（无论 Source 或 Options），会覆盖该自动行为，导致重复配置或硬编码。
+
+```csharp
+// ✅ 正确：仅 DisplayName，框架自动生成选项
+[DisplayName("状态")]
+public QuestionStatus? Status { get; set; }
+
+// ❌ 错误：不要为枚举添加 AmisSelectField
+[AmisSelectField(Options = "1:草稿,2:已发布,3:已归档")]  // 硬编码，无法多语言
+[AmisSelectField(Source = "${ROOT_API}/api/.../status-options")]  // 过度设计，枚举无需 API
+```
+
+参考：[QuestionQueryDto.cs](mdc:Src/ApiServices/CodeSpirit.ExamApi/Dtos/Question/QuestionQueryDto.cs) 中的 Type、Difficulty、Status 字段。
+
 ## 多语言写法示例
 
 ```csharp
@@ -45,5 +63,6 @@ public class CreateQuestionDto
 
 - 列表 DTO: [UserDto.cs](mdc:Src/CodeSpirit.IdentityApi/Dtos/User/UserDto.cs)
 - 查询 DTO: [UserQueryDto.cs](mdc:Src/CodeSpirit.IdentityApi/Dtos/User/UserQueryDto.cs)
+- 查询 DTO 枚举字段: [QuestionQueryDto.cs](mdc:Src/ApiServices/CodeSpirit.ExamApi/Dtos/Question/QuestionQueryDto.cs)
 - 映射配置: [UserProfile.cs](mdc:Src/CodeSpirit.IdentityApi/MappingProfiles/UserProfile.cs)
 - 批量导入: [UserBatchImportItemDto.cs](mdc:Src/CodeSpirit.IdentityApi/Dtos/User/UserBatchImportItemDto.cs)

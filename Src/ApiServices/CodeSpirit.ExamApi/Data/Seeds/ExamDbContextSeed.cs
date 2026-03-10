@@ -136,6 +136,7 @@ public static class ExamDbContextSeed
                 Category = categoryDict["编程语言"],
                 Type = QuestionType.SingleChoice,
                 Difficulty = QuestionDifficulty.Easy,
+                Status = QuestionStatus.Published,
                 Content = "以下关于值类型和引用类型的说法，哪个是正确的？",
                 Options = new List<string>
                 {
@@ -157,6 +158,7 @@ public static class ExamDbContextSeed
                 Category = categoryDict["算法与数据结构"],
                 Type = QuestionType.SingleChoice,
                 Difficulty = QuestionDifficulty.Medium,
+                Status = QuestionStatus.Published,
                 Content = "在一个包含n个元素的平衡二叉搜索树中，查找一个元素的时间复杂度是多少？",
                 Options = new List<string>
                 {
@@ -178,6 +180,7 @@ public static class ExamDbContextSeed
                 Category = categoryDict["算法与数据结构"],
                 Type = QuestionType.MultipleChoice,
                 Difficulty = QuestionDifficulty.Hard,
+                Status = QuestionStatus.Published,
                 Content = "以下哪些排序算法的平均时间复杂度是O(n log n)？",
                 Options = new List<string>
                 {
@@ -199,6 +202,7 @@ public static class ExamDbContextSeed
                 Category = categoryDict["系统设计"],
                 Type = QuestionType.TrueFalse,
                 Difficulty = QuestionDifficulty.Hard,
+                Status = QuestionStatus.Published,
                 Content = "请设计一个高并发的缓存系统，要求：\n1. 支持LRU淘汰策略\n2. 支持过期时间设置\n3. 支持并发访问\n请给出关键代码的实现。",
                 Options = new List<string>(),
                 CorrectAnswer = "true",
@@ -214,6 +218,7 @@ public static class ExamDbContextSeed
                 Category = categoryDict["数据库"],
                 Type = QuestionType.SingleChoice,
                 Difficulty = QuestionDifficulty.Medium,
+                Status = QuestionStatus.Published,
                 Content = "在MySQL中，以下哪种索引类型最适合用于范围查询？",
                 Options = new List<string>
                 {

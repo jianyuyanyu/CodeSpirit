@@ -1,5 +1,6 @@
 // 文件路径: CodeSpirit.Amis.Helpers/FormFieldHelper.cs
 
+using CodeSpirit.Amis.Attributes.Columns;
 using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Helpers;
@@ -598,7 +599,24 @@ namespace CodeSpirit.Amis.Form
 
             if (type.IsDateType())
             {
-                field["format"] = "YYYY-MM-DD";
+                // 优先使用 DateColumn 特性的 Format（表格与表单共用，保证查看页与列表格式一致）
+                string dateFormat = "YYYY-MM-DD";
+                if (member is PropertyInfo prop)
+                {
+                    var dateAttr = prop.GetCustomAttribute<DateColumnAttribute>();
+                    if (!string.IsNullOrEmpty(dateAttr?.Format))
+                        dateFormat = dateAttr.Format;
+                }
+                field["format"] = dateFormat;
+                // 格式包含时分秒时使用 input-datetime（input-date 只显示日期会忽略时间部分）
+                // 区分大小写：HH/hh=时，mm=分（MM=月），ss=秒
+                if (dateFormat.IndexOf("HH", StringComparison.Ordinal) >= 0 ||
+                    dateFormat.IndexOf("hh", StringComparison.Ordinal) >= 0 ||
+                    dateFormat.IndexOf("mm", StringComparison.Ordinal) >= 0 ||
+                    dateFormat.IndexOf("ss", StringComparison.Ordinal) >= 0)
+                {
+                    field["type"] = "input-datetime";
+                }
             }
 
             HandleImageType(member, field);

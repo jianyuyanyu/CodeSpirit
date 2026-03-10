@@ -25,17 +25,8 @@ public class QuestionProfile : Profile
         CreateMap<UpdateQuestionDto, Question>()
             .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => src.Tags != null && src.Tags.Any() ? JsonSerializer.Serialize(src.Tags, new JsonSerializerOptions()) : null));
 
-        // 添加 PageList 映射配置
+        // 添加 PageList 映射配置（使用 Question -> QuestionDto 完整映射，确保 PublishedBy、PublishedAt 等字段正确绑定）
         CreateMap<PageList<Question>, PageList<QuestionDto>>()
-            .ForMember(dest => dest.Items, opt => opt.MapFrom(src =>
-                src.Items.Select(q => new QuestionDto
-                {
-                    CategoryName = q.Category.Name,
-                    KnowledgePoints = q.KnowledgePoints,
-                    Tags = !string.IsNullOrEmpty(q.Tags)
-                        ? JsonSerializer.Deserialize<List<string>>(q.Tags, new JsonSerializerOptions())
-                        : null,
-                }).ToList()
-            ));
+            .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.Items));
     }
 }

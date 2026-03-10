@@ -82,7 +82,8 @@ public class QuestionDto
     /// </summary>
     [DisplayName("发布人")]
     [AggregateField(dataSource: "http://identity/api/identity/internal/users/{value}.data.name", template: "{field}")]
-    public long? PublishedBy { get; set; }
+    [AmisColumn(Toggled = false)]
+    public string? PublishedBy { get; set; }
 
     [DisplayName("更新时间")]
     [DateColumn(Format = "YYYY-MM-DD HH:mm", FromNow = true)]

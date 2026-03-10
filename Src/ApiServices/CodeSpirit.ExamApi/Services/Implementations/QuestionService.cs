@@ -2343,9 +2343,15 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 throw new AppServiceException(400, "只有草稿状态的题目可以发布");
             }
 
+            // 发布时必须能获取当前用户，用于记录发布人
+            if (!_currentUser.IsAuthenticated || !_currentUser.Id.HasValue || _currentUser.Id.Value <= 0)
+            {
+                throw new AppServiceException(400, "无法获取当前用户信息，无法记录发布人");
+            }
+
             question.Status = QuestionStatus.Published;
             question.PublishedAt = DateTime.UtcNow;
-            question.PublishedBy = _currentUser.Id;
+            question.PublishedBy = _currentUser.Id.Value;
             question.UpdatedAt = DateTime.UtcNow;
 
             await _repository.UpdateAsync(question);

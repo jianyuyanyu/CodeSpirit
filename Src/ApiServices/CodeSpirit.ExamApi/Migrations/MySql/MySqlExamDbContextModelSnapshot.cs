@@ -22,6 +22,75 @@ namespace CodeSpirit.ExamApi.Migrations.MySql
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
 
+            modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.ExamAnswerOperationLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Answer")
+                        .HasMaxLength(2000)
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("ExamRecordId")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime>("OperationTime")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("OperationType")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OrderNumber")
+                        .HasColumnType("int");
+
+                    b.Property<long>("QuestionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("QuestionVersionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("UpdatedBy")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionVersionId");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("IX_ExamAnswerOperationLogs_TenantId");
+
+                    b.HasIndex("ExamRecordId", "OperationTime")
+                        .HasDatabaseName("IX_ExamAnswerOperationLogs_ExamRecordId_OperationTime");
+
+                    b.HasIndex("TenantId", "Id")
+                        .HasDatabaseName("IX_ExamAnswerOperationLogs_TenantId_Id");
+
+                    b.ToTable("ExamAnswerOperationLogs", (string)null);
+                });
+
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.ExamAnswerRecord", b =>
                 {
                     b.Property<long>("Id")
@@ -1284,6 +1353,25 @@ namespace CodeSpirit.ExamApi.Migrations.MySql
                         .HasDatabaseName("IX_WrongQuestions_TenantId_StudentId");
 
                     b.ToTable("WrongQuestions", (string)null);
+                });
+
+            modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.ExamAnswerOperationLog", b =>
+                {
+                    b.HasOne("CodeSpirit.ExamApi.Data.Models.ExamRecord", "ExamRecord")
+                        .WithMany()
+                        .HasForeignKey("ExamRecordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CodeSpirit.ExamApi.Data.Models.QuestionVersion", "QuestionVersion")
+                        .WithMany()
+                        .HasForeignKey("QuestionVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ExamRecord");
+
+                    b.Navigation("QuestionVersion");
                 });
 
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.ExamAnswerRecord", b =>

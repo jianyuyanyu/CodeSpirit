@@ -118,4 +118,7 @@
   <data name="Common.Operation" xml:space="preserve">
     <value>操作</value>
   </data>
+  <data name="Common.NoDataToExport" xml:space="preserve">
+    <value>没有数据可供导出</value>
+  </data>
 </root>

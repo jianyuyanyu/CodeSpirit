@@ -181,41 +181,52 @@ namespace CodeSpirit.Navigation
                 if (existingCacheData != null && existingCacheData.Nodes != null && existingCacheData.Nodes.Any())
                 {
                     // 4. 合并策略：合并当前服务的模块到现有缓存中
-                    var existingModuleNames = existingCacheData.Nodes
-                        .Select(m => m.Name)
-                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
-                    var newModules = navigationTree
-                        .Where(m => !existingModuleNames.Contains(m.Name))
-                        .ToList();
-                    
-                    if (newModules.Any())
+                    // - 新模块：直接添加
+                    // - 已存在模块：合并子节点（支持新增控制器等）
+                    var existingByName = existingCacheData.Nodes
+                        .ToDictionary(m => m.Name, m => m, StringComparer.OrdinalIgnoreCase);
+                    var merged = existingCacheData.Nodes.ToList();
+                    var hasChanges = false;
+                    var updatedModules = new List<string>();
+                    var newModuleNames = new List<string>();
+
+                    foreach (var currentModule in navigationTree)
+                    {
+                        if (existingByName.TryGetValue(currentModule.Name, out var existingModule))
+                        {
+                            // 已存在：合并子节点（新增的 ExamAnswerLogs 等会在此加入）
+                            _treeBuilder.MergeNavigationNodes(existingModule, currentModule);
+                            hasChanges = true;
+                            updatedModules.Add(currentModule.Name);
+                        }
+                        else
+                        {
+                            merged.Add(currentModule);
+                            hasChanges = true;
+                            newModuleNames.Add(currentModule.Name);
+                        }
+                    }
+
+                    if (hasChanges)
                     {
                         _logger.LogInformation(
-                            "Merging {NewCount} new modules into existing cache with {ExistingCount} modules. New modules: {NewModules}",
-                            newModules.Count,
-                            existingCacheData.Nodes.Count,
-                            string.Join(", ", newModules.Select(m => m.Name)));
-                        
-                        // 记录旧版本
+                            "Merging navigation: {NewCount} new modules, {UpdatedCount} updated modules. New: {NewModules}, Updated: {UpdatedModules}",
+                            newModuleNames.Count,
+                            updatedModules.Count,
+                            string.Join(", ", newModuleNames),
+                            string.Join(", ", updatedModules));
+
                         var oldVersion = existingCacheData.Version;
-                        
-                        // 合并到现有缓存
-                        var merged = existingCacheData.Nodes.ToList();
-                        merged.AddRange(newModules);
-                        
-                        // 写入合并后的缓存（通过 NavigationCacheManager）
                         await _cacheManager.SetCachedNavigationAsync(merged);
-                        
-                        // 获取新版本并比较
                         var newVersion = await _cacheManager.GetCurrentVersionAsync();
-                        
+
                         if (oldVersion != newVersion)
                         {
                             _logger.LogWarning(
-                                "Navigation content changed! Old version: {OldVersion}, New version: {NewVersion}, Added {Count} modules", 
-                                oldVersion, newVersion, newModules.Count);
+                                "Navigation content changed! Old version: {OldVersion}, New version: {NewVersion}",
+                                oldVersion, newVersion);
                         }
-                        
+
                         _logger.LogInformation(
                             "Navigation tree merged successfully. Total modules: {TotalCount}",
                             merged.Count);
@@ -223,7 +234,7 @@ namespace CodeSpirit.Navigation
                     else
                     {
                         _logger.LogInformation(
-                            "No new modules to merge. Existing cache already contains all modules from current service. Version: {Version}",
+                            "No navigation changes. Version: {Version}",
                             existingCacheData.Version);
                     }
                 }

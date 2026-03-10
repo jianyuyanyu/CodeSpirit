@@ -39,12 +39,14 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     private readonly IScoreConversionService _scoreConversionService;
     private readonly IExamCacheService _examCacheService;
     private readonly ICacheService _cacheService;
+    private readonly IRepository<ExamAnswerOperationLog> _operationLogRepository;
 
     /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="repository">考试记录仓储</param>
     /// <param name="answerRecordRepository">答题记录仓储</param>
+    /// <param name="operationLogRepository">答题操作日志仓储</param>
     /// <param name="examSettingRepository">考试设置仓储</param>
     /// <param name="studentRepository">学生仓储</param>
     /// <param name="questionVersionRepository">题目版本仓储</param>
@@ -59,6 +61,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     public ExamRecordService(
         IRepository<ExamRecord> repository,
         IRepository<ExamAnswerRecord> answerRecordRepository,
+        IRepository<ExamAnswerOperationLog> operationLogRepository,
         IRepository<ExamSetting> examSettingRepository,
         IRepository<Student> studentRepository,
         IRepository<QuestionVersion> questionVersionRepository,
@@ -71,6 +74,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         ICacheService cacheService) : base(repository, mapper)
     {
         _answerRecordRepository = answerRecordRepository;
+        _operationLogRepository = operationLogRepository;
         _examSettingRepository = examSettingRepository;
         _studentRepository = studentRepository;
         _questionVersionRepository = questionVersionRepository;
@@ -304,6 +308,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
 
         List<ExamAnswerRecord> recordsToUpdate = new List<ExamAnswerRecord>();
         List<ExamAnswerRecord> recordsToAdd = new List<ExamAnswerRecord>();
+        List<ExamAnswerOperationLog> operationLogs = new List<ExamAnswerOperationLog>();
         var now = DateTime.UtcNow;
 
         foreach (var answer in answers)
@@ -318,6 +323,9 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             // 查找现有的答题记录
             if (existingAnswerMap.TryGetValue(answer.QuestionId, out var answerRecord))
             {
+                // 在修改前判断操作类型：首次提交为空/空白，否则为修改
+                var wasFirstSubmit = string.IsNullOrWhiteSpace(answerRecord.Answer);
+
                 // 更新已有记录
                 answerRecord.Answer = answer.Answer;
                 answerRecord.SubmitTime = now;
@@ -329,6 +337,19 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 }
 
                 recordsToUpdate.Add(answerRecord);
+
+                // 写入答题操作日志
+                operationLogs.Add(new ExamAnswerOperationLog
+                {
+                    ExamRecordId = examRecordId,
+                    QuestionId = answerRecord.QuestionId,
+                    QuestionVersionId = answerRecord.QuestionVersionId,
+                    OrderNumber = answerRecord.OrderNumber,
+                    OperationType = wasFirstSubmit ? AnswerOperationType.Submit : AnswerOperationType.Modify,
+                    Answer = answer.Answer,
+                    OperationTime = now,
+                    TenantId = answerRecord.TenantId
+                });
             }
             else
             {
@@ -345,6 +366,12 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
 
         try
         {
+            // 先写入操作日志（saveChanges: false，与答案更新共用同一事务）
+            if (operationLogs.Any())
+            {
+                await _operationLogRepository.AddRangeAsync(operationLogs, saveChanges: false);
+            }
+
             // 批量保存更改
             if (recordsToUpdate.Any())
             {

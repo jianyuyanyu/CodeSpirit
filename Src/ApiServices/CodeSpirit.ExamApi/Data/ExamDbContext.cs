@@ -121,6 +121,11 @@ public class ExamDbContext : MultiDatabaseDbContextBase, IInitializableDbContext
     /// 练习设置
     /// </summary>
     public DbSet<PracticeSetting> PracticeSettings => Set<PracticeSetting>();
+
+    /// <summary>
+    /// 考试答题操作日志
+    /// </summary>
+    public DbSet<ExamAnswerOperationLog> ExamAnswerOperationLogs => Set<ExamAnswerOperationLog>();
     #endregion
 
     /// <summary>
@@ -472,7 +477,29 @@ public class ExamDbContext : MultiDatabaseDbContextBase, IInitializableDbContext
             // 确保题目序号在考试记录中唯一
             entity.HasIndex(e => new { e.ExamRecordId, e.OrderNumber }).IsUnique();
         });
-        
+
+        // 配置考试答题操作日志
+        modelBuilder.Entity<ExamAnswerOperationLog>(entity =>
+        {
+            entity.ToTable("ExamAnswerOperationLogs");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Answer).HasMaxLength(2000);
+
+            entity.HasOne(e => e.ExamRecord)
+                .WithMany()
+                .HasForeignKey(e => e.ExamRecordId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.QuestionVersion)
+                .WithMany()
+                .HasForeignKey(e => e.QuestionVersionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => new { e.ExamRecordId, e.OperationTime })
+                .HasDatabaseName("IX_ExamAnswerOperationLogs_ExamRecordId_OperationTime");
+        });
+
         // 配置练习设置关系
         modelBuilder.Entity<PracticeSetting>(entity =>
         {

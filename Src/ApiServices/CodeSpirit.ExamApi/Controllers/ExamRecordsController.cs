@@ -1,9 +1,12 @@
+using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.ExamApi.Dtos.ExamPaper;
 using CodeSpirit.ExamApi.Dtos.ExamRecord;
+using CodeSpirit.Localization.Resources;
 using CodeSpirit.Shared.Services.Background;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using Newtonsoft.Json.Linq;
 using CodeSpirit.Shared.Services.Files;
 using CodeSpirit.ExamApi.Services.Interfaces;
@@ -25,6 +28,7 @@ public class ExamRecordsController : ApiControllerBase
     private readonly Services.PdfGeneration.IQuestPdfGenerationService? _questPdfGenerationService;
     private readonly ICurrentUser _currentUser;
     private readonly ILogger<ExamRecordsController> _logger;
+    private readonly IStringLocalizer<SharedResources> _localizer;
 
     /// <summary>
     /// 构造函数
@@ -34,6 +38,7 @@ public class ExamRecordsController : ApiControllerBase
     /// <param name="backgroundJobService">后台任务服务</param>
     /// <param name="currentUser">当前用户信息</param>
     /// <param name="logger">日志服务</param>
+    /// <param name="localizer">本地化服务</param>
     /// <param name="questPdfGenerationService">QuestPDF生成服务（可选）</param>
     public ExamRecordsController(
         IExamRecordService examRecordService,
@@ -41,6 +46,7 @@ public class ExamRecordsController : ApiControllerBase
         IBackgroundJobService backgroundJobService,
         ICurrentUser currentUser,
         ILogger<ExamRecordsController> logger,
+        IStringLocalizer<SharedResources> localizer,
         Services.PdfGeneration.IQuestPdfGenerationService? questPdfGenerationService = null)
     {
         _examRecordService = examRecordService;
@@ -49,6 +55,7 @@ public class ExamRecordsController : ApiControllerBase
         _questPdfGenerationService = questPdfGenerationService;
         _currentUser = currentUser;
         _logger = logger;
+        _localizer = localizer;
     }
 
     /// <summary>
@@ -83,7 +90,7 @@ public class ExamRecordsController : ApiControllerBase
 
         // 如果数据为空则返回错误信息
         return records.Items.Count == 0
-            ? BadResponse<PageList<ExamRecordDto>>("没有数据可供导出")
+            ? BadResponse<PageList<ExamRecordDto>>(_localizer["Common.NoDataToExport"].Value)
             : SuccessResponse(records);
     }
 
@@ -120,6 +127,17 @@ public class ExamRecordsController : ApiControllerBase
     [Operation("错题管理", "link", "/exam/wrongQuestions?studentId=${studentId}", null)]
     [DisplayName("获取错题列表")]
     public ActionResult<ApiResponse> GetWrongQuestions()
+    {
+        return SuccessResponse();
+    }
+
+    /// <summary>
+    /// 跳转到答题日志页面
+    /// </summary>
+    /// <returns>空响应</returns>
+    [Operation("答题日志", "link", "/exam/examAnswerLogs?examSettingId=${examSettingId}&examRecordId=${id}", null, Icon = "fa-solid fa-file-lines")]
+    [DisplayName("获取答题日志")]
+    public ActionResult<ApiResponse> GetExamAnswerLogs()
     {
         return SuccessResponse();
     }
@@ -816,7 +834,7 @@ public class ExamRecordsController : ApiControllerBase
             }
         };
 
-        Thread.Sleep(1000);
+        await Task.Delay(1000);
         return Ok(result);
     }
 

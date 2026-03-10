@@ -87,13 +87,13 @@ public class ExamSettingsController : ApiControllerBase
 
         var result = await _examSettingService.GetExamSettingsAsync(queryDto);
 
-        // 筛选已发布状态的考试，并转换为OptionDto格式
+        // 筛选已发布状态的考试，并转换为OptionDto格式（显示格式：名称（开始时间））
         var publishedExams = result.Items
             .Where(e => e.Status == ExamSettingStatus.Published)
             .Select(e => new OptionDto<long>
             {
                 Id = e.Id,
-                Name = e.Name
+                Name = $"{e.Name}（{e.StartTime:yyyy-MM-dd HH:mm}）"
             })
             .ToList();
 

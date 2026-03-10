@@ -82,4 +82,46 @@
   <data name="QuestionStatus.Archived" xml:space="preserve">
     <value>Archived</value>
   </data>
+  <data name="ExamAnswerLog.Id" xml:space="preserve">
+    <value>ID</value>
+  </data>
+  <data name="ExamAnswerLog.ExamRecordId" xml:space="preserve">
+    <value>Exam Record ID</value>
+  </data>
+  <data name="ExamAnswerLog.ExamName" xml:space="preserve">
+    <value>Exam Name</value>
+  </data>
+  <data name="ExamAnswerLog.StudentName" xml:space="preserve">
+    <value>Student Name</value>
+  </data>
+  <data name="ExamAnswerLog.AdmissionTicket" xml:space="preserve">
+    <value>Admission Ticket</value>
+  </data>
+  <data name="ExamAnswerLog.OrderNumber" xml:space="preserve">
+    <value>Question Order</value>
+  </data>
+  <data name="ExamAnswerLog.QuestionContent" xml:space="preserve">
+    <value>Question Content</value>
+  </data>
+  <data name="ExamAnswerLog.QuestionType" xml:space="preserve">
+    <value>Question Type</value>
+  </data>
+  <data name="ExamAnswerLog.OperationType" xml:space="preserve">
+    <value>Operation Type</value>
+  </data>
+  <data name="ExamAnswerLog.OperationTime" xml:space="preserve">
+    <value>Operation Time</value>
+  </data>
+  <data name="ExamAnswerLog.Answer" xml:space="preserve">
+    <value>Student Answer</value>
+  </data>
+  <data name="AnswerOperationType.Submit" xml:space="preserve">
+    <value>Submit Answer</value>
+  </data>
+  <data name="AnswerOperationType.Modify" xml:space="preserve">
+    <value>Modify Answer</value>
+  </data>
+  <data name="ExamAnswerLog.SelectExamPlaceholder" xml:space="preserve">
+    <value>Please select exam</value>
+  </data>
 </root>

@@ -42,6 +42,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         private readonly LLMAssistant _llmAssistant;
         private readonly IDistributedCache _distributedCache;
         private readonly IQuestionValidationService _questionValidationService;
+        private readonly IExamDataScopeService _dataScopeService;
 
         public QuestionService(
             IRepository<Question> repository,
@@ -55,7 +56,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             ICurrentUser currentUser,
             LLMAssistant llmAssistant,
             IDistributedCache distributedCache,
-            IQuestionValidationService questionValidationService)
+            IQuestionValidationService questionValidationService,
+            IExamDataScopeService dataScopeService)
             : base(repository, mapper)
         {
             _repository = repository;
@@ -70,6 +72,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             _llmAssistant = llmAssistant;
             _distributedCache = distributedCache;
             _questionValidationService = questionValidationService;
+            _dataScopeService = dataScopeService;
         }
 
         /// <summary>
@@ -2030,6 +2033,17 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         {
             var predicate = PredicateBuilder.New<Question>(true);
 
+            // 数据可见性过滤：非 Admin/exam_view_all 用户仅能查看自己创建的题目
+            if (!await _dataScopeService.CanViewAllExamDataAsync())
+            {
+                var userId = _dataScopeService.GetCurrentUserId();
+                if (!userId.HasValue)
+                {
+                    return new PageList<QuestionDto>([], 0);
+                }
+                predicate = predicate.And(x => x.CreatedBy == userId.Value);
+            }
+
             // 关键词搜索（题目内容）
             if (!string.IsNullOrEmpty(query.Keywords))
             {
@@ -2120,6 +2134,17 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         {
             var predicate = PredicateBuilder.New<Question>(true);
 
+            // 数据可见性过滤：非 Admin/exam_view_all 用户仅能查看自己创建的题目
+            if (!await _dataScopeService.CanViewAllExamDataAsync())
+            {
+                var userId = _dataScopeService.GetCurrentUserId();
+                if (!userId.HasValue)
+                {
+                    return [];
+                }
+                predicate = predicate.And(x => x.CreatedBy == userId.Value);
+            }
+
             // 仅返回已发布的题目
             predicate = predicate.And(x => x.Status == QuestionStatus.Published);
 
@@ -2143,6 +2168,16 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             if (question == null)
             {
                 throw new AppServiceException(404, "题目不存在");
+            }
+
+            // 数据可见性校验
+            if (!await _dataScopeService.CanViewAllExamDataAsync())
+            {
+                var userId = _dataScopeService.GetCurrentUserId();
+                if (!userId.HasValue || question.CreatedBy != userId.Value)
+                {
+                    throw new AppServiceException(404, "题目不存在");
+                }
             }
 
             return _mapper.Map<QuestionDto>(question);
@@ -2216,6 +2251,16 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 throw new AppServiceException(404, "题目不存在");
             }
 
+            // 数据可见性校验
+            if (!await _dataScopeService.CanViewAllExamDataAsync())
+            {
+                var userId = _dataScopeService.GetCurrentUserId();
+                if (!userId.HasValue || question.CreatedBy != userId.Value)
+                {
+                    throw new AppServiceException(404, "题目不存在");
+                }
+            }
+
             // 验证分类是否存在
             if (updateDto.CategoryId != question.CategoryId)
             {
@@ -2282,6 +2327,16 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 throw new AppServiceException(404, "题目不存在");
             }
 
+            // 数据可见性校验
+            if (!await _dataScopeService.CanViewAllExamDataAsync())
+            {
+                var userId = _dataScopeService.GetCurrentUserId();
+                if (!userId.HasValue || question.CreatedBy != userId.Value)
+                {
+                    throw new AppServiceException(404, "题目不存在");
+                }
+            }
+
             // 草稿可删除；已发布且未被引用时可删除
             if (question.Status == QuestionStatus.Published && question.ExamPaperQuestions.Any())
             {
@@ -2331,6 +2386,16 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             if (question == null)
             {
                 throw new AppServiceException(404, "题目不存在");
+            }
+
+            // 数据可见性校验
+            if (!await _dataScopeService.CanViewAllExamDataAsync())
+            {
+                var userId = _dataScopeService.GetCurrentUserId();
+                if (!userId.HasValue || question.CreatedBy != userId.Value)
+                {
+                    throw new AppServiceException(404, "题目不存在");
+                }
             }
 
             if (question.Status == QuestionStatus.Published)

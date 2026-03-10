@@ -15,14 +15,17 @@ namespace CodeSpirit.ExamApi.Services.Implementations;
 public class ExamAnswerLogService : IExamAnswerLogService, IScopedDependency
 {
     private readonly IRepository<ExamAnswerOperationLog> _operationLogRepository;
+    private readonly IExamDataScopeService _dataScopeService;
 
     /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="operationLogRepository">答题操作日志仓储</param>
-    public ExamAnswerLogService(IRepository<ExamAnswerOperationLog> operationLogRepository)
+    /// <param name="dataScopeService">数据可见性服务</param>
+    public ExamAnswerLogService(IRepository<ExamAnswerOperationLog> operationLogRepository, IExamDataScopeService dataScopeService)
     {
         _operationLogRepository = operationLogRepository;
+        _dataScopeService = dataScopeService;
     }
 
     /// <inheritdoc />
@@ -53,6 +56,17 @@ public class ExamAnswerLogService : IExamAnswerLogService, IScopedDependency
         else
         {
             query = query.Where(l => l.ExamRecord!.ExamSettingId == queryDto.ExamSettingId);
+        }
+
+        // 数据可见性过滤：非 Admin/exam_view_all 用户仅能查看自己创建的考试产生的答题日志
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue)
+            {
+                return new PageList<ExamAnswerLogDto>([], 0);
+            }
+            query = query.Where(l => l.ExamRecord != null && l.ExamRecord.ExamSetting != null && l.ExamRecord.ExamSetting.CreatedBy == userId.Value);
         }
 
         // 关键字搜索（题目内容、考生答案）

@@ -35,6 +35,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     private readonly ILogger<StudentService> _logger;
     private readonly IIdGenerator _idGenerator;
     private readonly ITenantAwareEventBus _eventBus;
+    private readonly IExamDataScopeService _dataScopeService;
 
     /// <summary>
     /// 构造函数
@@ -47,7 +48,8 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         ILogger<StudentService> logger,
         IIdGenerator idGenerator,
         ITenantAwareEventBus eventBus,
-        EnhancedBatchImportHelper<StudentBatchImportDto> importHelper)
+        EnhancedBatchImportHelper<StudentBatchImportDto> importHelper,
+        IExamDataScopeService dataScopeService)
         : base(repository, mapper, importHelper)
     {
         _repository = repository;
@@ -56,6 +58,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         _logger = logger;
         _idGenerator = idGenerator;
         _eventBus = eventBus;
+        _dataScopeService = dataScopeService;
     }
 
     /// <summary>
@@ -64,6 +67,17 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     public async Task<PageList<StudentDto>> GetStudentsAsync(StudentQueryDto queryDto)
     {
         var predicate = PredicateBuilder.New<Student>(true);
+
+        // 数据可见性过滤：非 Admin/exam_view_all 用户仅能查看自己创建的考生
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue)
+            {
+                return new PageList<StudentDto>([], 0);
+            }
+            predicate = predicate.And(x => x.CreatedBy == userId.Value);
+        }
 
         if (!string.IsNullOrEmpty(queryDto.Keywords))
         {
@@ -168,6 +182,16 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
             throw new AppServiceException(404, "学生不存在！");
         }
 
+        // 数据可见性校验
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue || student.CreatedBy != userId.Value)
+            {
+                throw new AppServiceException(404, "学生不存在！");
+            }
+        }
+
         // 检查是否有关联的考试记录
         if (student.ExamRecords.Any())
         {
@@ -219,13 +243,23 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         // 验证学生组是否存在
         if (createDto.StudentGroupIds.Any())
         {
-            var existingGroupCount = await _studentGroupRepository
+            var groups = await _studentGroupRepository
                 .Find(x => createDto.StudentGroupIds.Contains(x.Id))
-                .CountAsync();
+                .ToListAsync();
 
-            if (existingGroupCount != createDto.StudentGroupIds.Count)
+            if (groups.Count != createDto.StudentGroupIds.Count)
             {
                 throw new AppServiceException(400, "部分学生组不存在！");
+            }
+
+            // 关联数据可见性校验：非 Admin/exam_view_all 用户只能使用自己创建的考生组
+            if (!await _dataScopeService.CanViewAllExamDataAsync())
+            {
+                var userId = _dataScopeService.GetCurrentUserId();
+                if (!userId.HasValue || groups.Any(g => g.CreatedBy != userId.Value))
+                {
+                    throw new AppServiceException(404, "部分学生组不存在！");
+                }
             }
         }
     }
@@ -392,6 +426,10 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     /// </summary>
     public async Task SaveStudentToGroupsAsync(Student entity, List<long> groupIds)
     {
+        if (groupIds == null || !groupIds.Any())
+        {
+            return;
+        }
 
         // 验证学生组是否存在
         var groups = await _studentGroupRepository
@@ -399,7 +437,19 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
             .ToListAsync();
 
         if (groups.Count != groupIds.Count)
+        {
             throw new AppServiceException(400, "部分学生组不存在！");
+        }
+
+        // 关联数据可见性校验：非 Admin/exam_view_all 用户只能使用自己创建的考生组
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue || groups.Any(g => g.CreatedBy != userId.Value))
+            {
+                throw new AppServiceException(404, "部分学生组不存在！");
+            }
+        }
 
         var mappings = await _mappingRepository.CreateQuery().AsNoTracking().Where(x => x.StudentId == entity.Id).ToListAsync();
         if (mappings.Any())
@@ -419,7 +469,23 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     }
     protected override async Task<Student> GetEntityForUpdate(long id, UpdateStudentDto updateDto)
     {
-        return await _repository.CreateQuery().Include(x => x.StudentGroups).AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        var entity = await _repository.CreateQuery().Include(x => x.StudentGroups).AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        if (entity == null)
+        {
+            throw new AppServiceException(404, "考生不存在");
+        }
+
+        // 数据可见性校验
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue || entity.CreatedBy != userId.Value)
+            {
+                throw new AppServiceException(404, "考生不存在");
+            }
+        }
+
+        return entity;
     }
     protected override async Task OnUpdating(Student entity, UpdateStudentDto updateDto)
     {

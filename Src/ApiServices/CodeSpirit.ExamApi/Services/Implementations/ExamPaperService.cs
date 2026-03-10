@@ -29,6 +29,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         private readonly IMapper _mapper;
         private readonly ILogger<ExamPaperService> _logger;
         private readonly IScoreConversionService _scoreConversionService;
+        private readonly IExamDataScopeService _dataScopeService;
 
         /// <summary>
         /// 构造函数
@@ -40,7 +41,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             IRepository<QuestionVersion> questionVersionRepository,
             IMapper mapper,
             ILogger<ExamPaperService> logger,
-            IScoreConversionService scoreConversionService)
+            IScoreConversionService scoreConversionService,
+            IExamDataScopeService dataScopeService)
             : base(examPaperRepository, mapper)
         {
             _examPaperRepository = examPaperRepository;
@@ -50,6 +52,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             _mapper = mapper;
             _logger = logger;
             _scoreConversionService = scoreConversionService;
+            _dataScopeService = dataScopeService;
         }
 
         /// <summary>
@@ -94,6 +97,17 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         public async Task<PageList<ExamPaperDto>> GetExamPapersAsync(ExamPaperQueryDto queryDto)
         {
             var predicate = GetExamPaperQueryPredicate(queryDto);
+
+            // 数据可见性过滤：非 Admin/exam_view_all 用户仅能查看自己创建的试卷
+            if (!await _dataScopeService.CanViewAllExamDataAsync())
+            {
+                var userId = _dataScopeService.GetCurrentUserId();
+                if (!userId.HasValue)
+                {
+                    return new PageList<ExamPaperDto>([], 0);
+                }
+                predicate = predicate.And(x => x.CreatedBy == userId.Value);
+            }
             
             // 使用投影查询，在SQL层面计算题目数量
             var query = _examPaperRepository.Find(predicate);
@@ -152,9 +166,21 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         /// </summary>
         public override async Task<ExamPaperDto> GetAsync(long id)
         {
+            var query = _examPaperRepository.Find(p => p.Id == id);
+
+            // 数据可见性过滤
+            if (!await _dataScopeService.CanViewAllExamDataAsync())
+            {
+                var userId = _dataScopeService.GetCurrentUserId();
+                if (!userId.HasValue)
+                {
+                    throw new AppServiceException(404, "试卷不存在");
+                }
+                query = query.Where(p => p.CreatedBy == userId.Value);
+            }
+
             // 使用投影查询，在SQL层面计算题目数量，避免加载整个集合
-            var examPaperDto = await _examPaperRepository
-                .Find(p => p.Id == id)
+            var examPaperDto = await query
                 .Select(p => new ExamPaperDto
                 {
                     Id = p.Id,
@@ -191,7 +217,12 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 })
                 .FirstOrDefaultAsync();
 
-            return examPaperDto!;
+            if (examPaperDto == null)
+            {
+                throw new AppServiceException(404, "试卷不存在");
+            }
+
+            return examPaperDto;
         }
 
         /// <summary>
@@ -213,6 +244,20 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 .ToListAsync();
 
             var questions = lastVersionQuestions.Select(s => s.Question).ToList();
+
+            // 关联数据可见性校验：非 Admin/exam_view_all 用户只能使用自己创建的题目
+            if (!await _dataScopeService.CanViewAllExamDataAsync())
+            {
+                var userId = _dataScopeService.GetCurrentUserId();
+                if (!userId.HasValue)
+                {
+                    throw new AppServiceException(403, "未认证用户无法创建试卷");
+                }
+                if (questions.Any(q => q.CreatedBy != userId.Value))
+                {
+                    throw new AppServiceException(404, "部分题目不存在");
+                }
+            }
 
             // 校验所有题目均为已发布状态
             var draftQuestions = questions.Where(q => q.Status != QuestionStatus.Published).ToList();
@@ -264,6 +309,16 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 throw new AppServiceException(404, "试卷不存在");
             }
 
+            // 数据可见性校验
+            if (!await _dataScopeService.CanViewAllExamDataAsync())
+            {
+                var userId = _dataScopeService.GetCurrentUserId();
+                if (!userId.HasValue || examPaper.CreatedBy != userId.Value)
+                {
+                    throw new AppServiceException(404, "试卷不存在");
+                }
+            }
+
             // 检查试卷状态，只有草稿状态的试卷可以更新
             if (examPaper.Status != ExamPaperStatus.Draft)
             {
@@ -289,6 +344,16 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             if (examPaper == null)
             {
                 return;
+            }
+
+            // 数据可见性校验
+            if (!await _dataScopeService.CanViewAllExamDataAsync())
+            {
+                var userId = _dataScopeService.GetCurrentUserId();
+                if (!userId.HasValue || examPaper.CreatedBy != userId.Value)
+                {
+                    throw new AppServiceException(404, "试卷不存在");
+                }
             }
 
             // 检查试卷状态，已发布的试卷不能删除
@@ -325,6 +390,16 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 throw new AppServiceException(404, "试卷不存在");
             }
 
+            // 数据可见性校验
+            if (!await _dataScopeService.CanViewAllExamDataAsync())
+            {
+                var userId = _dataScopeService.GetCurrentUserId();
+                if (!userId.HasValue || examPaper.CreatedBy != userId.Value)
+                {
+                    throw new AppServiceException(404, "试卷不存在");
+                }
+            }
+
             // 检查试卷状态
             if (examPaper.Status == ExamPaperStatus.Published)
             {
@@ -359,6 +434,16 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 throw new AppServiceException(404, "试卷不存在");
             }
 
+            // 数据可见性校验
+            if (!await _dataScopeService.CanViewAllExamDataAsync())
+            {
+                var userId = _dataScopeService.GetCurrentUserId();
+                if (!userId.HasValue || examPaper.CreatedBy != userId.Value)
+                {
+                    throw new AppServiceException(404, "试卷不存在");
+                }
+            }
+
             // 检查试卷状态
             if (examPaper.Status != ExamPaperStatus.Published)
             {
@@ -375,8 +460,20 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         /// </summary>
         public async Task<ExamPaperDto> GenerateRandomExamPaperAsync(GenerateRandomExamPaperDto createDto)
         {
+            // 数据可见性：非 Admin/exam_view_all 用户只能从自己创建的题目中选题
+            long? createdByFilter = null;
+            if (!await _dataScopeService.CanViewAllExamDataAsync())
+            {
+                var userId = _dataScopeService.GetCurrentUserId();
+                if (!userId.HasValue)
+                {
+                    throw new AppServiceException(403, "未认证用户无法创建试卷");
+                }
+                createdByFilter = userId.Value;
+            }
+
             // 验证参数
-            await ValidateRandomExamPaperRules(createDto);
+            await ValidateRandomExamPaperRules(createDto, createdByFilter);
 
             ExamPaper? examPaper = null;
             // 使用事务包装整个过程
@@ -445,7 +542,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 await _examPaperRepository.AddAsync(examPaper);
 
                 // 根据规则选择题目
-                var examPaperQuestions = await GenerateQuestionsBasedOnRules(examPaper.Id, createDto);
+                var examPaperQuestions = await GenerateQuestionsBasedOnRules(examPaper.Id, createDto, createdByFilter);
 
                 // 添加试卷题目并计算难度
                 if (examPaperQuestions.Any())
@@ -460,14 +557,24 @@ namespace CodeSpirit.ExamApi.Services.Implementations
 
         public async Task<IEnumerable<ExamPaperDto>> GetAllExamPapersByStatusAsync(ExamPaperStatus examPaperStatus = ExamPaperStatus.Published)
         {
-            var entities = await Repository.CreateQuery()
-                .Where(p => p.Status == examPaperStatus)
-                .OrderByDescending(p => p.CreatedAt)
-                .ToListAsync();
+            var query = Repository.CreateQuery().Where(p => p.Status == examPaperStatus);
+
+            // 数据可见性过滤：非 Admin/exam_view_all 用户仅能查看自己创建的试卷
+            if (!await _dataScopeService.CanViewAllExamDataAsync())
+            {
+                var userId = _dataScopeService.GetCurrentUserId();
+                if (!userId.HasValue)
+                {
+                    return [];
+                }
+                query = query.Where(p => p.CreatedBy == userId.Value);
+            }
+
+            var entities = await query.OrderByDescending(p => p.CreatedAt).ToListAsync();
             return Mapper.Map<IEnumerable<ExamPaperDto>>(entities);
         }
 
-        private async Task ValidateRandomExamPaperRules(GenerateRandomExamPaperDto createDto)
+        private async Task ValidateRandomExamPaperRules(GenerateRandomExamPaperDto createDto, long? createdByFilter)
         {
             // 总分与各题型分数之和必须相等
             if (createDto.TotalScore!= createDto.QuestionTypeRules.Sum(r => r.ScorePerQuestion * r.Count))
@@ -502,7 +609,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                             q.Type == typeRule.QuestionType &&
                             q.Status == QuestionStatus.Published &&
                             q.Tags != null && q.Tags.Contains(escapedTag));
-                        
+                        if (createdByFilter.HasValue)
+                            tagQuery = tagQuery.Where(q => q.CreatedBy == createdByFilter.Value);
                         // 如果指定了分类ID，则添加分类条件
                         if (createDto.CategoryIds != null && createDto.CategoryIds.Any())
                         {
@@ -525,7 +633,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 {
                     // 没有标签规则，检查整体题目数量
                     var query = _questionRepository.Find(q => q.Type == typeRule.QuestionType && q.Status == QuestionStatus.Published);
-                    
+                    if (createdByFilter.HasValue)
+                        query = query.Where(q => q.CreatedBy == createdByFilter.Value);
                     // 如果指定了分类ID，则添加分类条件
                     if (createDto.CategoryIds != null && createDto.CategoryIds.Any())
                     {
@@ -546,7 +655,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             }
         }
 
-        private async Task<List<ExamPaperQuestion>> GenerateQuestionsBasedOnRules(long examPaperId, GenerateRandomExamPaperDto createDto)
+        private async Task<List<ExamPaperQuestion>> GenerateQuestionsBasedOnRules(long examPaperId, GenerateRandomExamPaperDto createDto, long? createdByFilter)
         {
             var examPaperQuestions = new List<ExamPaperQuestion>();
             var orderNumber = 1;
@@ -561,7 +670,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                     createDto.DifficultyRules, 
                     createDto.TagRules, 
                     createDto.CategoryIds, 
-                    selectedQuestionIds);
+                    selectedQuestionIds,
+                    createdByFilter);
 
                 foreach (var question in questions)
                 {
@@ -595,13 +705,15 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         /// <param name="tagRules">标签规则</param>
         /// <param name="categoryIds">分类ID限制</param>
         /// <param name="selectedQuestionIds">已选题目ID集合（用于全局去重）</param>
+        /// <param name="createdByFilter">创建者过滤，非 null 时仅选当前用户创建的题目</param>
         /// <returns>选中的题目列表</returns>
         private async Task<List<Question>> SelectQuestionsByRules(
             QuestionTypeRule typeRule,
             List<DifficultyRule>? difficultyRules,
             List<TagRule>? tagRules,
             List<long> categoryIds,
-            HashSet<long> selectedQuestionIds)
+            HashSet<long> selectedQuestionIds,
+            long? createdByFilter = null)
         {
             var questions = new List<Question>();
 
@@ -610,6 +722,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 q.Type == typeRule.QuestionType && 
                 q.Status == QuestionStatus.Published &&
                 !selectedQuestionIds.Contains(q.Id));
+            if (createdByFilter.HasValue)
+                baseQuery = baseQuery.Where(q => q.CreatedBy == createdByFilter.Value);
             
             // 如果指定了分类ID，则添加分类条件
             if (categoryIds != null && categoryIds.Any())
@@ -643,11 +757,14 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 var currentSelectedIds = questions.Select(q => q.Id).ToHashSet();
                 currentSelectedIds.UnionWith(selectedQuestionIds);
 
-                var additionalQuestions = await _questionRepository
+                var additionalQuery = _questionRepository
                     .Find(q => 
                         q.Type == typeRule.QuestionType && 
                         q.Status == QuestionStatus.Published &&
-                        !currentSelectedIds.Contains(q.Id))
+                        !currentSelectedIds.Contains(q.Id));
+                if (createdByFilter.HasValue)
+                    additionalQuery = additionalQuery.Where(q => q.CreatedBy == createdByFilter.Value);
+                var additionalQuestions = await additionalQuery
                     .Where(q => categoryIds == null || !categoryIds.Any() || categoryIds.Contains(q.CategoryId))
                     .OrderBy(q => Guid.NewGuid())
                     .Take(remainingCount)
@@ -913,6 +1030,16 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 throw new AppServiceException(404, "试卷不存在");
             }
 
+            // 数据可见性校验
+            if (!await _dataScopeService.CanViewAllExamDataAsync())
+            {
+                var userId = _dataScopeService.GetCurrentUserId();
+                if (!userId.HasValue || examPaper.CreatedBy != userId.Value)
+                {
+                    throw new AppServiceException(404, "试卷不存在");
+                }
+            }
+
             // 标记试卷为已预览
             examPaper.IsPreviewChecked = true;
             await _examPaperRepository.UpdateAsync(examPaper);
@@ -947,6 +1074,21 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         /// <returns>题目列表</returns>
         public async Task<List<ExamPaperQuestionDto>> GetExamPaperQuestionsAsync(long examPaperId)
         {
+            var examPaper = await _examPaperRepository.GetByIdAsync(examPaperId);
+            if (examPaper == null)
+            {
+                throw new AppServiceException(404, "试卷不存在");
+            }
+            // 数据可见性校验
+            if (!await _dataScopeService.CanViewAllExamDataAsync())
+            {
+                var userId = _dataScopeService.GetCurrentUserId();
+                if (!userId.HasValue || examPaper.CreatedBy != userId.Value)
+                {
+                    throw new AppServiceException(404, "试卷不存在");
+                }
+            }
+
             var examPaperQuestions = await _examPaperQuestionRepository
                 .Find(q => q.ExamPaperId == examPaperId)
                 .Include(q => q.Question)

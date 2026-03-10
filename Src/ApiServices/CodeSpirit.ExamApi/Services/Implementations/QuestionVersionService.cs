@@ -20,6 +20,7 @@ public class QuestionVersionService : BaseCRUDService<QuestionVersion, QuestionV
 {
     private readonly IRepository<Question> _questionRepository;
     private readonly ILogger<QuestionVersionService> _logger;
+    private readonly IExamDataScopeService _dataScopeService;
 
     /// <summary>
     /// 构造函数
@@ -28,11 +29,13 @@ public class QuestionVersionService : BaseCRUDService<QuestionVersion, QuestionV
         IRepository<QuestionVersion> repository,
         IRepository<Question> questionRepository,
         IMapper mapper,
-        ILogger<QuestionVersionService> logger)
+        ILogger<QuestionVersionService> logger,
+        IExamDataScopeService dataScopeService)
         : base(repository, mapper)
     {
         _questionRepository = questionRepository;
         _logger = logger;
+        _dataScopeService = dataScopeService;
     }
 
     /// <summary>
@@ -41,6 +44,17 @@ public class QuestionVersionService : BaseCRUDService<QuestionVersion, QuestionV
     public async Task<PageList<QuestionVersionDto>> GetQuestionVersionsAsync(QuestionVersionQueryDto queryDto)
     {
         var predicate = PredicateBuilder.New<QuestionVersion>(true);
+
+        // 数据可见性过滤：非 Admin/exam_view_all 用户仅能查看自己创建的题目版本
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue)
+            {
+                return new PageList<QuestionVersionDto>([], 0);
+            }
+            predicate = predicate.And(x => x.CreatedBy == userId.Value);
+        }
 
         if (queryDto.QuestionId.HasValue)
         {
@@ -88,12 +102,24 @@ public class QuestionVersionService : BaseCRUDService<QuestionVersion, QuestionV
     /// </summary>
     public async Task<List<QuestionVersionDto>> GetVersionsByQuestionIdAsync(long questionId)
     {
-        var versions = await Repository.CreateQuery()
-            .Where(x => x.QuestionId == questionId)
+        var predicate = PredicateBuilder.New<QuestionVersion>(true);
+        predicate = predicate.And(x => x.QuestionId == questionId);
+
+        // 数据可见性过滤
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue)
+            {
+                return [];
+            }
+            predicate = predicate.And(x => x.CreatedBy == userId.Value);
+        }
+
+        var versions = await Repository.Find(predicate)
             .Include(x => x.Question)
             .OrderByDescending(x => x.Version)
             .ToListAsync();
-
         return Mapper.Map<List<QuestionVersionDto>>(versions);
     }
 
@@ -112,6 +138,16 @@ public class QuestionVersionService : BaseCRUDService<QuestionVersion, QuestionV
             throw new AppServiceException(404, "未找到指定的题目版本");
         }
 
+        // 数据可见性校验
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue || questionVersion.CreatedBy != userId.Value)
+            {
+                throw new AppServiceException(404, "未找到指定的题目版本");
+            }
+        }
+
         return Mapper.Map<QuestionVersionDto>(questionVersion);
     }
 
@@ -125,6 +161,16 @@ public class QuestionVersionService : BaseCRUDService<QuestionVersion, QuestionV
         if (question == null)
         {
             throw new AppServiceException(400, "题目不存在");
+        }
+
+        // 关联数据可见性校验：非 Admin/exam_view_all 用户只能为自己创建的题目创建新版本
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue || question.CreatedBy != userId.Value)
+            {
+                throw new AppServiceException(404, "题目不存在");
+            }
         }
 
         // 获取当前最高版本号
@@ -181,10 +227,25 @@ public class QuestionVersionService : BaseCRUDService<QuestionVersion, QuestionV
     /// </summary>
     protected override async Task<QuestionVersion> GetEntityForUpdate(long id, UpdateQuestionVersionDto updateDto)
     {
-        QuestionVersion entity = await Repository.CreateQuery()
+        var entity = await Repository.CreateQuery()
             .Include(x => x.Question)
             .FirstOrDefaultAsync(x => x.Id == id);
 
-        return entity == null ? throw new AppServiceException(404, "题目版本不存在！") : entity;
+        if (entity == null)
+        {
+            throw new AppServiceException(404, "题目版本不存在！");
+        }
+
+        // 数据可见性校验
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue || entity.CreatedBy != userId.Value)
+            {
+                throw new AppServiceException(404, "题目版本不存在！");
+            }
+        }
+
+        return entity;
     }
 } 

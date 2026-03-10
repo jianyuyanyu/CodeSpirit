@@ -26,6 +26,7 @@ public class StudentGroupService : BaseCRUDIService<StudentGroup, StudentGroupDt
     private readonly IRepository<StudentGroupMapping> _mappingRepository;
     private readonly ILogger<StudentGroupService> _logger;
     private readonly IIdGenerator _idGenerator;
+    private readonly IExamDataScopeService _dataScopeService;
 
     /// <summary>
     /// 构造函数
@@ -37,13 +38,15 @@ public class StudentGroupService : BaseCRUDIService<StudentGroup, StudentGroupDt
         IMapper mapper,
         ILogger<StudentGroupService> logger,
         IIdGenerator idGenerator,
-        EnhancedBatchImportHelper<StudentGroupBatchImportDto> importHelper)
+        EnhancedBatchImportHelper<StudentGroupBatchImportDto> importHelper,
+        IExamDataScopeService dataScopeService)
         : base(repository, mapper, importHelper)
     {
         _studentRepository = studentRepository;
         _mappingRepository = mappingRepository;
         _logger = logger;
         _idGenerator = idGenerator;
+        _dataScopeService = dataScopeService;
     }
 
     /// <summary>
@@ -52,6 +55,17 @@ public class StudentGroupService : BaseCRUDIService<StudentGroup, StudentGroupDt
     public async Task<PageList<StudentGroupDto>> GetStudentGroupsAsync(StudentGroupQueryDto queryDto)
     {
         var query = Repository.CreateQuery();
+
+        // 数据可见性过滤：非 Admin/exam_view_all 用户仅能查看自己创建的考生组
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue)
+            {
+                return new PageList<StudentGroupDto>([], 0);
+            }
+            query = query.Where(x => x.CreatedBy == userId.Value);
+        }
 
         // 关键字搜索
         if (!string.IsNullOrEmpty(queryDto.Keywords))
@@ -106,6 +120,16 @@ public class StudentGroupService : BaseCRUDIService<StudentGroup, StudentGroupDt
         if (group == null)
         {
             throw new AppServiceException(404, "考生组不存在！");
+        }
+
+        // 数据可见性校验
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue || group.CreatedBy != userId.Value)
+            {
+                throw new AppServiceException(404, "考生组不存在！");
+            }
         }
 
         // 检查是否有关联的考试
@@ -221,6 +245,16 @@ public class StudentGroupService : BaseCRUDIService<StudentGroup, StudentGroupDt
             throw new AppServiceException(404, "考生组不存在！");
         }
 
+        // 数据可见性校验
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue || group.CreatedBy != userId.Value)
+            {
+                throw new AppServiceException(404, "考生组不存在！");
+            }
+        }
+
         // 验证考生是否存在
         var students = await _studentRepository
             .Find(x => studentIds.Contains(x.Id))
@@ -265,6 +299,16 @@ public class StudentGroupService : BaseCRUDIService<StudentGroup, StudentGroupDt
             throw new AppServiceException(404, "考生组不存在！");
         }
 
+        // 数据可见性校验
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue || group.CreatedBy != userId.Value)
+            {
+                throw new AppServiceException(404, "考生组不存在！");
+            }
+        }
+
         await _mappingRepository
             .Find(x => x.StudentGroupId == groupId && studentIds.Contains(x.StudentId))
             .ExecuteDeleteAsync();
@@ -275,7 +319,20 @@ public class StudentGroupService : BaseCRUDIService<StudentGroup, StudentGroupDt
     /// </summary>
     public async Task<List<StudentGroupDto>> GetAllActiveGroupsAsync()
     {
-        var entities = await Repository.CreateQuery().OrderByDescending(p => p.CreatedAt).ToListAsync();
+        var query = Repository.CreateQuery();
+
+        // 数据可见性过滤：非 Admin/exam_view_all 用户仅能查看自己创建的考生组
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue)
+            {
+                return [];
+            }
+            query = query.Where(x => x.CreatedBy == userId.Value);
+        }
+
+        var entities = await query.OrderByDescending(p => p.CreatedAt).ToListAsync();
         return Mapper.Map<List<StudentGroupDto>>(entities.Where(x => !x.IsDeleted));
     }
 }

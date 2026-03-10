@@ -26,6 +26,7 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
     private readonly Repository<ExamPaper> _examPaperRepository;
     private readonly Repository<ExamPaperQuestion> _examPaperQuestionRepository;
     private readonly Mock<IScoreConversionService> _mockScoreConversionService;
+    private readonly Mock<IExamDataScopeService> _mockDataScopeService;
 
     public ExamPaperServiceTagRuleTests()
     {
@@ -33,6 +34,8 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
         _examPaperRepository = CreateRepository<ExamPaper>();
         _examPaperQuestionRepository = CreateRepository<ExamPaperQuestion>();
         _mockScoreConversionService = new Mock<IScoreConversionService>();
+        _mockDataScopeService = new Mock<IExamDataScopeService>();
+        _mockDataScopeService.Setup(s => s.CanViewAllExamDataAsync()).ReturnsAsync(true);
 
         _examPaperService = new ExamPaperService(
             _examPaperRepository,
@@ -41,7 +44,8 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
             VersionRepository,
             Mapper,
             _mockLogger.Object,
-            _mockScoreConversionService.Object
+            _mockScoreConversionService.Object,
+            _mockDataScopeService.Object
         );
 
         // 准备测试数据

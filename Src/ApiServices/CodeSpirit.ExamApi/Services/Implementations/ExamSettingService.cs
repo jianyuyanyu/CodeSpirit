@@ -30,6 +30,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
     private readonly ExamDbContext _context;
     private readonly IExamCacheService _examCacheService;
     private readonly ICacheService _cacheService;
+    private readonly IExamDataScopeService _dataScopeService;
 
     /// <summary>
     /// 构造函数
@@ -52,7 +53,8 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         ILogger<ExamSettingService> logger,
         ExamDbContext context,
         IExamCacheService examCacheService,
-        ICacheService cacheService)
+        ICacheService cacheService,
+        IExamDataScopeService dataScopeService)
         : base(repository, mapper)
     {
         _repository = repository;
@@ -64,6 +66,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         _context = context;
         _examCacheService = examCacheService;
         _cacheService = cacheService;
+        _dataScopeService = dataScopeService;
     }
 
     /// <summary>
@@ -72,6 +75,17 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
     public async Task<PageList<ExamSettingDto>> GetExamSettingsAsync(ExamSettingQueryDto queryDto)
     {
         var predicate = PredicateBuilder.New<ExamSetting>(true);
+
+        // 数据可见性过滤：非 Admin/exam_view_all 用户仅能查看自己创建的考试
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue)
+            {
+                return new PageList<ExamSettingDto>([], 0);
+            }
+            predicate = predicate.And(x => x.CreatedBy == userId.Value);
+        }
 
         // 关键词搜索
         if (!string.IsNullOrWhiteSpace(queryDto.Keywords))
@@ -225,8 +239,20 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
     public async Task<ExamSettingDto> GetExamSettingDetailAsync(long id)
     {
         // 使用投影查询，只获取需要的数据
-        var result = await _repository.CreateQuery()
-            .Where(x => x.Id == id)
+        var query = _repository.CreateQuery().Where(x => x.Id == id);
+
+        // 数据可见性过滤：非 Admin/exam_view_all 用户仅能查看自己创建的考试
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue)
+            {
+                return null!;
+            }
+            query = query.Where(x => x.CreatedBy == userId.Value);
+        }
+
+        var result = await query
             .Select(x => new 
             {
                 // 考试设置基本信息
@@ -338,6 +364,24 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
             throw new AppServiceException(404, "部分学生分组不存在");
         }
 
+        // 关联数据可见性校验：非 Admin/exam_view_all 用户只能使用自己创建的试卷和考生组
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue)
+            {
+                throw new AppServiceException(403, "未认证用户无法创建考试");
+            }
+            if (examPaper.CreatedBy != userId.Value)
+            {
+                throw new AppServiceException(404, "试卷不存在");
+            }
+            if (studentGroups.Any(sg => sg.CreatedBy != userId.Value))
+            {
+                throw new AppServiceException(404, "部分学生分组不存在");
+            }
+        }
+
         // 创建考试设置
         var examSetting = _mapper.Map<ExamSetting>(createDto);
         examSetting.Status = ExamSettingStatus.Draft;
@@ -369,6 +413,16 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
             throw new AppServiceException(404, "考试设置不存在");
         }
 
+        // 数据可见性校验：非 Admin/exam_view_all 用户仅能操作自己创建的考试
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue || examSetting.CreatedBy != userId.Value)
+            {
+                throw new AppServiceException(404, "考试设置不存在");
+            }
+        }
+
         // 检查考试设置状态
         if (examSetting.Status != ExamSettingStatus.Draft)
         {
@@ -390,6 +444,20 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         if (studentGroups.Count != updateDto.StudentGroupIds.Count)
         {
             throw new AppServiceException(404, "部分学生分组不存在");
+        }
+
+        // 关联数据可见性校验：非 Admin/exam_view_all 用户只能使用自己创建的试卷和考生组
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue || examPaper.CreatedBy != userId.Value)
+            {
+                throw new AppServiceException(404, "试卷不存在");
+            }
+            if (studentGroups.Any(sg => sg.CreatedBy != userId.Value))
+            {
+                throw new AppServiceException(404, "部分学生分组不存在");
+            }
         }
 
         // 更新基本信息
@@ -442,6 +510,16 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
             return;
         }
 
+        // 数据可见性校验
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue || examSetting.CreatedBy != userId.Value)
+            {
+                throw new AppServiceException(404, "考试设置不存在");
+            }
+        }
+
         // 检查考试设置状态
         if (examSetting.Status != ExamSettingStatus.Draft)
         {
@@ -471,6 +549,16 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         if (examSetting == null)
         {
             throw new AppServiceException(404, "考试设置不存在");
+        }
+
+        // 数据可见性校验
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue || examSetting.CreatedBy != userId.Value)
+            {
+                throw new AppServiceException(404, "考试设置不存在");
+            }
         }
 
         // 检查考试设置状态
@@ -536,6 +624,16 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         if (examSetting == null)
         {
             throw new AppServiceException(404, "考试设置不存在");
+        }
+
+        // 数据可见性校验
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue || examSetting.CreatedBy != userId.Value)
+            {
+                throw new AppServiceException(404, "考试设置不存在");
+            }
         }
 
         // 检查考试设置状态

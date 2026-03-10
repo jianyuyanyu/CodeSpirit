@@ -40,6 +40,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     private readonly IExamCacheService _examCacheService;
     private readonly ICacheService _cacheService;
     private readonly IRepository<ExamAnswerOperationLog> _operationLogRepository;
+    private readonly IExamDataScopeService _dataScopeService;
 
     /// <summary>
     /// 构造函数
@@ -71,7 +72,8 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         ISettingsService settingsService,
         IScoreConversionService scoreConversionService,
         IExamCacheService examCacheService,
-        ICacheService cacheService) : base(repository, mapper)
+        ICacheService cacheService,
+        IExamDataScopeService dataScopeService) : base(repository, mapper)
     {
         _answerRecordRepository = answerRecordRepository;
         _operationLogRepository = operationLogRepository;
@@ -84,6 +86,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         _scoreConversionService = scoreConversionService ?? throw new ArgumentNullException(nameof(scoreConversionService));
         _examCacheService = examCacheService ?? throw new ArgumentNullException(nameof(examCacheService));
         _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
+        _dataScopeService = dataScopeService;
     }
 
     /// <summary>
@@ -101,6 +104,17 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         if (queryDto is ExamRecordQueryDto examRecordQueryDto)
         {
             var query = Repository.CreateQuery().AsNoTracking();
+
+            // 数据可见性过滤：非 Admin/exam_view_all 用户仅能查看自己创建的考试产生的考试记录
+            if (!await _dataScopeService.CanViewAllExamDataAsync())
+            {
+                var userId = _dataScopeService.GetCurrentUserId();
+                if (!userId.HasValue)
+                {
+                    return new PageList<ExamRecordDto>([], 0);
+                }
+                query = query.Where(x => x.ExamSetting.CreatedBy == userId.Value);
+            }
 
             // ✅ 默认排除预生成记录（除非明确查询NotStarted状态）
             if (!examRecordQueryDto.Status.HasValue || examRecordQueryDto.Status.Value != ExamRecordStatus.NotStarted)
@@ -446,6 +460,16 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             throw new BusinessException("考试设置不存在");
         }
 
+        // 数据可见性校验：非 Admin/exam_view_all 用户仅能查看自己创建的考试的统计
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue || examSetting.CreatedBy != userId.Value)
+            {
+                throw new BusinessException("考试设置不存在");
+            }
+        }
+
         // 查询考试记录数据
         var records = await Repository.CreateQuery()
             .Where(r => r.ExamSettingId == examSettingId)
@@ -606,6 +630,16 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         if (examRecord == null)
         {
             throw new BusinessException("考试记录不存在");
+        }
+
+        // 数据可见性校验：非 Admin/exam_view_all 用户仅能查看自己创建的考试产生的记录
+        if (!await _dataScopeService.CanViewAllExamDataAsync())
+        {
+            var userId = _dataScopeService.GetCurrentUserId();
+            if (!userId.HasValue || examRecord.ExamSetting.CreatedBy != userId.Value)
+            {
+                throw new BusinessException("考试记录不存在");
+            }
         }
 
         return Mapper.Map<ExamRecordDto>(examRecord);

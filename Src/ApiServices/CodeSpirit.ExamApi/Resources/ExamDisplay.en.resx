@@ -124,4 +124,13 @@
   <data name="ExamAnswerLog.SelectExamPlaceholder" xml:space="preserve">
     <value>Please select exam</value>
   </data>
+  <data name="Permission.ExamViewAll" xml:space="preserve">
+    <value>View All Exam Data</value>
+  </data>
+  <data name="Permission.ExamViewAll.Description" xml:space="preserve">
+    <value>Can view all questions, exam papers, exams, student groups, students and exam records created by any user</value>
+  </data>
+  <data name="Errors.ResourceNotFound" xml:space="preserve">
+    <value>Resource not found</value>
+  </data>
 </root>

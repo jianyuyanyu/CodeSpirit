@@ -124,4 +124,13 @@
   <data name="ExamAnswerLog.SelectExamPlaceholder" xml:space="preserve">
     <value>请选择考试</value>
   </data>
+  <data name="Permission.ExamViewAll" xml:space="preserve">
+    <value>查看全部考试数据</value>
+  </data>
+  <data name="Permission.ExamViewAll.Description" xml:space="preserve">
+    <value>可查看所有用户创建的题目、试卷、考试、考生组、考生及考试记录</value>
+  </data>
+  <data name="Errors.ResourceNotFound" xml:space="preserve">
+    <value>资源不存在</value>
+  </data>
 </root>

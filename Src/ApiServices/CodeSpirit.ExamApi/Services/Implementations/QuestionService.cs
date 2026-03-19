@@ -22,6 +22,7 @@ using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using CodeSpirit.Core.Dtos;
@@ -2578,6 +2579,9 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                             Tags = parsedQuestion.Tags ?? new List<string>()
                         };
 
+                        // 文本导入预处理：将 A/B/C/D 格式的答案转换为选项内容，避免被验证逻辑拦截
+                        NormalizeAnswerForImport(createDto);
+
                         // 创建题目
                         await CreateQuestionAsync(createDto);
                         successCount++;
@@ -2612,6 +2616,117 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             {
                 _logger.LogError(ex, "从文本导入题目时发生错误");
                 throw new AppServiceException(500, $"导入题目失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 文本导入预处理：将 A/B/C/D 格式的答案转换为选项内容。
+        /// 解析器可能因格式异常未完成转换，导致验证逻辑拦截，此处确保导入数据通过验证。
+        /// </summary>
+        /// <param name="dto">创建题目 DTO</param>
+        private void NormalizeAnswerForImport(CreateQuestionDto dto)
+        {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.CorrectAnswer) ||
+                dto.Options == null || !dto.Options.Any())
+            {
+                return;
+            }
+
+            var answer = dto.CorrectAnswer.Trim();
+            var cleanOptions = dto.Options.Where(o => !string.IsNullOrWhiteSpace(o)).Select(o => o.Trim()).ToList();
+            if (!cleanOptions.Any())
+            {
+                return;
+            }
+
+            // 判断题不处理
+            if (dto.Type == QuestionType.TrueFalse)
+            {
+                return;
+            }
+
+            // 答案已是选项内容（解析器已正确转换），无需处理
+            if (dto.Type == QuestionType.SingleChoice &&
+                cleanOptions.Any(o => string.Equals(o, answer, StringComparison.OrdinalIgnoreCase)))
+            {
+                return;
+            }
+            if (dto.Type == QuestionType.MultipleChoice)
+            {
+                var parts = answer.Split(new[] { ',', '，', '、', ';', '；' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(a => a.Trim())
+                    .ToList();
+                if (parts.Count > 0 && parts.All(p => cleanOptions.Any(o => string.Equals(o, p, StringComparison.OrdinalIgnoreCase))))
+                {
+                    return;
+                }
+            }
+
+            // 字母序号格式：A、B、AB、A,B、A、B 等
+            if (Regex.IsMatch(answer, @"^[A-Za-z]+$") || Regex.IsMatch(answer, @"^[A-Za-z](\s*[,，、]\s*[A-Za-z])*$"))
+            {
+                // 支持 "AB" 或 "A,B" 两种格式
+                var letterParts = answer.Contains(',') || answer.Contains('，') || answer.Contains('、')
+                    ? answer.Split(new[] { ',', '，', '、', ';', '；' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(l => l.Trim())
+                        .Where(l => l.Length == 1 && char.IsLetter(l[0]))
+                        .ToList()
+                    : answer.ToCharArray()
+                        .Where(c => char.IsLetter(c))
+                        .Select(c => c.ToString())
+                        .ToList();
+
+                // 单选题只允许一个答案，多字母时取第一个有效字母（解析异常时的容错）
+                if (dto.Type == QuestionType.SingleChoice && letterParts.Count > 1)
+                {
+                    letterParts = letterParts.Take(1).ToList();
+                }
+
+                var optionTexts = new List<string>();
+                foreach (var letter in letterParts)
+                {
+                    var index = char.ToUpper(letter[0]) - 'A';
+                    if (index >= 0 && index < cleanOptions.Count)
+                    {
+                        optionTexts.Add(cleanOptions[index]);
+                    }
+                }
+
+                if (optionTexts.Any())
+                {
+                    dto.CorrectAnswer = string.Join(",", optionTexts);
+                    _logger.LogDebug("文本导入：已将字母答案 {Original} 转换为选项内容", answer);
+                }
+            }
+            // 数字序号格式：1、2、1,2 等（仅支持 1-9，10+ 选项需用字母）
+            else if (Regex.IsMatch(answer, @"^\d(\s*[,，、]\s*\d)*$"))
+            {
+                var numberParts = answer.Split(new[] { ',', '，', '、', ';', '；' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(n => n.Trim())
+                    .Where(n => n.Length == 1 && char.IsDigit(n[0]))
+                    .ToList();
+
+                // 单选题只允许一个答案，多数时取第一个有效数字
+                if (dto.Type == QuestionType.SingleChoice && numberParts.Count > 1)
+                {
+                    numberParts = numberParts.Take(1).ToList();
+                }
+
+                var optionTexts = new List<string>();
+                foreach (var number in numberParts)
+                {
+                    var index = int.Parse(number) - 1;
+                    if (index >= 0 && index < cleanOptions.Count)
+                    {
+                        optionTexts.Add(cleanOptions[index]);
+                    }
+                }
+
+                if (optionTexts.Any())
+                {
+                    dto.CorrectAnswer = string.Join(",", optionTexts);
+                    _logger.LogDebug("文本导入：已将数字答案 {Original} 转换为选项内容", answer);
+                }
             }
         }
 

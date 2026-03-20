@@ -364,8 +364,8 @@ public class QuestionValidationService : IQuestionValidationService
     /// </summary>
     private bool IsLetterSequenceAnswer(string answer)
     {
-        // 单个字母：A、B、C、D
-        if (answer.Length == 1 && char.IsLetter(answer[0]))
+        // 单个字母：仅 ASCII A–Z / a–z；中文单字正确答案（如「水」）不应视为字母序号
+        if (answer.Length == 1 && char.IsAsciiLetter(answer[0]))
         {
             return true;
         }
@@ -418,10 +418,10 @@ public class QuestionValidationService : IQuestionValidationService
             return cleanOptions.Any(option => string.Equals(option, answer, StringComparison.OrdinalIgnoreCase));
         }
 
-        // 多选题：答案应该是选项的组合
+        // 多选题：答案应该是选项的组合（按逗号/分号分隔；顿号「、」常出现在选项正文内，不得作为分隔符）
         if (question.Type == QuestionType.MultipleChoice)
         {
-            var answerParts = answer.Split(new[] { ',', '，', '、', ';', '；' }, StringSplitOptions.RemoveEmptyEntries)
+            var answerParts = answer.Split(new[] { ',', '，', ';', '；' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(a => a.Trim())
                 .ToList();
 

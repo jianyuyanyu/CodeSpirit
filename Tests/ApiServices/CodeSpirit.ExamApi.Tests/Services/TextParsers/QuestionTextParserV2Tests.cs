@@ -122,6 +122,48 @@ D、合法访问
     }
 
     [Fact]
+    public void Parse_CookingImportUserSample_TwoQuestions_CorrectAnswersMatchOptions()
+    {
+        var text = """
+            27、关于生抽和老抽的区别，说法正确的有（ABD）
+            A、生抽主打提鲜增味
+            B、老抽主打上色提亮
+            C、生抽颜色浓稠深沉
+            D、老抽质地黏稠、颜色深
+            【难度】中等
+            【解析】生抽质地稀薄、颜色浅，用于凉拌、炒菜提鲜；老抽添加焦糖色，质地黏稠、颜色深，用于红烧、焖煮上色，二者均有咸味。
+            【标签】烹饪调味、酱油使用
+
+            1、烹饪中最基础的传热介质之一，常用于焯水、煮制菜品的是（A）
+            A、水
+            B、油
+            C、蒸汽
+            D、盐
+            【难度】简单
+            【解析】水是烹饪中最常用、最基础的传热介质，成本低廉、操作简便，主要用于焯水、煮、炖、焖等烹调方法，是新手入门必须掌握的基础传热知识。
+            【标签】烹调工艺、传热介质
+            """;
+
+        var result = _parser.Parse(text);
+
+        Assert.Equal(2, result.Count);
+
+        var multi = result[0];
+        Assert.Equal(QuestionType.MultipleChoice, multi.Type);
+        var multiParts = multi.CorrectAnswer.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        Assert.Equal(3, multiParts.Length);
+        foreach (var p in multiParts)
+        {
+            Assert.Contains(p, multi.Options, StringComparer.Ordinal);
+        }
+
+        var single = result[1];
+        Assert.Equal(QuestionType.SingleChoice, single.Type);
+        Assert.Equal("水", single.CorrectAnswer);
+        Assert.Contains(single.CorrectAnswer, single.Options, StringComparer.Ordinal);
+    }
+
+    [Fact]
     public void Parse_MixedQuestions_ReturnsCorrectResults()
     {
         // Arrange

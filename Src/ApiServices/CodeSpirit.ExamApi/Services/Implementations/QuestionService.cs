@@ -2653,7 +2653,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             }
             if (dto.Type == QuestionType.MultipleChoice)
             {
-                var parts = answer.Split(new[] { ',', '，', '、', ';', '；' }, StringSplitOptions.RemoveEmptyEntries)
+                // 顿号「、」可出现在选项正文中，多选答案分隔仅使用逗号与分号
+                var parts = answer.Split(new[] { ',', '，', ';', '；' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(a => a.Trim())
                     .ToList();
                 if (parts.Count > 0 && parts.All(p => cleanOptions.Any(o => string.Equals(o, p, StringComparison.OrdinalIgnoreCase))))

@@ -470,6 +470,16 @@ public class InMemoryAuditService : IAuditService
         return Task.FromResult(result);
     }
 
+    /// <summary>
+    /// 获取审计卡片统计数据（测试桩返回空统计，不聚合内存日志）。
+    /// </summary>
+    /// <param name="tenantId">租户ID（可选）</param>
+    /// <returns>统计数据</returns>
+    public Task<AuditCardsStatsDto> GetCardsStatsAsync(string? tenantId = null)
+    {
+        return Task.FromResult(new AuditCardsStatsDto());
+    }
+
     public Task<(IEnumerable<AuditLog> Items, long Total)> SearchAsync(AuditLogQueryDto query)
     {
         IEnumerable<AuditLog> filteredItems;

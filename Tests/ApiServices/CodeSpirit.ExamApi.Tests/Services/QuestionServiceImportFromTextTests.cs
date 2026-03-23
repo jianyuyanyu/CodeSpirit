@@ -40,6 +40,17 @@ public class QuestionServiceImportFromTextTests : ExamServiceTestBase
         【标签】烹调工艺、传热介质
         """;
 
+    private const string HalBrineAbcdSample = """
+        45、熬制和养护老卤汤的关键要点有（ABCD）
+        A、香料配比精准，避免过苦过淡
+        B、每次卤制后过滤杂质
+        C、严禁加入生水，防止卤汤变质
+        D、冷却后密封冷藏保存
+        【难度】困难
+        【解析】老卤汤是卤菜灵魂，需精准控香料、勤过滤、防水、低温保存，养护得当可反复使用，滋味越卤越醇厚。
+        【标签】烹调工艺、卤制技法
+        """;
+
     private readonly QuestionService _questionService;
 
     /// <summary>
@@ -122,5 +133,34 @@ public class QuestionServiceImportFromTextTests : ExamServiceTestBase
         var single = questions.Single(q => q.Type == QuestionType.SingleChoice);
         Assert.Equal("水", single.CorrectAnswer);
         Assert.Equal(QuestionDifficulty.Easy, single.Difficulty);
+    }
+
+    /// <summary>
+    /// 多选 ABCD 且选项正文含中文逗号「，」时应成功导入（不得以「，」拆碎单条选项）。
+    /// </summary>
+    [Fact]
+    public async Task ImportFromTextAsync_HalBrineAbcd_AllFourOptionsWithChineseCommaInText_Succeeds()
+    {
+        var input = new QuestionImportFromTextDto
+        {
+            CategoryId = 1,
+            Text = HalBrineAbcdSample
+        };
+
+        var (successCount, failedItems) = await _questionService.ImportFromTextAsync(input);
+
+        Assert.Equal(1, successCount);
+        Assert.Empty(failedItems);
+
+        var q = await DbContext.Set<Question>().SingleAsync(x => x.CategoryId == 1);
+        Assert.Equal(QuestionType.MultipleChoice, q.Type);
+        Assert.Equal(4, q.Options.Count);
+        var parts = q.CorrectAnswer.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        Assert.Equal(4, parts.Length);
+        Assert.Equal(q.Options[0], parts[0]);
+        Assert.Equal(q.Options[1], parts[1]);
+        Assert.Equal(q.Options[2], parts[2]);
+        Assert.Equal(q.Options[3], parts[3]);
+        Assert.Equal(QuestionDifficulty.Hard, q.Difficulty);
     }
 }

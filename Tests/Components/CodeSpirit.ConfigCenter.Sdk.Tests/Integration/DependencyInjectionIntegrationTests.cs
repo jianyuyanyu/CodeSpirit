@@ -196,19 +196,6 @@ public class DependencyInjectionIntegrationTests
         services.AddSingleton<ConfigCacheService>();
     }
 
-    private void ConfigureFullServices(IServiceCollection services)
-    {
-        ConfigureMinimalServices(services);
-
-        // 添加 HTTP 客户端
-        services.AddHttpClient<ConfigCenterClient>();
-
-        // 添加其他 SDK 服务
-        services.AddSingleton<AppRegistrationService>();
-        services.AddSingleton<ConfigCenterClient>();
-        services.AddTransient<ConfigChangedEventHandler>();
-    }
-
     #endregion
 }
 

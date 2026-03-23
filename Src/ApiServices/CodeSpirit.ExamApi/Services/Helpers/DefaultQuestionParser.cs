@@ -559,7 +559,7 @@ public class DefaultQuestionParser : IQuestionParser
                 if (optionTexts.Any())
                 {
                     _logger.LogDebug("将选项字母组合 {Letters} 转换为完整选项文本", letterAnswer);
-                    return string.Join("，", optionTexts);
+                    return string.Join(",", optionTexts);
                 }
             }
 

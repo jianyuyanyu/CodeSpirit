@@ -338,7 +338,7 @@ public class ConfigItemServiceDraftTests
     #region 草稿标识字段测试
 
     /// <summary>
-    /// 测试：获取配置列表时应正确设置草稿标识
+    /// 测试：获取配置列表时应能通过 <see cref="ConfigStatus"/> 区分草稿与已发布项
     /// </summary>
     [Fact]
     public async Task GetConfigsAsync_WithDraft_ShouldSetDraftInfo()
@@ -396,12 +396,12 @@ public class ConfigItemServiceDraftTests
         // Assert
         var draftItem = result.Items.FirstOrDefault(i => i.Id == draftId);
         draftItem.Should().NotBeNull();
-        draftItem!.IsDraft.Should().BeTrue();
-        draftItem.PublishedConfigId.Should().Be(publishedId);
+        draftItem!.Status.Should().Be(ConfigStatus.Editing);
 
         var publishedItem = result.Items.FirstOrDefault(i => i.Id == publishedId);
         publishedItem.Should().NotBeNull();
-        publishedItem!.IsDraft.Should().BeFalse();
+        publishedItem!.Status.Should().Be(ConfigStatus.Released);
+        draftItem.Key.Should().Be(publishedItem!.Key);
     }
 
     #endregion

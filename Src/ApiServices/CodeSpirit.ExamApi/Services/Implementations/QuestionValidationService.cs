@@ -418,10 +418,11 @@ public class QuestionValidationService : IQuestionValidationService
             return cleanOptions.Any(option => string.Equals(option, answer, StringComparison.OrdinalIgnoreCase));
         }
 
-        // 多选题：答案应该是选项的组合（按逗号/分号分隔；顿号「、」常出现在选项正文内，不得作为分隔符）
+        // 多选题：答案应为选项全文按英文逗号拼接（与解析器、评分 ObjectiveQuestionGrader 一致）。
+        // 顿号「、」、中文逗号「，」常出现在单条选项正文中，不得作为分隔符。
         if (question.Type == QuestionType.MultipleChoice)
         {
-            var answerParts = answer.Split(new[] { ',', '，', ';', '；' }, StringSplitOptions.RemoveEmptyEntries)
+            var answerParts = answer.Split(',', StringSplitOptions.RemoveEmptyEntries)
                 .Select(a => a.Trim())
                 .ToList();
 
@@ -577,7 +578,7 @@ public class QuestionValidationService : IQuestionValidationService
 
                 if (optionTexts.Any())
                 {
-                    return string.Join("，", optionTexts);
+                    return string.Join(",", optionTexts);
                 }
             }
 
@@ -632,7 +633,7 @@ public class QuestionValidationService : IQuestionValidationService
 
                 if (optionTexts.Any())
                 {
-                    return string.Join("，", optionTexts);
+                    return string.Join(",", optionTexts);
                 }
             }
 
